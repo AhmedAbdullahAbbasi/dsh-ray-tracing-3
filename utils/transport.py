@@ -37,14 +37,22 @@ steps, accumulating optical depth as it goes (see below). That inner
 scan is wrapped in the same outer `jax.lax.scan` over `n_bounces`
 possible events as before, which `jax.vmap` then runs for every photon
 in the batch at once, and `jax.jit` compiles into one kernel.
+
+`simulate_source_packets` is the physical-source entry point. It keeps
+source-sampled energy in keV, emission time, and statistical fluence weight
+separate from the legacy toy Mie model's dimensionless phase parameter.
 """
+
+from typing import NamedTuple
 
 from jax import lax, random, vmap
 import jax.numpy as jnp
 
 from .sampling import (sample_free_path, sample_isotropic_mu, sample_azimuth, sample_mu_in_cone,
-                        sample_rayleigh_mu, sample_henyey_greenstein_mu, mie_asymmetry_from_size_parameter)
+                        sample_rayleigh_mu, sample_henyey_greenstein_mu, mie_asymmetry_from_size_parameter,
+                        size_parameter_from_energy_kev)
 from .raytracing import ray_box_intersection, direction_from_axis_mu_phi, orthonormal_basis, sample_disk_point
+from .source import SourcePackets
 from .voxels import voxel_index
 
 # Photon status codes.
@@ -61,6 +69,28 @@ _DEFAULT_BEAM_DIRECTION = jnp.array([1.0, 0.0, 0.0])
 # Valid `scattering_model` choices for `photon_step`/`run_one_photon`/`simulate_photons` --
 # see `_sample_scattering_mu` for what each one actually draws.
 SCATTERING_MODELS = ("isotropic", "rayleigh", "mie", "rayleigh_mie")
+
+
+class SourceTransportResult(NamedTuple):
+    """Transport outputs with the physical source metadata kept per packet.
+
+    ``energy_kev``, ``emission_time_s``, and ``weight_observer_fluence`` are
+    copied from :class:`utils.source.SourcePackets`; the transport does not
+    reinterpret or modify them. ``path`` contains positions inside the
+    simulation domain and therefore is not yet a complete source-to-observer
+    light-travel path.
+    """
+
+    position: jnp.ndarray
+    direction: jnp.ndarray
+    energy_kev: jnp.ndarray
+    emission_time_s: jnp.ndarray
+    weight_observer_fluence: jnp.ndarray
+    time_index: jnp.ndarray
+    spectral_bin_index: jnp.ndarray
+    n_scatter: jnp.ndarray
+    status: jnp.ndarray
+    path: jnp.ndarray
 
 
 def _sample_scattering_mu(key_mu, energy, scattering_model, mie_g_max, rayleigh_mie_transition_x):
@@ -258,6 +288,32 @@ def _launch_state(key, beam_radius, beam_direction, beam_divergence, aim_point,
     return start_pos, direction, energy
 
 
+def _launch_geometry(key, beam_radius, beam_direction, beam_divergence, aim_point,
+                     box_min, box_max):
+    """Sample only a launch position and direction for one source packet.
+
+    Source-driven simulations already have physical energies, so their launch
+    step must not draw or overwrite the packet energy. This helper mirrors the
+    geometric part of :func:`_launch_state` while leaving all spectral and
+    temporal properties in ``SourcePackets``.
+    """
+    key_disk, key_mu, key_phi = random.split(key, 3)
+
+    y, z = sample_disk_point(key_disk, beam_radius)
+    beam_t1, beam_t2 = orthonormal_basis(beam_direction)
+    offset = y * beam_t1 + z * beam_t2
+
+    mu = sample_mu_in_cone(key_mu, jnp.cos(beam_divergence))
+    phi = sample_azimuth(key_phi)
+    direction = direction_from_axis_mu_phi(beam_direction, mu, phi)
+
+    launch_distance = 2.0 * jnp.linalg.norm(box_max - box_min)
+    far_outside = aim_point - beam_direction * launch_distance + offset
+    t_entry, _, _ = ray_box_intersection(far_outside, direction, box_min, box_max)
+    start_pos = far_outside + direction * t_entry
+    return start_pos, direction
+
+
 def simulate_photons(key, n_photons, n_bounces, n_substeps, density_grid, box_min, box_max, beam_radius,
                       beam_direction=_DEFAULT_BEAM_DIRECTION, beam_divergence=0.0, aim_point=None,
                       energy_min=1.0, energy_max=1.0,
@@ -313,3 +369,125 @@ def simulate_photons(key, n_photons, n_bounces, n_substeps, density_grid, box_mi
 
     pos, direction, energy, n_scatter, status, path = vmap(run)(keys)
     return pos, direction, energy, n_scatter, status, path
+
+
+def simulate_source_packets(
+    key,
+    packets: SourcePackets,
+    n_bounces,
+    n_substeps,
+    density_grid,
+    box_min,
+    box_max,
+    beam_radius,
+    beam_direction=_DEFAULT_BEAM_DIRECTION,
+    beam_divergence=0.0,
+    aim_point=None,
+    scattering_model="isotropic",
+    grain_radius_um=0.1,
+    mie_g_max=0.85,
+    rayleigh_mie_transition_x=1.0,
+):
+    """Transport a pre-sampled physical source packet batch.
+
+    This is the bridge between :mod:`utils.source` and the original JAX
+    transport. Unlike :func:`simulate_photons`, it never draws an energy:
+    every packet keeps its source-sampled energy in keV, emission time, and
+    observer-fluence weight.
+
+    The old toy Mie implementation expects a dimensionless grain size
+    parameter rather than keV. For ``"mie"`` and ``"rayleigh_mie"`` only,
+    this function converts each physical energy to
+    ``2*pi*grain_radius/wavelength`` internally. The converted value is used
+    solely by the phase-function placeholder and is not returned as photon
+    energy.
+
+    ``n_bounces`` and ``n_substeps`` must be static when jitted. Because the
+    scattering model selects Python control flow, ``scattering_model`` and
+    ``grain_radius_um`` must also be static arguments. For example::
+
+        jax.jit(
+            simulate_source_packets,
+            static_argnums=(2, 3),
+            static_argnames=("scattering_model", "grain_radius_um"),
+        )
+
+    Arrival-time filtering is intentionally not done here. The returned
+    emission times must later be combined with a full geometric excess-path
+    delay before applying an observer window.
+    """
+    packet_fields = (
+        packets.energy_kev,
+        packets.emission_time_s,
+        packets.weight_observer_fluence,
+        packets.time_index,
+        packets.spectral_bin_index,
+    )
+    if any(field.ndim != 1 for field in packet_fields):
+        raise ValueError("all SourcePackets fields must be one-dimensional")
+
+    n_packets = packets.energy_kev.shape[0]
+    if n_packets <= 0:
+        raise ValueError("SourcePackets cannot be empty")
+    if any(field.shape != (n_packets,) for field in packet_fields[1:]):
+        raise ValueError("all SourcePackets fields must have the same length")
+    if scattering_model not in SCATTERING_MODELS:
+        raise ValueError(
+            f"unknown scattering_model {scattering_model!r}, expected one of {SCATTERING_MODELS}"
+        )
+    if scattering_model in ("mie", "rayleigh_mie") and grain_radius_um <= 0.0:
+        raise ValueError("grain_radius_um must be positive for Mie scattering")
+
+    if aim_point is None:
+        aim_point = 0.5 * (box_min + box_max)
+
+    if scattering_model in ("mie", "rayleigh_mie"):
+        phase_parameter = size_parameter_from_energy_kev(
+            packets.energy_kev, grain_radius_um
+        )
+    else:
+        phase_parameter = packets.energy_kev
+
+    keys = random.split(key, n_packets)
+
+    def run(k, packet_phase_parameter):
+        k_launch, k_photon = random.split(k)
+        start_pos, start_direction = _launch_geometry(
+            k_launch,
+            beam_radius,
+            beam_direction,
+            beam_divergence,
+            aim_point,
+            box_min,
+            box_max,
+        )
+        return run_one_photon(
+            k_photon,
+            n_bounces,
+            n_substeps,
+            box_min,
+            box_max,
+            density_grid,
+            start_pos,
+            start_direction,
+            packet_phase_parameter,
+            scattering_model,
+            mie_g_max,
+            rayleigh_mie_transition_x,
+        )
+
+    position, direction, _, n_scatter, status, path = vmap(run)(
+        keys, phase_parameter
+    )
+    return SourceTransportResult(
+        position=position,
+        direction=direction,
+        energy_kev=packets.energy_kev,
+        emission_time_s=packets.emission_time_s,
+        weight_observer_fluence=packets.weight_observer_fluence,
+        time_index=packets.time_index,
+        spectral_bin_index=packets.spectral_bin_index,
+        n_scatter=n_scatter,
+        status=status,
+        path=path,
+    )

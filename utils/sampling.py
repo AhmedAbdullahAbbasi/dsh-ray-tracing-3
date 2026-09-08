@@ -11,8 +11,6 @@ transform sampling: draw xi ~ Uniform(0, 1), then invert the CDF of the
 quantity you actually want.
 """
 
-import math
-
 import jax.numpy as jnp
 from jax import random
 
@@ -154,30 +152,22 @@ _HC_KEV_ANGSTROM = 12.398419843320026  # h*c: wavelength[angstrom] = this / ener
 def size_parameter_from_energy_kev(energy_kev, grain_radius_um):
     """Convert a real photon energy (keV) and an assumed grain radius (microns) into `x`.
 
-    Nothing in this simulation ties its internal `energy` field to any
-    physical unit on its own -- see `mie_asymmetry_from_size_parameter`'s
-    `x` -- so this is a plain, non-JAX preprocessing helper *you* call
-    yourself, once, to decide what that tie should be: pick a photon
-    energy in keV and a grain radius in microns, and it works out the
-    corresponding size parameter `x = 2*pi*grain_radius / wavelength`
-    via the standard X-ray relation `wavelength[angstrom] = 12.398 /
-    energy[keV]`. Use its output as `energy_min`/`energy_max` in
-    `simulate_photons` (still just called "energy" there for
-    historical reasons -- it's really "size parameter" once you're
-    using the "mie"/"rayleigh_mie" scattering models).
+    The helper accepts scalars or JAX arrays and is safe to call inside a
+    jitted transport function. It computes the dimensionless size parameter
+    `x = 2*pi*grain_radius / wavelength` from the standard X-ray relation
+    `wavelength[angstrom] = 12.398 / energy[keV]`.
 
     For calibration: typical ISM dust grains are roughly 0.005-0.25 um
     in radius; visible light is ~2-3 eV (wavelength ~4000-7000
     angstrom); soft X-rays are ~0.1-10 keV (wavelength ~1-100
-    angstrom). A 0.1 um grain is deep in the Mie regime (x >> 1) for
-    visible light, but near or below the Rayleigh/Mie transition for
-    hard X-rays -- i.e. the same dust can look very different to
-    photons of different energies, which is exactly the effect
-    `scattering_model="rayleigh_mie"` is there to capture.
+    angstrom). X-rays have wavelengths far below typical interstellar grain
+    radii, so this size parameter is normally much greater than one. The
+    current Henyey-Greenstein mapping remains a qualitative placeholder
+    rather than a physical X-ray dust kernel.
     """
     wavelength_angstrom = _HC_KEV_ANGSTROM / energy_kev
     grain_radius_angstrom = grain_radius_um * 1e4  # 1 um = 1e4 angstrom
-    return 2.0 * math.pi * grain_radius_angstrom / wavelength_angstrom
+    return 2.0 * jnp.pi * grain_radius_angstrom / wavelength_angstrom
 
 
 def sample_mu_in_cone(key, cos_half_angle):

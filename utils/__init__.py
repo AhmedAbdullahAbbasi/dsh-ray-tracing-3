@@ -1,8 +1,7 @@
 """Tiny helper package for the Monte Carlo radiative transfer notebook.
 
-Everything here is intentionally minimal: a couple of random-sampling
-functions (`sampling.py`), the photon physics and the JAX
-vmap/scan machinery that parallelizes it (`transport.py`), some
-matplotlib helpers (`plotting.py`), and a one-function device check
-(`device.py`).
+Everything here is intentionally modular: physical source-flux sampling
+(`source.py`), random interaction sampling (`sampling.py`), source-packet
+transport and JAX parallelization (`transport.py`), voxel geometry, imaging,
+plotting, and device reporting.
 """
