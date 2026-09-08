@@ -86,7 +86,13 @@ def _downsample_mean(array, n_voxels):
 
 
 def from_fits_cube(cube, n_voxels=30, box_min=None, box_max=None, peak_density=0.3):
-    """Turn a loaded FITS density cube (`utils.fits_cube.load_cube`'s output) into a `simulate_photons`-ready density grid.
+    """Make a toy transport grid from a loaded angular-distance FITS cube.
+
+    This function preserves broad relative morphology for demonstrations. It
+    is **not** a physical coordinate conversion and its output must not be
+    used to calculate path lengths or photon arrival times. The physical
+    sightline convention and point conversion live in `utils.coordinates`;
+    a future cloud adapter will handle the FITS frustum explicitly.
 
     Two things this cube isn't, that `density_grid` needs to be:
 

@@ -2,6 +2,147 @@
 
 Open [`monte_carlo_rt.ipynb`](monte_carlo_rt.ipynb) — it's self-contained and explains the physics and the JAX parallelization as you go. Helper code lives in [`utils/`](utils/).
 
+## Source-flux convention
+
+[`utils/source.py`](utils/source.py) provides the first physical input layer.
+The primary test source is generic and separable,
+`F(E,t) = F_band(t) S(E)`: its light curve is piecewise constant, while its
+spectrum is sampled exactly from a power law. `F_band(t)` is the unabsorbed
+observer-equivalent photon flux integrated over the simulated energy range in
+`ph cm^-2 s^-1`. Every packet receives a real energy, emission time, and an
+observer-fluence weight in `ph cm^-2`; packet weights sum to the integrated
+fluence of the light curve.
+
+```python
+import jax
+import numpy as np
+from jax import random
+from utils.source import (
+    build_decay_observation_window,
+    build_variable_powerlaw_source,
+    fred_outburst_flux,
+    sample_variable_powerlaw_source,
+)
+
+DAY = 86_400.0
+time_edges_s = np.linspace(0.0, 120.0 * DAY, 241)
+peak_time_s = 10.0 * DAY
+
+# Generic fast-rise, exponential-decay X-ray transient.
+photon_flux = fred_outburst_flux(
+    time_edges_s,
+    baseline_flux=1.0e-2,
+    peak_excess_flux=9.0e-2,
+    peak_time_s=peak_time_s,
+    rise_time_s=2.0 * DAY,
+    decay_time_s=25.0 * DAY,
+)
+source = build_variable_powerlaw_source(
+    time_edges_s,
+    photon_flux,
+    energy_min_kev=1.0,
+    energy_max_kev=10.0,
+    photon_index=2.0,
+)
+
+# A 28.8 ks observation beginning 35 days after the outburst peak.
+observation = build_decay_observation_window(
+    start_s=45.0 * DAY,
+    stop_s=45.0 * DAY + 28_800.0,
+    outburst_peak_s=peak_time_s,
+)
+
+sample_jit = jax.jit(
+    sample_variable_powerlaw_source,
+    static_argnames=("n_packets",),
+)
+packets = sample_jit(random.PRNGKey(0), source, n_packets=100_000)
+```
+
+The same module retains a tabulated-band source for later observational
+adapters. NaNs are rejected deliberately: missing intervals must be handled
+by an explicit gap policy before source construction.
+
+## Transporting physical source packets
+
+`simulate_source_packets` connects those sampled packets to the existing JAX
+voxel transport. It preserves each packet's physical energy in keV, emission
+time, observer-fluence weight, and source-bin indices in the returned result.
+Assuming `density_grid`, `box_min`, and `box_max` have already been prepared:
+
+```python
+from utils.transport import simulate_source_packets
+
+transport_jit = jax.jit(
+    simulate_source_packets,
+    static_argnames=(
+        "n_bounces",
+        "n_substeps",
+        "scattering_model",
+        "grain_radius_um",
+    ),
+)
+transported = transport_jit(
+    random.PRNGKey(1),
+    packets,
+    n_bounces=4,
+    n_substeps=256,
+    density_grid=density_grid,
+    box_min=box_min,
+    box_max=box_max,
+    beam_radius=0.0,
+    scattering_model="mie",
+    grain_radius_um=0.1,
+)
+
+# Transport outputs and unchanged physical source metadata:
+transported.path
+transported.energy_kev
+transported.emission_time_s
+transported.weight_observer_fluence
+```
+
+The Mie option is still a qualitative Henyey-Greenstein placeholder. Its
+dimensionless grain-size parameter is now derived internally from physical
+keV energy instead of replacing the packet's energy field. Arrival-time
+selection is intentionally deferred: the next layer must add the geometric
+excess-path delay to `emission_time_s` before applying `observation`.
+
+## Physical coordinate convention
+
+[`utils/coordinates.py`](utils/coordinates.py) defines the geometry used by
+all forthcoming physical transport and delay calculations:
+
+- Cartesian vectors are ordered `(line_of_sight_pc, sky_x_pc, sky_y_pc)`.
+- The observer is at the origin.
+- The source lies on the positive line-of-sight axis.
+- Source photons initially travel toward the negative line-of-sight axis.
+- Cartesian lengths are always parsecs; radial inputs are kiloparsecs; sky
+  offsets are arcseconds.
+
+```python
+from utils.coordinates import build_sightline_geometry, sky_position_pc
+
+geometry = build_sightline_geometry(source_distance_kpc=10.0)
+cloud_center_pc = sky_position_pc(
+    distance_kpc=5.3,
+    sky_x_arcsec=30.0,
+    sky_y_arcsec=-15.0,
+)
+```
+
+The angular-distance FITS cube is a frustum: the physical width of an angular
+pixel increases with distance. The legacy `voxels.from_fits_cube` function
+only rescales that data into a cubic toy box and must not be used for physical
+time delays. A later cloud adapter will perform an explicit conversion or
+traversal without pretending angular coordinates are Cartesian lengths.
+
+Run the automated source and transport checks from the repository root with:
+
+```bash
+python -m unittest discover -v
+```
+
 ## Setup
 
 ```bash
@@ -24,3 +165,8 @@ JAX picks the fastest backend it finds automatically — the notebook code itsel
 ## Using a real density cube
 
 [`utils/fits_cube.py`](utils/fits_cube.py) reads a FITS column-density cube (extract/print/plot only) and [`utils/voxels.py`](utils/voxels.py)'s `from_fits_cube` turns one into a `simulate_photons`-ready density grid. FITS files aren't tracked in this repo (too large for a normal git push) — supply your own cube (a `(n_dist, n_y, n_x)` primary HDU with linear `CRPIX`/`CRVAL`/`CDELT` axis keywords) and point `fits_cube.load_cube(...)` at it.
+
+`from_fits_cube` currently preserves morphology only; it does not preserve the
+physical angular-distance metric or convert per-voxel `N_H` to an interaction
+coefficient. Treat its output as a visualization/test environment until the
+physical cloud adapter is implemented.
