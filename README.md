@@ -139,9 +139,12 @@ cloud = cloud_from_loaded_fits(loaded, source_distance_kpc=10.0)
 nh_map = total_column_map_cm2(cloud)
 ```
 
-This milestone deliberately stops before off-axis ray traversal. Its required
-physics checks are voxel column closure and Beer--Lambert closure; both are in
-`physics_checkpoints.ipynb` and `tests/test_clouds.py`.
+`utils/ray_integrals.py` integrates columns along arbitrary finite straight
+rays through this frustum. It solves intersections with radial spheres and
+angular boundary planes analytically, sorts those crossings, and sums
+`n_H * ds` within each crossed cell. It therefore has no fixed spatial-step
+error. Checkpoint 4 requires every radial pixel sightline to reproduce the
+native `sum(delta_NH)` map and verifies a ray outside the field returns zero.
 
 ## Physical coordinate convention
 
@@ -170,7 +173,7 @@ The angular-distance FITS cube is a frustum: the physical width of an angular
 pixel increases with distance. The legacy `voxels.from_fits_cube` function
 only rescales that data into a cubic toy box and must not be used for physical
 time delays. `utils.clouds` now preserves the native frustum and its column;
-the next transport milestone will traverse that geometry directly.
+`utils.ray_integrals` traverses that geometry directly.
 
 Run the automated source and transport checks from the repository root with:
 
