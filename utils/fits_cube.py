@@ -56,7 +56,9 @@ def load_cube(fits_path):
     """Open the FITS file and pull out the main density cube, its physical axis coordinates, and its unit.
 
     Returns a plain dict:
-      - "density": the (n_z, n_y, n_x) TOTAL_NH array, as float64 numpy (z = distance, y/x = angular offsets)
+      - "delta_nh_cm2": the (n_z, n_y, n_x) TOTAL_NH array, as
+        float64 numpy (z = distance, y/x = angular offsets)
+      - "density": a backward-compatible alias for the same array
       - "x_arcsec", "y_arcsec", "z_kpc": 1D physical coordinate arrays for each axis
       - "unit": the BUNIT string (e.g. "cm-2")
       - "header": the primary HDU header, for anything not already pulled out above
@@ -68,6 +70,7 @@ def load_cube(fits_path):
 
     n_z, n_y, n_x = density.shape  # FITS axis order (3, 2, 1) -> numpy axis order (z, y, x)
     return {
+        "delta_nh_cm2": density,
         "density": density,
         "x_arcsec": _axis_coords(header, 1, n_x),
         "y_arcsec": _axis_coords(header, 2, n_y),

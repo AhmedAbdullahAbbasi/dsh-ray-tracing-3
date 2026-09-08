@@ -1,6 +1,10 @@
 # Basic Monte Carlo radiative transfer, parallelized with JAX
 
-Open [`monte_carlo_rt.ipynb`](monte_carlo_rt.ipynb) — it's self-contained and explains the physics and the JAX parallelization as you go. Helper code lives in [`utils/`](utils/).
+Open [`monte_carlo_rt.ipynb`](monte_carlo_rt.ipynb) for the simulation
+walkthrough. Run [`physics_checkpoints.ipynb`](physics_checkpoints.ipynb) at
+each development milestone: it states the analytic expectation, checks
+numerical closure, and only then marks that physics stage as passing. Helper
+code lives in [`utils/`](utils/).
 
 ## Source-flux convention
 
@@ -108,6 +112,37 @@ keV energy instead of replacing the packet's energy field. Arrival-time
 selection is intentionally deferred: the next layer must add the geometric
 excess-path delay to `emission_time_s` before applying `observation`.
 
+## Native cloud-input convention
+
+`utils/clouds.py` is the physical adapter for an angular--distance hydrogen
+column cube. The native array order is `(z, y, x)`, where each value is the
+column increment contributed by one radial voxel, `delta_NH` in `cm^-2`. It
+is not a Cartesian density and is never rescaled to an arbitrary peak. The
+adapter derives the radial-average number density through
+
+```text
+n_H [cm^-3] = delta_NH [cm^-2] / delta_r [cm]
+```
+
+and requires all radial cell edges to lie between observer and source. Input
+axes may increase or decrease; decreasing FITS axes are flipped together with
+the data so the physical scene is unchanged. The JAX-ready object retains the
+native frustum axes, original column increments, derived number density, and
+source distance.
+
+```python
+from utils.clouds import cloud_from_loaded_fits, total_column_map_cm2
+from utils.fits_cube import load_cube
+
+loaded = load_cube("my_delta_nh_cube.fits")
+cloud = cloud_from_loaded_fits(loaded, source_distance_kpc=10.0)
+nh_map = total_column_map_cm2(cloud)
+```
+
+This milestone deliberately stops before off-axis ray traversal. Its required
+physics checks are voxel column closure and Beer--Lambert closure; both are in
+`physics_checkpoints.ipynb` and `tests/test_clouds.py`.
+
 ## Physical coordinate convention
 
 [`utils/coordinates.py`](utils/coordinates.py) defines the geometry used by
@@ -134,8 +169,8 @@ cloud_center_pc = sky_position_pc(
 The angular-distance FITS cube is a frustum: the physical width of an angular
 pixel increases with distance. The legacy `voxels.from_fits_cube` function
 only rescales that data into a cubic toy box and must not be used for physical
-time delays. A later cloud adapter will perform an explicit conversion or
-traversal without pretending angular coordinates are Cartesian lengths.
+time delays. `utils.clouds` now preserves the native frustum and its column;
+the next transport milestone will traverse that geometry directly.
 
 Run the automated source and transport checks from the repository root with:
 
@@ -162,11 +197,12 @@ JAX picks the fastest backend it finds automatically — the notebook code itsel
 
 **Mac GPU note:** `jax-metal`'s PyPI metadata only declares a *minimum* JAX version, so a plain `pip install jax-metal` will happily pull in the newest `jax`/`jaxlib` — which the actual compiled Metal plugin (last updated by Apple for the 0.4.34-era StableHLO format) can't run, and you'll see `JaxRuntimeError: ... unknown attribute code ...`. Pin `jax==0.4.34 jaxlib==0.4.34` alongside `jax-metal` as shown above to avoid it.
 
-## Using a real density cube
+## Using a real column-density cube
 
 [`utils/fits_cube.py`](utils/fits_cube.py) reads a FITS column-density cube (extract/print/plot only) and [`utils/voxels.py`](utils/voxels.py)'s `from_fits_cube` turns one into a `simulate_photons`-ready density grid. FITS files aren't tracked in this repo (too large for a normal git push) — supply your own cube (a `(n_dist, n_y, n_x)` primary HDU with linear `CRPIX`/`CRVAL`/`CDELT` axis keywords) and point `fits_cube.load_cube(...)` at it.
 
-`from_fits_cube` currently preserves morphology only; it does not preserve the
-physical angular-distance metric or convert per-voxel `N_H` to an interaction
-coefficient. Treat its output as a visualization/test environment until the
-physical cloud adapter is implemented.
+For physical work, pass the loaded dictionary to
+`clouds.cloud_from_loaded_fits`; it preserves the native frustum and physical
+column. `voxels.from_fits_cube` remains a legacy visualization adapter: it
+downsamples and rescales the array and must not be used for optical depth,
+path length, or arrival-time calculations.
