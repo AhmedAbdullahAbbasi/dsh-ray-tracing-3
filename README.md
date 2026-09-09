@@ -146,6 +146,36 @@ angular boundary planes analytically, sorts those crossings, and sums
 error. Checkpoint 4 requires every radial pixel sightline to reproduce the
 native `sum(delta_NH)` map and verifies a ray outside the field returns zero.
 
+## One-event Monte Carlo checkpoint
+
+`utils/first_interaction.py` connects physical source packets to the native
+cloud geometry without introducing a dust-model approximation. For each ray
+it integrates the available column exactly, samples a target optical depth
+`-log(xi)`, inverts cumulative column to obtain the interaction position, and
+branches between scattering and absorption according to their opacity ratio.
+It deliberately stops after one event.
+
+```python
+from jax import random
+from utils.first_interaction import simulate_first_interactions
+
+result = simulate_first_interactions(
+    random.PRNGKey(2), packets, cloud,
+    origin_pc=[10_000.0, 0.0, 0.0],
+    direction=[-1.0, 0.0, 0.0],
+    max_distance_pc=10_000.0,
+    scattering_cross_section_cm2_per_h=3.0e-22,
+    absorption_cross_section_cm2_per_h=2.0e-22,
+)
+```
+
+The temporary scattered direction is isotropic. That is a test phase function,
+not a physical X-ray dust kernel. Checkpoint 5 compares outcome fractions with
+the exact finite-slab probabilities, verifies the truncated exponential
+free-path law and exact event locations, and checks conservation of all source
+packet metadata. Checkpoint 6 will replace this temporary angular sampler with
+a normalized energy-dependent differential dust-scattering cross-section.
+
 ## Physical coordinate convention
 
 [`utils/coordinates.py`](utils/coordinates.py) defines the geometry used by

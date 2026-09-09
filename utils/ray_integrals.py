@@ -16,6 +16,8 @@ arrays and is compatible with ``jax.jit`` and ``jax.vmap``.
 
 from __future__ import annotations
 
+from typing import NamedTuple
+
 import jax.numpy as jnp
 
 from .clouds import AngularDistanceCloud, KPC_TO_CM
@@ -23,6 +25,16 @@ from .coordinates import ARCSEC_TO_RAD, PC_PER_KPC
 
 
 PC_TO_CM = KPC_TO_CM / PC_PER_KPC
+
+
+class RaySegments(NamedTuple):
+    """Fixed-size piecewise-constant representation of a finite ray."""
+
+    start_distance_pc: jnp.ndarray
+    stop_distance_pc: jnp.ndarray
+    n_h_cm3: jnp.ndarray
+    column_cm2: jnp.ndarray
+    inside_cloud: jnp.ndarray
 
 
 def _plane_crossing_distances(origin_pc, direction, angle_edges_arcsec, transverse_axis):
@@ -87,13 +99,13 @@ def ray_boundary_distances_pc(
     return jnp.sort(candidates)
 
 
-def integrate_ray_column_cm2(
+def ray_segments(
     cloud: AngularDistanceCloud,
     origin_pc,
     direction,
     max_distance_pc,
 ):
-    """Integrate hydrogen column along one finite straight ray segment."""
+    """Partition a finite ray at every boundary and evaluate each segment."""
 
     origin = jnp.asarray(origin_pc)
     ray_direction = jnp.asarray(direction)
@@ -132,7 +144,67 @@ def integrate_ray_column_cm2(
         local_n_h_cm3 * segment_length_pc * PC_TO_CM,
         0.0,
     )
-    return jnp.sum(segment_column_cm2)
+    return RaySegments(
+        start_distance_pc=segment_start,
+        stop_distance_pc=segment_stop,
+        n_h_cm3=jnp.where(inside_cloud, local_n_h_cm3, 0.0),
+        column_cm2=segment_column_cm2,
+        inside_cloud=inside_cloud,
+    )
+
+
+def integrate_ray_column_cm2(
+    cloud: AngularDistanceCloud,
+    origin_pc,
+    direction,
+    max_distance_pc,
+):
+    """Integrate hydrogen column along one finite straight ray segment."""
+
+    segments = ray_segments(cloud, origin_pc, direction, max_distance_pc)
+    return jnp.sum(segments.column_cm2)
+
+
+def locate_ray_column_depth_pc(
+    cloud: AngularDistanceCloud,
+    origin_pc,
+    direction,
+    max_distance_pc,
+    target_column_cm2,
+):
+    """Locate where accumulated column first reaches ``target_column_cm2``.
+
+    Returns ``(reached, distance_pc, position_pc)``. If the available column
+    is insufficient, ``distance_pc`` is ``max_distance_pc`` and
+    ``position_pc`` is the ray endpoint.
+    """
+
+    origin = jnp.asarray(origin_pc)
+    ray_direction = jnp.asarray(direction)
+    ray_direction = ray_direction / jnp.linalg.norm(ray_direction)
+    target = jnp.asarray(target_column_cm2)
+    segments = ray_segments(cloud, origin, ray_direction, max_distance_pc)
+    cumulative_column = jnp.cumsum(segments.column_cm2)
+    reaches_here = (
+        (segments.column_cm2 > 0.0)
+        & (cumulative_column >= target)
+        & (target >= 0.0)
+    )
+    reached = jnp.any(reaches_here)
+    segment_index = jnp.argmax(reaches_here)
+    previous_column = jnp.where(
+        segment_index > 0, cumulative_column[segment_index - 1], 0.0
+    )
+    column_inside_segment = jnp.maximum(target - previous_column, 0.0)
+    distance_inside_segment_pc = column_inside_segment / jnp.maximum(
+        segments.n_h_cm3[segment_index] * PC_TO_CM, 1.0e-30
+    )
+    reached_distance = (
+        segments.start_distance_pc[segment_index] + distance_inside_segment_pc
+    )
+    distance_pc = jnp.where(reached, reached_distance, max_distance_pc)
+    position_pc = origin + distance_pc * ray_direction
+    return reached, distance_pc, position_pc
 
 
 def integrate_ray_optical_depth(
