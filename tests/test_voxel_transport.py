@@ -16,10 +16,13 @@ from utils.dust_physics import (
 )
 from utils.voxel_transport import (
     ABSORBED,
+    DUST_SCATTERING,
     ESCAPED_OUTER_BOUNDARY,
     INVALID_ENERGY,
     INVALID_STATE,
     MAX_INTERACTIONS,
+    NO_INTERACTION,
+    PHOTOELECTRIC_ABSORPTION,
     REACHED_OBSERVER_PLANE,
     _direction_from_axis_theta_phi,
     _line_of_sight_excess_factor,
@@ -70,6 +73,16 @@ class TestVoxelTransport(unittest.TestCase):
         self.assertAlmostEqual(float(result.path_length_pc), 10_000.0, places=3)
         self.assertEqual(float(result.excess_path_length_pc), 0.0)
         np.testing.assert_allclose(result.momentum_kev, self.momentum)
+        np.testing.assert_array_equal(result.interactions.valid, False)
+        np.testing.assert_array_equal(
+            result.interactions.interaction_type, NO_INTERACTION
+        )
+        np.testing.assert_allclose(result.interactions.position_pc, 0.0)
+        self.assertEqual(result.interactions.valid.shape, (4,))
+        self.assertEqual(result.interactions.position_pc.shape, (4, 3))
+        self.assertEqual(
+            result.interactions.incoming_momentum_kev.shape, (4, 4)
+        )
 
     def test_arcsecond_scattering_angle_survives_float32(self):
         theta = jnp.asarray(1.0e-5, dtype=jnp.float32)
@@ -123,6 +136,31 @@ class TestVoxelTransport(unittest.TestCase):
         np.testing.assert_allclose(
             np.asarray(result.deposited_energy_kev)[absorbed], 4.0
         )
+        records = result.interactions
+        valid = np.asarray(records.valid)[absorbed]
+        np.testing.assert_array_equal(valid.sum(axis=1), 1)
+        np.testing.assert_array_equal(
+            np.asarray(records.interaction_type)[absorbed, 0],
+            PHOTOELECTRIC_ABSORPTION,
+        )
+        np.testing.assert_allclose(
+            np.asarray(records.position_pc)[absorbed, 0],
+            np.asarray(result.position_pc)[absorbed],
+        )
+        np.testing.assert_allclose(
+            np.asarray(records.incoming_momentum_kev)[absorbed, 0],
+            np.broadcast_to(np.asarray(self.momentum), (absorbed.sum(), 4)),
+        )
+        np.testing.assert_allclose(
+            np.asarray(records.outgoing_momentum_kev)[absorbed, 0], 0.0
+        )
+        np.testing.assert_allclose(
+            np.asarray(records.cumulative_path_length_pc)[absorbed, 0],
+            np.asarray(result.path_length_pc)[absorbed],
+        )
+        np.testing.assert_array_equal(
+            np.asarray(records.scattering_order)[absorbed, 0], 0
+        )
 
     def test_scattering_is_elastic_and_preserves_null_four_momentum(self):
         # Use a deliberately broad angular field here.  The real DSH cutout is
@@ -153,6 +191,44 @@ class TestVoxelTransport(unittest.TestCase):
             np.linalg.norm(p4[:, 1:], axis=1), p4[:, 0], rtol=2.0e-5
         )
         self.assertGreater(np.max(np.asarray(result.n_scatter)), 1)
+
+        records = result.interactions
+        valid = np.asarray(records.valid)
+        event_type = np.asarray(records.interaction_type)
+        incoming = np.asarray(records.incoming_momentum_kev)
+        outgoing = np.asarray(records.outgoing_momentum_kev)
+        orders = np.asarray(records.scattering_order)
+        np.testing.assert_array_equal(
+            valid.sum(axis=1), np.asarray(result.n_interactions)
+        )
+        np.testing.assert_array_equal(event_type[valid], DUST_SCATTERING)
+        np.testing.assert_allclose(incoming[valid, 0], 4.0)
+        np.testing.assert_allclose(outgoing[valid, 0], 4.0)
+        np.testing.assert_allclose(
+            np.linalg.norm(incoming[valid, 1:], axis=1),
+            incoming[valid, 0],
+            rtol=2.0e-5,
+        )
+        np.testing.assert_allclose(
+            np.linalg.norm(outgoing[valid, 1:], axis=1),
+            outgoing[valid, 0],
+            rtol=2.0e-5,
+        )
+        for photon_index in np.flatnonzero(valid.sum(axis=1) > 1)[:32]:
+            count = int(valid[photon_index].sum())
+            np.testing.assert_array_equal(
+                orders[photon_index, :count], np.arange(1, count + 1)
+            )
+            self.assertTrue(
+                np.all(
+                    np.diff(
+                        np.asarray(records.cumulative_path_length_pc)[
+                            photon_index, :count
+                        ]
+                    )
+                    > 0.0
+                )
+            )
 
     def test_safety_limit_is_reported_not_misclassified(self):
         # Very large scattering optical depth makes reaching a two-event

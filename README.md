@@ -112,6 +112,13 @@ keV energy instead of replacing the packet's energy field. Arrival-time
 selection is intentionally deferred: the next layer must add the geometric
 excess-path delay to `emission_time_s` before applying `observation`.
 
+The native-frustum kernel in `utils.voxel_transport` also returns a fixed-size
+interaction history.  Every slot records whether an interaction occurred, its
+type, position, incoming and outgoing four-momenta, cumulative path and excess
+path, and scattering order.  Unused slots are explicitly masked and zeroed.
+This record is designed for the forthcoming observer/peel-off estimator;
+crossing the observer plane by itself is not treated as a telescope detection.
+
 ## Native cloud-input convention
 
 `utils/clouds.py` is the physical adapter for an angular--distance hydrogen
