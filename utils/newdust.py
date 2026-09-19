@@ -27,6 +27,7 @@ from .dust_physics import (
     build_dust_physics_table,
     phase_cdf_from_differential_cross_section,
 )
+from .absorption import PhotoelectricAbsorptionTable
 
 
 ARCSEC_PER_RADIAN = 180.0 * 3600.0 / np.pi
@@ -196,6 +197,27 @@ def build_dust_physics_from_newdust(
         absorption_cross_section_cm2_per_h=absorption,
         scattering_angle_rad=scattering.scattering_angle_rad,
         scattering_angle_cdf=scattering.scattering_angle_cdf,
+    )
+
+
+def build_dust_physics_from_tables(
+    scattering: NewDustScatteringTable,
+    absorption: PhotoelectricAbsorptionTable,
+) -> DustPhysicsTable:
+    """Combine independently versioned scattering and absorption tables.
+
+    Version 1 deliberately requires identical energy axes.  Interpolating one
+    three-point table onto the other would hide a physically weak
+    approximation.  A later dense common energy grid can use the same API.
+    """
+
+    if not np.array_equal(scattering.energy_kev, absorption.energy_kev):
+        raise ValueError(
+            "scattering and absorption tables must have identical energy grids"
+        )
+    return build_dust_physics_from_newdust(
+        scattering,
+        absorption.absorption_cross_section_cm2_per_h,
     )
 
 

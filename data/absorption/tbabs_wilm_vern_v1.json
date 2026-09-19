@@ -1,0 +1,43 @@
+{
+  "abundance_command": "wilm",
+  "abundance_reference": "Wilms, Allen & McCray (2000)",
+  "atomic_cross_section_baseline": "Verner",
+  "broad_band_warning": "do not replace with a band-integrated transmission table, which depends on source spectrum and column density",
+  "cross_section_unit": "cm2 H-1",
+  "dummy_powerlaw_photon_index": 2.0,
+  "dummy_response_half_width_kev": 5e-06,
+  "energy_kev": [
+    3.3,
+    4.9,
+    6.9
+  ],
+  "energy_unit": "keV",
+  "extraction_method": "-log((tbabs*powerlaw)/powerlaw)/NH in a one-bin dummy response",
+  "gas_phase_included": true,
+  "grain_depletion_and_self_shielding_included": true,
+  "grain_phase_included": true,
+  "intended_runtime_use": "intrinsic material coefficient; transmission is exp(-NH*sigma_abs)",
+  "molecular_hydrogen_included": true,
+  "producer": "XSPEC tbabs",
+  "producer_url": "https://heasarc.gsfc.nasa.gov/docs/software/xspec/manual/XSmodelTbabs.html",
+  "producer_version": "12.15.0",
+  "quantity": "photoelectric_absorption_cross_section",
+  "reference_hydrogen_column_nh22": 10.0,
+  "reference_transmission": [
+    0.4606192695681998,
+    0.776074980707983,
+    0.9105057319116817
+  ],
+  "schema_version": 1,
+  "source_spectrum_dependent": false,
+  "table_sha256": "69b6fe19978ba15f0723ee8517841c48423a541b5365d202f610f22dfce45692",
+  "tbabs_version": 2,
+  "validation_cross_section_cm2_per_h": [
+    7.751834568092901e-24,
+    2.535061382249769e-24,
+    9.375508259071668e-25
+  ],
+  "validation_hydrogen_column_nh22": 1.0,
+  "validation_max_relative_difference": 2.0249656840221064e-08,
+  "xspec_cross_section_note": "tbabs ignores the global xsect setting and uses Verner cross-sections as its internal baseline"
+}

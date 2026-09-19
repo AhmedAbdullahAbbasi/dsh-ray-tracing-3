@@ -222,19 +222,31 @@ to the JAX transport kernel.
 
 ```python
 from utils.newdust import (
-    build_dust_physics_from_newdust,
+    build_dust_physics_from_tables,
     load_newdust_scattering_table,
 )
+from utils.absorption import load_photoelectric_absorption_table
 
 scattering = load_newdust_scattering_table()
-
-# Photoelectric absorption is a separate physical input. Supply one value per
-# NewDust energy; zeros must be explicit if running a scattering-only test.
-physics = build_dust_physics_from_newdust(
-    scattering,
-    absorption_cross_section_cm2_per_h=[0.0, 0.0, 0.0],
-)
+absorption = load_photoelectric_absorption_table()
+physics = build_dust_physics_from_tables(scattering, absorption)
 ```
+
+The checked-in absorption table is source-independent XSPEC ``tbabs``
+physics: it stores ``sigma_abs(E)`` in ``cm^2/H`` for the same representative
+energies, using TBabs version 2 and Wilms abundances.  It is not a table of
+broad-band transmissions.  A band transmission depends on the source
+spectrum and changes with column as the transmitted spectrum hardens, while
+the transport material coefficient obeys
+
+```text
+T(E, NH) = exp[-NH * sigma_abs(E)].
+```
+
+Version 1 requires the absorption and scattering energy grids to match
+exactly.  Their schemas already accept arbitrary one-dimensional energy axes,
+so both can later be regenerated on the same dense grid without changing the
+voxel-transport API.
 
 The supplied legacy `x_0_007.dat`--`x_0_010.dat` files are not intrinsic
 cross-sections. They are the 3.3-keV thin-screen halo kernel and already contain
@@ -257,6 +269,19 @@ this gives exact opacity/phase-function closure and retains the legacy halo
 normalization. The adjacent JSON records this choice, the complete
 configuration, the original NewDust-reported `tau_sca`, and a checksum of the
 compressed array file.
+
+Regenerating the absorption table is also an offline provenance operation and
+requires an initialized XSPEC/HEASoft environment:
+
+```bash
+python scripts/generate_tbabs_table.py
+```
+
+The generator evaluates ``tbabs*powerlaw`` and ``powerlaw`` in the same narrow
+dummy-response bin.  Their ratio removes the dummy source and yields the
+monochromatic cross-section.  It repeats the extraction at two reference
+columns and refuses to write the table unless the inferred material
+coefficient is column-independent.
 
 ## Setup
 
