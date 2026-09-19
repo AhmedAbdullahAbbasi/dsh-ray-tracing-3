@@ -211,6 +211,53 @@ Run the automated source and transport checks from the repository root with:
 python -m unittest discover -v
 ```
 
+## NewDust scattering table
+
+The Version-1 dust phase function is precomputed with NewDust/xdust and stored
+as an intrinsic differential cross-section per H atom. It uses the legacy MRN
+power-law grain population, Rayleigh-Gans scattering with the Drude
+approximation, and representative energies 3.3, 4.9, and 6.9 keV. The table is
+loaded and validated on the host; the resulting fixed arrays are then passed
+to the JAX transport kernel.
+
+```python
+from utils.newdust import (
+    build_dust_physics_from_newdust,
+    load_newdust_scattering_table,
+)
+
+scattering = load_newdust_scattering_table()
+
+# Photoelectric absorption is a separate physical input. Supply one value per
+# NewDust energy; zeros must be explicit if running a scattering-only test.
+physics = build_dust_physics_from_newdust(
+    scattering,
+    absorption_cross_section_cm2_per_h=[0.0, 0.0, 0.0],
+)
+```
+
+The supplied legacy `x_0_007.dat`--`x_0_010.dat` files are not intrinsic
+cross-sections. They are the 3.3-keV thin-screen halo kernel and already contain
+the `(1-f)^-2` observer geometry, where `f=d_dust/d_source`. The regression
+tests reconstruct those files from the intrinsic table and reapply the
+geometry exactly once.
+
+Regenerating the table is an offline provenance task, not a runtime step:
+
+```bash
+pip install xdust astropy scipy
+python scripts/generate_newdust_table.py
+```
+
+The generator fixes the grain-radius sampling explicitly because current
+xdust defaults differ from the historical NewDust v1 defaults used to produce
+the legacy kernels. The transport cross-section is the solid-angle integral
+of the same tabulated differential cross-section used to build the phase CDF;
+this gives exact opacity/phase-function closure and retains the legacy halo
+normalization. The adjacent JSON records this choice, the complete
+configuration, the original NewDust-reported `tau_sca`, and a checksum of the
+compressed array file.
+
 ## Setup
 
 ```bash
