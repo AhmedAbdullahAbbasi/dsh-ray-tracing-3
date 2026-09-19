@@ -40,6 +40,10 @@ MAX_INTERACTIONS = 4
 INVALID_ENERGY = 5
 INVALID_STATE = 6
 
+NO_INTERACTION = 0
+DUST_SCATTERING = 1
+PHOTOELECTRIC_ABSORPTION = 2
+
 STATUS_NAMES = {
     ACTIVE: "active",
     REACHED_OBSERVER_PLANE: "reached the observer plane",
@@ -49,6 +53,36 @@ STATUS_NAMES = {
     INVALID_ENERGY: "energy lies outside the dust table",
     INVALID_STATE: "position or photon four-momentum is invalid",
 }
+
+INTERACTION_NAMES = {
+    NO_INTERACTION: "unused record slot",
+    DUST_SCATTERING: "dust scattering",
+    PHOTOELECTRIC_ABSORPTION: "photoelectric absorption",
+}
+
+
+class PhotonInteractionRecord(NamedTuple):
+    """Fixed-size history emitted by one photon transport.
+
+    Every field has leading dimension ``max_interactions``.  Slots for which
+    ``valid`` is false are exactly zero and must not be interpreted as
+    physical events.  ``scattering_order`` is one-based for scattering
+    events.  For a terminal absorption it is the number of scatterings that
+    occurred before absorption.
+
+    The incoming and outgoing momenta use the same
+    ``(E, p_los, p_sky_x, p_sky_y)`` convention as the main transport API.
+    The outgoing momentum of an absorption event is zero.
+    """
+
+    valid: jnp.ndarray
+    interaction_type: jnp.ndarray
+    position_pc: jnp.ndarray
+    incoming_momentum_kev: jnp.ndarray
+    outgoing_momentum_kev: jnp.ndarray
+    cumulative_path_length_pc: jnp.ndarray
+    cumulative_excess_path_length_pc: jnp.ndarray
+    scattering_order: jnp.ndarray
 
 
 class PhotonTransportResult(NamedTuple):
@@ -62,6 +96,7 @@ class PhotonTransportResult(NamedTuple):
     n_interactions: jnp.ndarray
     n_scatter: jnp.ndarray
     status: jnp.ndarray
+    interactions: PhotonInteractionRecord
 
 
 def _interpolation_bracket(grid, value):
@@ -233,8 +268,10 @@ def transport_photon_voxels(
     Notes
     -----
     ``max_interactions`` controls the fixed JAX scan length and must be static
-    when this function is jitted.  For ``ABSORBED``, the returned four-momentum
-    is zero and the incident energy is reported in ``deposited_energy_kev``.
+    when this function is jitted.  It is also the fixed leading length of every
+    array in ``result.interactions``; unused slots have ``valid=False`` and
+    zero-valued data.  For ``ABSORBED``, the returned four-momentum is zero and
+    the incident energy is reported in ``deposited_energy_kev``.
     For ``REACHED_OBSERVER_PLANE``, ``excess_path_length_pc`` is the geometric
     path excess relative to an unscattered photon moving along negative LOS;
     it is accumulated in a form that retains small DSH angles in float32.
@@ -368,6 +405,11 @@ def transport_photon_voxels(
         next_direction = jnp.where(
             scattered, scattered_direction, current_direction
         )
+        next_path_length = path_length + travelled
+        next_excess_path_length = (
+            excess_path_length
+            + travelled * _line_of_sight_excess_factor(current_direction)
+        )
         next_status = jnp.where(
             absorbed,
             jnp.asarray(ABSORBED, dtype=jnp.int32),
@@ -377,20 +419,64 @@ def transport_photon_voxels(
                 status,
             ),
         )
+
+        incoming_momentum = jnp.concatenate(
+            [energy[None], energy * current_direction]
+        )
+        scattered_momentum = jnp.concatenate(
+            [energy[None], energy * scattered_direction]
+        )
+        outgoing_momentum = jnp.where(
+            scattered, scattered_momentum, jnp.zeros_like(scattered_momentum)
+        )
+        interaction_type = jnp.where(
+            scattered,
+            jnp.asarray(DUST_SCATTERING, dtype=jnp.int32),
+            jnp.where(
+                absorbed,
+                jnp.asarray(PHOTOELECTRIC_ABSORPTION, dtype=jnp.int32),
+                jnp.asarray(NO_INTERACTION, dtype=jnp.int32),
+            ),
+        )
+        zero_position = jnp.zeros_like(current_position)
+        zero_momentum = jnp.zeros_like(incoming_momentum)
+        record = PhotonInteractionRecord(
+            valid=interacted,
+            interaction_type=interaction_type,
+            position_pc=jnp.where(
+                interacted, interaction_position, zero_position
+            ),
+            incoming_momentum_kev=jnp.where(
+                interacted, incoming_momentum, zero_momentum
+            ),
+            outgoing_momentum_kev=jnp.where(
+                interacted, outgoing_momentum, zero_momentum
+            ),
+            cumulative_path_length_pc=jnp.where(
+                interacted, next_path_length, 0.0
+            ),
+            cumulative_excess_path_length_pc=jnp.where(
+                interacted, next_excess_path_length, 0.0
+            ),
+            scattering_order=jnp.where(
+                interacted,
+                n_scatter + scattered.astype(jnp.int32),
+                jnp.asarray(0, dtype=jnp.int32),
+            ),
+        )
         return (
             next_position,
             next_direction,
             next_key,
-            path_length + travelled,
-            excess_path_length
-            + travelled * _line_of_sight_excess_factor(current_direction),
+            next_path_length,
+            next_excess_path_length,
             deposited_energy + jnp.where(absorbed, energy, 0.0),
             n_interactions + interacted.astype(jnp.int32),
             n_scatter + scattered.astype(jnp.int32),
             next_status,
-        ), None
+        ), record
 
-    final_carry, _ = lax.scan(
+    final_carry, interactions = lax.scan(
         one_interaction, initial_carry, xs=None, length=max_interactions
     )
     (
@@ -423,6 +509,7 @@ def transport_photon_voxels(
         n_interactions=n_interactions,
         n_scatter=n_scatter,
         status=final_status,
+        interactions=interactions,
     )
 
 
