@@ -1,0 +1,73 @@
+{
+  "absorption_included": false,
+  "angle_unit": "rad",
+  "differential_cross_section_unit": "cm2 sr-1 H-1",
+  "dust_mass_column_g_cm2": 0.000232475,
+  "energy_kev": [
+    3.3,
+    4.9,
+    6.9
+  ],
+  "energy_unit": "keV",
+  "grain_material_density_g_cm3": 3.0,
+  "grain_power_law_index": 3.5,
+  "grain_radius_max_micron": 0.3,
+  "grain_radius_min_micron": 0.005,
+  "grain_radius_samples": 100,
+  "grain_radius_spacing": "linear",
+  "hydrogen_column_reference_cm2": 1e+22,
+  "integrated_cross_section_unit": "cm2 H-1",
+  "integrated_to_newdust_reported_cross_section_ratio": [
+    1.0446327030142029,
+    1.0446330721589414,
+    1.0446332240424965
+  ],
+  "legacy_kernel_convention": "K(theta_obs,f)=NH*dSigma/dOmega(theta_obs/(1-f))/(1-f)^2",
+  "legacy_normalization_status": "configuration recovered by numerical regression against the supplied legacy kernels",
+  "legacy_reference": {
+    "energy_kev": [
+      3.3,
+      4.9,
+      6.9
+    ],
+    "fractional_distance_from_observer": [
+      0.001,
+      1.0,
+      0.001
+    ],
+    "matrix_shape": [
+      1500,
+      1000
+    ],
+    "observed_angle_arcsec": [
+      1.0,
+      1500.0,
+      1.0
+    ]
+  },
+  "maximum_angle_rad": 3.141592653589793,
+  "minimum_positive_angle_arcsec": 0.001,
+  "model": "MRN power law + Rayleigh-Gans/Drude",
+  "newdust_reported_scattering_cross_section_cm2_per_h": [
+    1.1992616008349196e-23,
+    5.439383104151789e-24,
+    2.7431125463626185e-24
+  ],
+  "newdust_reported_tau_sca": [
+    0.11992616008349195,
+    0.05439383104151789,
+    0.027431125463626187
+  ],
+  "normalization": "NewDust d(tau)/dOmega divided by NH_reference",
+  "normalization_choice": "use the integral of dSigma/dOmega so interaction opacity and the sampled phase function close exactly and reproduce legacy halo amplitude",
+  "positive_angle_samples": 8192,
+  "producer": "NewDust/xdust",
+  "producer_import": "xdust",
+  "producer_repository": "https://github.com/eblur/xdust",
+  "producer_source_revision": "9e167c00f9af35a12cf7011056e54a9cf2b7a882",
+  "producer_version": "v1.0-rerelease",
+  "quantity": "intrinsic_differential_cross_section",
+  "scattering_cross_section_definition": "solid-angle integral of the tabulated differential cross-section",
+  "schema_version": 1,
+  "table_sha256": "2d9455fc4e169ba65d235534b089f18ebf11b0910300704d1dc869d8077d16c9"
+}
