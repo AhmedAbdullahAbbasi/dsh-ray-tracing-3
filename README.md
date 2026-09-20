@@ -116,8 +116,8 @@ The native-frustum kernel in `utils.voxel_transport` also returns a fixed-size
 interaction history.  Every slot records whether an interaction occurred, its
 type, position, incoming and outgoing four-momenta, cumulative path and excess
 path, and scattering order.  Unused slots are explicitly masked and zeroed.
-This record is designed for the forthcoming observer/peel-off estimator;
-crossing the observer plane by itself is not treated as a telescope detection.
+These records feed the observer/peel-off estimator described below; crossing
+the observer plane by itself is not treated as a telescope detection.
 
 ## Physical source launch
 
@@ -152,7 +152,7 @@ solid-angle density is evaluated with the exact Jacobian,
 `q(Omega)` and the isotropic-source importance factor `1/(4*pi*q)` without
 modifying the packet's observer-fluence weight. This makes the absolute halo
 normalization independent of the chosen enclosing cone. For a scattering
-event at observer distance `r`, the forthcoming peel-off scorer will use
+event at observer distance `r`, the peel-off scorer uses
 
 ```text
 w_event = w_observer * (D / r)^2
@@ -162,6 +162,49 @@ w_event = w_observer * (D / r)^2
 where `D` is the source distance and `phase_pdf = (d sigma/d Omega)/sigma_sca`.
 The cloud's outer radial edge must lie strictly in front of the point source;
 a frustum touching the source has no finite rectangular tangent-plane cone.
+
+## Peel-off observer scoring
+
+`utils/observer.py` turns every recorded dust scattering into one virtual
+observer photon. This next-event estimator is necessary because a point
+observer subtends essentially zero solid angle: waiting for an analog
+scattered direction to hit it would be impractical. The scorer instead aims a
+virtual ray from each event toward the observer and evaluates its statistical
+weight without changing the actual outgoing direction used for later
+multiple scattering.
+
+```python
+from utils.observer import score_peeloff_events
+
+observer_events = score_peeloff_events(
+    launched,
+    transported,
+    cloud,
+    physics,
+)
+
+observer_events.valid
+observer_events.sky_x_arcsec
+observer_events.sky_y_arcsec
+observer_events.arrival_time_s
+observer_events.weight_observer_fluence
+observer_events.scattering_order
+```
+
+The phase density is the normalized intrinsic NewDust quantity
+`(d sigma/d Omega)/sigma_sca`; the analog transport already sampled the
+scattering opacity, so the scorer does not multiply by `sigma_sca` again. The
+remaining event-to-observer column is integrated exactly and attenuated by
+
+```text
+exp[-N_H,event->observer * (sigma_sca + sigma_abs)].
+```
+
+Arrival times use the exact geometric excess path. Both arcsecond scattering
+angles and small delays are evaluated with float32-stable identities. Output
+arrays have shape `(n_packets, max_interactions)`; absorption events and unused
+slots are masked and exactly zero. Image, energy, and arrival-time binning are
+left to the next layer.
 
 ## Native cloud-input convention
 
