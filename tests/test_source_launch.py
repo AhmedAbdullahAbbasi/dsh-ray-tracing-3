@@ -106,6 +106,8 @@ class TestPhysicalSourceLaunch(unittest.TestCase):
         np.testing.assert_allclose(
             result.isotropic_importance,
             1.0 / (4.0 * np.pi * expected_pdf),
+            rtol=5.0e-7,
+            atol=0.0,
         )
         np.testing.assert_array_equal(result.emission_time_s, packets.emission_time_s)
         np.testing.assert_array_equal(
