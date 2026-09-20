@@ -144,6 +144,83 @@ def build_tabulated_band_source(
     )
 
 
+def build_post_peak_exponential_band_source(
+    time_edges_s,
+    effective_energy_kev,
+    peak_band_flux,
+    decay_time_s,
+    *,
+    baseline_band_flux=None,
+    peak_time_s=0.0,
+) -> TabulatedBandSource:
+    """Build a band source following an exponential post-outburst decay.
+
+    For every energy channel ``i``, the continuous light curve is
+
+    ``F_i(t) = F_base,i + (F_peak,i - F_base,i) * exp(-(t-t_peak)/tau)``.
+
+    All requested time edges must be at or after ``peak_time_s``.  The flux
+    stored in each interval is its exact analytic average, so the integrated
+    source fluence is independent of the chosen temporal bin width.  Packet
+    emission times remain uniform inside each tabulated interval; choose bins
+    short compared with ``decay_time_s`` when arrival-time structure matters.
+    Fluxes are unabsorbed observer-equivalent band photon fluxes in
+    ``ph cm^-2 s^-1``.
+    """
+
+    edges = np.asarray(time_edges_s, dtype=np.float64)
+    energy = np.asarray(effective_energy_kev, dtype=np.float64)
+    peak_flux = np.asarray(peak_band_flux, dtype=np.float64)
+    if baseline_band_flux is None:
+        baseline_flux = np.zeros_like(peak_flux)
+    else:
+        baseline_flux = np.asarray(baseline_band_flux, dtype=np.float64)
+    decay_time = np.asarray(decay_time_s, dtype=np.float64)
+    peak_time = np.asarray(peak_time_s, dtype=np.float64)
+
+    if edges.ndim != 1 or edges.size < 2:
+        raise ValueError("time_edges_s must be a 1D array with at least two edges")
+    if not np.all(np.isfinite(edges)) or not np.all(np.diff(edges) > 0.0):
+        raise ValueError("time_edges_s must be finite and strictly increasing")
+    if energy.ndim != 1 or energy.size == 0:
+        raise ValueError("effective_energy_kev must be a nonempty 1D array")
+    if not np.all(np.isfinite(energy)) or np.any(energy <= 0.0):
+        raise ValueError("effective_energy_kev must be finite and positive")
+    if peak_flux.shape != energy.shape or baseline_flux.shape != energy.shape:
+        raise ValueError(
+            "peak and baseline band fluxes must match effective_energy_kev"
+        )
+    if (
+        not np.all(np.isfinite(peak_flux))
+        or not np.all(np.isfinite(baseline_flux))
+        or np.any(peak_flux < 0.0)
+        or np.any(baseline_flux < 0.0)
+    ):
+        raise ValueError("peak and baseline band fluxes must be finite and nonnegative")
+    if np.any(peak_flux < baseline_flux):
+        raise ValueError("peak_band_flux cannot be below baseline_band_flux")
+    if decay_time.ndim != 0 or not np.isfinite(decay_time) or decay_time <= 0.0:
+        raise ValueError("decay_time_s must be one finite positive scalar")
+    if peak_time.ndim != 0 or not np.isfinite(peak_time):
+        raise ValueError("peak_time_s must be one finite scalar")
+    tolerance = 32.0 * np.finfo(np.float64).eps * max(1.0, abs(float(peak_time)))
+    if edges[0] < float(peak_time) - tolerance:
+        raise ValueError("post-peak decay time edges cannot precede peak_time_s")
+
+    left = edges[:-1] - float(peak_time)
+    right = edges[1:] - float(peak_time)
+    duration = right - left
+    mean_decay = (
+        float(decay_time)
+        * (np.exp(-left / float(decay_time)) - np.exp(-right / float(decay_time)))
+        / duration
+    )
+    band_flux = baseline_flux[None, :] + (
+        peak_flux - baseline_flux
+    )[None, :] * mean_decay[:, None]
+    return build_tabulated_band_source(edges, band_flux, energy)
+
+
 def sample_tabulated_band_source(
     key,
     source: TabulatedBandSource,

@@ -9,6 +9,7 @@ from jax import random
 from utils.source import (
     build_decay_observation_window,
     build_tabulated_band_source,
+    build_post_peak_exponential_band_source,
     build_variable_powerlaw_source,
     fred_outburst_flux,
     sample_tabulated_band_source,
@@ -86,6 +87,76 @@ class TestTabulatedBandSource(unittest.TestCase):
             build_tabulated_band_source([0.0, 1.0], [[-1.0]], [3.3])
         with self.assertRaisesRegex(ValueError, "zero total fluence"):
             build_tabulated_band_source([0.0, 1.0], [[0.0]], [3.3])
+
+
+class TestPostPeakExponentialBandSource(unittest.TestCase):
+    def test_exact_fluence_is_independent_of_time_binning(self):
+        peak = np.asarray([2.0, 1.0, 0.5])
+        baseline = np.asarray([0.2, 0.1, 0.05])
+        decay_time = 25.0
+        duration = 100.0
+        coarse = build_post_peak_exponential_band_source(
+            [0.0, 20.0, 50.0, duration],
+            [3.3, 4.9, 6.9],
+            peak,
+            decay_time,
+            baseline_band_flux=baseline,
+        )
+        fine = build_post_peak_exponential_band_source(
+            np.linspace(0.0, duration, 1001),
+            [3.3, 4.9, 6.9],
+            peak,
+            decay_time,
+            baseline_band_flux=baseline,
+        )
+        expected_by_band = (
+            baseline * duration
+            + (peak - baseline)
+            * decay_time
+            * (1.0 - np.exp(-duration / decay_time))
+        )
+        np.testing.assert_allclose(
+            np.asarray(coarse.cell_fluence).sum(axis=0),
+            expected_by_band,
+            rtol=2.0e-6,
+        )
+        np.testing.assert_allclose(
+            coarse.total_fluence, fine.total_fluence, rtol=2.0e-6
+        )
+        self.assertTrue(
+            np.all(np.diff(np.asarray(fine.band_flux), axis=0) < 0.0)
+        )
+
+    def test_decay_can_begin_after_the_peak(self):
+        source = build_post_peak_exponential_band_source(
+            [40.0, 50.0, 60.0],
+            [3.3],
+            [2.0],
+            decay_time_s=20.0,
+            baseline_band_flux=[0.0],
+            peak_time_s=10.0,
+        )
+        flux_at_interval_start = 2.0 * np.exp(-(40.0 - 10.0) / 20.0)
+        self.assertLess(float(source.band_flux[0, 0]), flux_at_interval_start)
+        self.assertGreater(float(source.band_flux[0, 0]), 0.0)
+
+    def test_rejects_non_decay_inputs(self):
+        with self.assertRaisesRegex(ValueError, "cannot precede"):
+            build_post_peak_exponential_band_source(
+                [-1.0, 1.0], [3.3], [1.0], 10.0
+            )
+        with self.assertRaisesRegex(ValueError, "below baseline"):
+            build_post_peak_exponential_band_source(
+                [0.0, 1.0],
+                [3.3],
+                [0.5],
+                10.0,
+                baseline_band_flux=[1.0],
+            )
+        with self.assertRaisesRegex(ValueError, "must match"):
+            build_post_peak_exponential_band_source(
+                [0.0, 1.0], [3.3, 4.9], [1.0], 10.0
+            )
 
 
 class TestVariablePowerLawSource(unittest.TestCase):
