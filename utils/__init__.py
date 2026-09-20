@@ -9,5 +9,6 @@ interaction sampling (`sampling.py`), native voxel transport
 (`voxel_transport.py`), next-event observer scoring (`observer.py`), legacy
 source-packet transport and JAX parallelization (`transport.py`), weighted
 observer-product binning (`observer_binning.py`), voxel geometry, imaging,
-plotting, and device reporting.
+complete ideal-observer simulation orchestration (`simulation.py`), plotting,
+and device reporting.
 """

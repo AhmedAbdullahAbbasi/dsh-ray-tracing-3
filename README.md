@@ -243,6 +243,57 @@ packet chunks can be combined with `add_binned_observer_products` without
 retaining their event arrays. This stage intentionally applies no detector
 response, exposure map, point-spread function, background, or Poisson draw.
 
+## Complete Version-1 ideal-observer pipeline
+
+`utils/simulation.py` composes the independently tested layers into one
+source-to-observer calculation:
+
+```text
+source sampling -> importance launch -> voxel transport
+                -> peel-off scoring -> weighted DSH binning
+```
+
+Both tabulated-band and variable power-law sources have JIT-compatible
+single-batch entry points. Production-sized calculations should use the
+host-side chunked entry points, which retain only the accumulated cubes and
+diagnostics. Packet weights are normalized to the requested total packet
+count across all chunks, so chunking does not duplicate the source fluence.
+The result reports every transport terminal state, the number of analog
+interactions and scatterings, scored observer-event totals, and the binned
+closure fields from the preceding section.
+
+The first local end-to-end smoke run uses a 10 kpc source, a synthetic
+500-arcsec four-cloud plus diffuse-H scene, the Version-1 energies
+3.3/4.9/6.9 keV, multiple scattering, and an eight-interaction safety guard:
+
+```powershell
+python -m scripts.run_dsh_v1
+```
+
+The default is deliberately moderate: 4096 packets in chunks of 256. It
+writes `outputs/dsh_v1_ideal_observer.npz`, containing total, first-scatter,
+and multiple-scatter fluence cubes; event counts; all bin edges and solid
+angles; transport-state counts; closure diagnostics; and run metadata. Once
+that smoke run is clean, increase the Monte Carlo statistics explicitly:
+
+```powershell
+python -m scripts.run_dsh_v1 --packets 100000 --chunk-size 1024
+```
+
+A physical `delta_NH` FITS cube can replace the built-in scene:
+
+```powershell
+python -m scripts.run_dsh_v1 `
+  --cloud-fits "C:\path\to\cloud.fits" `
+  --source-distance-kpc 10.5
+```
+
+The source distance must lie strictly beyond the FITS cube's outer radial
+cell edge so the point-source launch cone remains finite. This Version-1
+runner produces ideal-observer physical fluence only. Telescope effective
+area, PSF, exposure maps, detector energy redistribution, background, and
+counting noise are deferred to Version 2.
+
 ## Native cloud-input convention
 
 `utils/clouds.py` is the physical adapter for an angular--distance hydrogen

@@ -13,3 +13,6 @@ __pycache__/
 
 # Large input data not tracked in git -- see README for how to get it
 *.fits
+
+# Local Monte Carlo products
+outputs/
