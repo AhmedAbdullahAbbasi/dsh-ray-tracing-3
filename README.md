@@ -119,6 +119,50 @@ path, and scattering order.  Unused slots are explicitly masked and zeroed.
 This record is designed for the forthcoming observer/peel-off estimator;
 crossing the observer plane by itself is not treated as a telescope detection.
 
+## Physical source launch
+
+`utils/source_launch.py` converts physical `SourcePackets` into the positions
+and null four-momenta accepted by the native-frustum transport kernel. Version
+1 treats the source as an isotropic point at the central source position. It
+importance-samples only a conservative rectangular cone enclosing the cloud
+frustum instead of wasting packets over the full sphere.
+
+```python
+from jax import random
+from utils.source_launch import (
+    build_cloud_launch_geometry,
+    sample_source_launches,
+)
+from utils.voxel_transport import transport_photon_batch
+
+launch_geometry = build_cloud_launch_geometry(cloud)
+launched = sample_source_launches(random.PRNGKey(3), packets, launch_geometry)
+transported = transport_photon_batch(
+    random.PRNGKey(4),
+    launched.position_pc,
+    launched.momentum_kev,
+    cloud,
+    physics,
+)
+```
+
+Launch directions are uniform in tangent-plane slopes `(u, v)`, so their
+solid-angle density is evaluated with the exact Jacobian,
+`q(Omega) = (1 + u^2 + v^2)^(3/2) / slope_area`. The result retains both
+`q(Omega)` and the isotropic-source importance factor `1/(4*pi*q)` without
+modifying the packet's observer-fluence weight. This makes the absolute halo
+normalization independent of the chosen enclosing cone. For a scattering
+event at observer distance `r`, the forthcoming peel-off scorer will use
+
+```text
+w_event = w_observer * (D / r)^2
+          * 4*pi*isotropic_importance * phase_pdf * transmission,
+```
+
+where `D` is the source distance and `phase_pdf = (d sigma/d Omega)/sigma_sca`.
+The cloud's outer radial edge must lie strictly in front of the point source;
+a frustum touching the source has no finite rectangular tangent-plane cone.
+
 ## Native cloud-input convention
 
 `utils/clouds.py` is the physical adapter for an angular--distance hydrogen
