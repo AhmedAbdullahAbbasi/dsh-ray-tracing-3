@@ -33,6 +33,7 @@ class DustPhysicsTable(NamedTuple):
     absorption_cross_section_cm2_per_h: jnp.ndarray
     scattering_angle_rad: jnp.ndarray
     scattering_angle_cdf: jnp.ndarray
+    differential_cross_section_cm2_per_sr_per_h: jnp.ndarray
 
 
 def build_dust_physics_table(
@@ -41,13 +42,19 @@ def build_dust_physics_table(
     absorption_cross_section_cm2_per_h,
     scattering_angle_rad,
     scattering_angle_cdf,
+    differential_cross_section_cm2_per_sr_per_h=None,
 ) -> DustPhysicsTable:
     """Validate host arrays and construct a JAX-ready dust table.
 
     ``scattering_angle_cdf`` has shape ``(n_energy, n_angle)``.  Its first
     value must be zero, its last value one, and every row must be monotonic.
+    When supplied, ``differential_cross_section_cm2_per_sr_per_h`` must have
+    the same two-dimensional shape and must integrate to both the supplied
+    total scattering cross-section and CDF.  It is required by the observer
+    peel-off estimator but may be omitted by transport-only synthetic tests.
     The table builder deliberately rejects NaNs, negative cross-sections, and
-    incomplete CDFs rather than repairing them silently.
+    incomplete or inconsistently normalized tables rather than repairing
+    them silently.
     """
 
     energy = np.asarray(energy_kev, dtype=np.float64)
@@ -89,12 +96,45 @@ def build_dust_physics_table(
     if np.any((cdf < -1.0e-12) | (cdf > 1.0 + 1.0e-12)):
         raise ValueError("scattering-angle CDF values must lie in [0, 1]")
 
+    if differential_cross_section_cm2_per_sr_per_h is None:
+        differential = np.empty((0, 0), dtype=np.float64)
+    else:
+        differential = np.asarray(
+            differential_cross_section_cm2_per_sr_per_h,
+            dtype=np.float64,
+        )
+        if differential.shape != cdf.shape:
+            raise ValueError(
+                "differential cross-section must have shape "
+                "(n_energy, n_angle)"
+            )
+        if not np.all(np.isfinite(differential)) or np.any(differential < 0.0):
+            raise ValueError(
+                "differential cross-section must be finite and nonnegative"
+            )
+        integrated_sigma, integrated_cdf = (
+            phase_cdf_from_differential_cross_section(angle, differential)
+        )
+        if not np.allclose(
+            integrated_sigma, sigma_sca, rtol=5.0e-10, atol=0.0
+        ):
+            raise ValueError(
+                "scattering cross-section does not match the differential table"
+            )
+        if not np.allclose(
+            integrated_cdf, cdf, rtol=5.0e-10, atol=5.0e-12
+        ):
+            raise ValueError(
+                "scattering-angle CDF does not match the differential table"
+            )
+
     return DustPhysicsTable(
         energy_kev=jnp.asarray(energy),
         scattering_cross_section_cm2_per_h=jnp.asarray(sigma_sca),
         absorption_cross_section_cm2_per_h=jnp.asarray(sigma_abs),
         scattering_angle_rad=jnp.asarray(angle),
         scattering_angle_cdf=jnp.asarray(cdf),
+        differential_cross_section_cm2_per_sr_per_h=jnp.asarray(differential),
     )
 
 
@@ -117,7 +157,9 @@ def phase_cdf_from_differential_cross_section(
     if theta.ndim != 1 or theta.size < 2 or np.any(np.diff(theta) <= 0.0):
         raise ValueError("scattering_angle_rad must be strictly increasing")
     if differential.ndim != 2 or differential.shape[1] != theta.size:
-        raise ValueError("differential cross-section must have shape (n_energy, n_angle)")
+        raise ValueError(
+            "differential cross-section must have shape (n_energy, n_angle)"
+        )
     if not np.all(np.isfinite(differential)) or np.any(differential < 0.0):
         raise ValueError("differential cross-section must be finite and nonnegative")
 

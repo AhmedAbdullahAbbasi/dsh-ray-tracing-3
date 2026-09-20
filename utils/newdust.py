@@ -197,6 +197,9 @@ def build_dust_physics_from_newdust(
         absorption_cross_section_cm2_per_h=absorption,
         scattering_angle_rad=scattering.scattering_angle_rad,
         scattering_angle_cdf=scattering.scattering_angle_cdf,
+        differential_cross_section_cm2_per_sr_per_h=(
+            scattering.differential_cross_section_cm2_per_sr_per_h
+        ),
     )
 
 
