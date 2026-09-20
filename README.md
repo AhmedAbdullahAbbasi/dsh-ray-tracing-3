@@ -204,7 +204,44 @@ Arrival times use the exact geometric excess path. Both arcsecond scattering
 angles and small delays are evaluated with float32-stable identities. Output
 arrays have shape `(n_packets, max_interactions)`; absorption events and unused
 slots are masked and exactly zero. Image, energy, and arrival-time binning are
-left to the next layer.
+handled by the next layer.
+
+## Weighted DSH observer products
+
+`utils/observer_binning.py` converts the fixed-shape peel-off event arrays into
+physical four-dimensional DSH cubes. The canonical array order is
+`(arrival time, energy, sky y, sky x)`, and each cell contains observer fluence
+in `ph cm^-2`. First-scatter and multiple-scatter fluences are retained
+separately, alongside their sum and the raw Monte Carlo event count.
+
+```python
+from utils.observer_binning import (
+    bin_observer_events,
+    build_observer_bin_geometry,
+    fluence_surface_brightness_per_sr,
+)
+
+image_bins = build_observer_bin_geometry(
+    sky_x_edges_arcsec=[-120.0, -60.0, 0.0, 60.0, 120.0],
+    sky_y_edges_arcsec=[-120.0, -60.0, 0.0, 60.0, 120.0],
+    energy_edges_kev=[3.0, 4.0, 6.0, 8.0],
+    arrival_time_edges_s=[0.0, 86_400.0, 172_800.0],
+)
+products = bin_observer_events(observer_events, image_bins)
+surface_brightness = fluence_surface_brightness_per_sr(
+    products.total_fluence,
+    image_bins,
+)
+```
+
+All axes use left-inclusive, right-exclusive bins, except that the final upper
+edge is included. Sky-pixel solid angles are calculated exactly for the
+gnomonic angular coordinates rather than assumed to be constant. The result
+also records valid, binned, and out-of-range event counts and weights, making
+fluence loss at requested image, energy, or time limits explicit. Independent
+packet chunks can be combined with `add_binned_observer_products` without
+retaining their event arrays. This stage intentionally applies no detector
+response, exposure map, point-spread function, background, or Poisson draw.
 
 ## Native cloud-input convention
 
