@@ -41,6 +41,9 @@ class BinnedObserverProducts(NamedTuple):
     ``ph cm^-2`` per four-dimensional bin.  ``valid_*`` totals refer to all
     input events marked valid; ``binned_*`` totals include only events inside
     every requested axis.  Their difference is reported as ``unbinned_*``.
+    The ``outside_*`` fields are marginal diagnostics: an event outside more
+    than one axis appears in each relevant field, so those values need not sum
+    to the unique unbinned total.
     """
 
     total_fluence: jnp.ndarray
@@ -53,6 +56,12 @@ class BinnedObserverProducts(NamedTuple):
     valid_weight_observer_fluence: jnp.ndarray
     binned_weight_observer_fluence: jnp.ndarray
     unbinned_weight_observer_fluence: jnp.ndarray
+    outside_sky_event_count: jnp.ndarray
+    outside_energy_event_count: jnp.ndarray
+    outside_arrival_time_event_count: jnp.ndarray
+    outside_sky_weight_observer_fluence: jnp.ndarray
+    outside_energy_weight_observer_fluence: jnp.ndarray
+    outside_arrival_time_weight_observer_fluence: jnp.ndarray
 
 
 def _validated_edges(values, name, *, positive=False):
@@ -238,6 +247,9 @@ def bin_observer_events(
 
     valid_weight_mask = event_valid & finite_nonnegative_weight
     unbinned_weight_mask = valid_weight_mask & ~binned
+    outside_sky = eligible & ~(inside_x & inside_y)
+    outside_energy = eligible & ~inside_energy
+    outside_arrival_time = eligible & ~inside_time
     valid_weight = jnp.sum(jnp.where(valid_weight_mask, weight, 0.0))
     binned_weight = jnp.sum(jnp.where(binned, weight, 0.0))
     unbinned_weight = jnp.sum(jnp.where(unbinned_weight_mask, weight, 0.0))
@@ -255,6 +267,22 @@ def bin_observer_events(
         valid_weight_observer_fluence=valid_weight,
         binned_weight_observer_fluence=binned_weight,
         unbinned_weight_observer_fluence=unbinned_weight,
+        outside_sky_event_count=jnp.sum(outside_sky, dtype=jnp.int32),
+        outside_energy_event_count=jnp.sum(
+            outside_energy, dtype=jnp.int32
+        ),
+        outside_arrival_time_event_count=jnp.sum(
+            outside_arrival_time, dtype=jnp.int32
+        ),
+        outside_sky_weight_observer_fluence=jnp.sum(
+            jnp.where(outside_sky, weight, 0.0)
+        ),
+        outside_energy_weight_observer_fluence=jnp.sum(
+            jnp.where(outside_energy, weight, 0.0)
+        ),
+        outside_arrival_time_weight_observer_fluence=jnp.sum(
+            jnp.where(outside_arrival_time, weight, 0.0)
+        ),
     )
 
 
@@ -291,6 +319,29 @@ def add_binned_observer_products(
         unbinned_weight_observer_fluence=(
             left.unbinned_weight_observer_fluence
             + right.unbinned_weight_observer_fluence
+        ),
+        outside_sky_event_count=(
+            left.outside_sky_event_count + right.outside_sky_event_count
+        ),
+        outside_energy_event_count=(
+            left.outside_energy_event_count
+            + right.outside_energy_event_count
+        ),
+        outside_arrival_time_event_count=(
+            left.outside_arrival_time_event_count
+            + right.outside_arrival_time_event_count
+        ),
+        outside_sky_weight_observer_fluence=(
+            left.outside_sky_weight_observer_fluence
+            + right.outside_sky_weight_observer_fluence
+        ),
+        outside_energy_weight_observer_fluence=(
+            left.outside_energy_weight_observer_fluence
+            + right.outside_energy_weight_observer_fluence
+        ),
+        outside_arrival_time_weight_observer_fluence=(
+            left.outside_arrival_time_weight_observer_fluence
+            + right.outside_arrival_time_weight_observer_fluence
         ),
     )
 

@@ -10,5 +10,5 @@ interaction sampling (`sampling.py`), native voxel transport
 source-packet transport and JAX parallelization (`transport.py`), weighted
 observer-product binning (`observer_binning.py`), voxel geometry, imaging,
 complete ideal-observer simulation orchestration (`simulation.py`), plotting,
-and device reporting.
+complete multi-extension output (`fits_output.py`), and device reporting.
 """

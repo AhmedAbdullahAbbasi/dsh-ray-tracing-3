@@ -94,6 +94,18 @@ class TestObserverBinning(unittest.TestCase):
         self.assertEqual(float(products.valid_weight_observer_fluence), 28.0)
         self.assertEqual(float(products.binned_weight_observer_fluence), 17.0)
         self.assertEqual(float(products.unbinned_weight_observer_fluence), 11.0)
+        self.assertEqual(int(products.outside_sky_event_count), 1)
+        self.assertEqual(int(products.outside_energy_event_count), 0)
+        self.assertEqual(int(products.outside_arrival_time_event_count), 1)
+        self.assertEqual(
+            float(products.outside_sky_weight_observer_fluence), 5.0
+        )
+        self.assertEqual(
+            float(products.outside_energy_weight_observer_fluence), 0.0
+        )
+        self.assertEqual(
+            float(products.outside_arrival_time_weight_observer_fluence), 6.0
+        )
         self.assertEqual(float(jnp.sum(products.total_fluence)), 17.0)
         self.assertEqual(float(jnp.sum(products.first_scatter_fluence)), 10.0)
         self.assertEqual(float(jnp.sum(products.multiple_scatter_fluence)), 7.0)

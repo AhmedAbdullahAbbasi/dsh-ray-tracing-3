@@ -20,6 +20,7 @@ from utils.clouds import (
     centers_to_edges,
     cloud_from_loaded_fits,
 )
+from utils.fits_output import write_ideal_observer_fits
 from utils.newdust import (
     build_dust_physics_from_tables,
     load_newdust_scattering_table,
@@ -113,6 +114,11 @@ def parse_arguments():
         type=Path,
         default=Path("outputs/dsh_v1_ideal_observer.npz"),
     )
+    parser.add_argument(
+        "--fits-output",
+        type=Path,
+        help="FITS path; defaults to the NPZ output path with suffix .fits",
+    )
     return parser.parse_args()
 
 
@@ -142,6 +148,19 @@ def _report_progress(completed, total):
 
 def main():
     args = parse_arguments()
+    fits_output = (
+        args.fits_output
+        if args.fits_output is not None
+        else args.output.with_suffix(".fits")
+    )
+    try:
+        import astropy  # noqa: F401
+    except ImportError as error:
+        raise SystemExit(
+            "FITS output requires Astropy. Install it before this run with "
+            "'python -m pip install astropy'."
+        ) from error
+
     scattering = load_newdust_scattering_table()
     absorption = load_photoelectric_absorption_table()
     physics = build_dust_physics_from_tables(scattering, absorption)
@@ -174,6 +193,17 @@ def main():
     print(f"Cloud: {cloud_description}")
     print(f"Cloud shape (z, y, x): {tuple(cloud.delta_nh_cm2.shape)}")
     print(f"Packets: {args.packets:,} in chunks of {args.chunk_size:,}")
+    print("Input source: constant one-hour unabsorbed observer-equivalent flare")
+    for energy, flux in zip(
+        np.asarray(source.effective_energy_kev),
+        np.asarray(source.band_flux)[0],
+    ):
+        print(f"  {float(energy):.1f} keV: {float(flux):.7g} ph cm^-2 s^-1")
+    print(
+        "  total: "
+        f"{float(np.sum(np.asarray(source.band_flux)[0])):.7g} ph cm^-2 s^-1; "
+        f"fluence={float(np.asarray(source.total_fluence)):.7g} ph cm^-2"
+    )
     print("Starting ideal-observer simulation...")
     result = run_tabulated_source_to_observer_chunked(
         random.PRNGKey(args.seed),
@@ -209,10 +239,16 @@ def main():
         f"{float(diagnostic_arrays['scored_observer_fluence']):.7g} / "
         f"{float(product_arrays['binned_weight_observer_fluence']):.7g}"
     )
+    print("Out-of-range observer events (marginal diagnostics):")
+    print(
+        "  sky / energy / arrival time: "
+        f"{int(product_arrays['outside_sky_event_count']):,} / "
+        f"{int(product_arrays['outside_energy_event_count']):,} / "
+        f"{int(product_arrays['outside_arrival_time_event_count']):,}"
+    )
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(
-        args.output,
+    payload = dict(
         **product_arrays,
         **diagnostic_arrays,
         sky_x_edges_arcsec=np.asarray(bin_geometry.sky_x_edges_arcsec),
@@ -224,12 +260,75 @@ def main():
         ),
         transport_status_labels=np.asarray(TRANSPORT_STATUS_LABELS),
         source_energy_kev=np.asarray(source.effective_energy_kev),
+        source_time_edges_s=np.asarray(source.time_edges_s),
+        source_band_flux=np.asarray(source.band_flux),
+        source_cell_fluence=np.asarray(source.cell_fluence),
+        source_flat_cdf=np.asarray(source.flat_cdf),
         source_total_fluence=np.asarray(source.total_fluence),
+        cloud_delta_nh_cm2=np.asarray(cloud.delta_nh_cm2),
+        cloud_n_h_cm3=np.asarray(cloud.n_h_cm3),
+        cloud_x_edges_arcsec=np.asarray(cloud.x_edges_arcsec),
+        cloud_y_edges_arcsec=np.asarray(cloud.y_edges_arcsec),
+        cloud_z_edges_kpc=np.asarray(cloud.z_edges_kpc),
+        cloud_radial_bin_width_cm=np.asarray(cloud.radial_bin_width_cm),
+        source_distance_kpc=np.asarray(cloud.source_distance_kpc),
+        physics_energy_kev=np.asarray(physics.energy_kev),
+        physics_scattering_cross_section_cm2_per_h=np.asarray(
+            physics.scattering_cross_section_cm2_per_h
+        ),
+        physics_absorption_cross_section_cm2_per_h=np.asarray(
+            physics.absorption_cross_section_cm2_per_h
+        ),
+        physics_scattering_angle_rad=np.asarray(
+            physics.scattering_angle_rad
+        ),
+        physics_scattering_angle_cdf=np.asarray(
+            physics.scattering_angle_cdf
+        ),
+        physics_differential_cross_section_cm2_per_sr_per_h=np.asarray(
+            physics.differential_cross_section_cm2_per_sr_per_h
+        ),
+        launch_source_position_pc=np.asarray(
+            launch_geometry.source_position_pc
+        ),
+        launch_source_distance_pc=np.asarray(
+            launch_geometry.source_distance_pc
+        ),
+        launch_slope_x_bounds=np.asarray(launch_geometry.slope_x_bounds),
+        launch_slope_y_bounds=np.asarray(launch_geometry.slope_y_bounds),
+        launch_slope_area=np.asarray(launch_geometry.slope_area),
+        launch_solid_angle_sr=np.asarray(
+            launch_geometry.launch_solid_angle_sr
+        ),
+        output_schema_version=np.asarray(2),
+        cloud_description=np.asarray(cloud_description),
+        source_flux_convention=np.asarray(
+            "unabsorbed observer-equivalent photon flux"
+        ),
         random_seed=np.asarray(args.seed),
         requested_packet_count=np.asarray(args.packets),
+        chunk_size=np.asarray(args.chunk_size),
         max_interactions=np.asarray(args.max_interactions),
     )
+    np.savez_compressed(args.output, **payload)
     print(f"Saved: {args.output.resolve()}")
+    write_ideal_observer_fits(
+        fits_output,
+        result,
+        bin_geometry,
+        source,
+        cloud,
+        physics,
+        launch_geometry,
+        run_metadata={
+            "packets": args.packets,
+            "chunk_size": args.chunk_size,
+            "max_interactions": args.max_interactions,
+            "seed": args.seed,
+            "cloud_description": cloud_description,
+        },
+    )
+    print(f"Saved: {fits_output.resolve()}")
 
     numerical_failures = int(status_count[0] + status_count[4:].sum())
     if numerical_failures:
