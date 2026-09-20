@@ -271,13 +271,34 @@ python -m scripts.run_dsh_v1
 ```
 
 The default is deliberately moderate: 4096 packets in chunks of 256. It
-writes `outputs/dsh_v1_ideal_observer.npz`, containing total, first-scatter,
-and multiple-scatter fluence cubes; event counts; all bin edges and solid
-angles; transport-state counts; closure diagnostics; and run metadata. Once
-that smoke run is clean, increase the Monte Carlo statistics explicitly:
+writes both `outputs/dsh_v1_ideal_observer.npz` and
+`outputs/dsh_v1_ideal_observer.fits`. The source is a constant one-hour,
+unabsorbed observer-equivalent test flare. Its band-integrated photon fluxes
+are 0.020, 0.012, and 0.006 `ph cm^-2 s^-1` at the representative 3.3, 4.9,
+and 6.9 keV energies. The total input flux is therefore
+0.038 `ph cm^-2 s^-1`, and the one-hour source fluence is
+136.8 `ph cm^-2`.
+
+The NPZ file is the complete reproducibility payload: observer products,
+closure and per-axis overflow diagnostics, source arrays, cloud column and
+density arrays, launch geometry, scattering and absorption physics tables,
+and run configuration. The FITS file contains a directly viewable integrated
+halo in its primary HDU, full total/first/multiple `(t,E,y,x)` cubes, the event
+cube, surface brightness, cloud inputs, exact bin tables, source and physics
+tables, and status/diagnostic tables. Neither format stores individual packet
+trajectories; production chunking deliberately releases those temporary
+histories after accumulation.
+
+Once the 4096-packet smoke run is clean, the next CPU validation run should
+preserve it under a new filename, increase to 100,000 packets, and extend the
+arrival-time range to catch rare multiple-scattering delays:
 
 ```powershell
-python -m scripts.run_dsh_v1 --packets 100000 --chunk-size 1024
+python -m scripts.run_dsh_v1 `
+  --packets 100000 `
+  --chunk-size 512 `
+  --arrival-days 120 `
+  --output outputs/dsh_v1_100k.npz
 ```
 
 A physical `delta_NH` FITS cube can replace the built-in scene:
