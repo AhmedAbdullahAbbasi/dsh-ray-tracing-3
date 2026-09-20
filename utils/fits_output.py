@@ -280,6 +280,18 @@ def write_ideal_observer_fits(
             primary.header[header_name] = int(metadata[metadata_name])
     if "cloud_description" in metadata:
         primary.header["CLOUD"] = str(metadata["cloud_description"])
+    if "source_model" in metadata:
+        primary.header["SRCMODEL"] = str(metadata["source_model"])
+    decay_header_mapping = {
+        "decay_time_days": "DCTAU_D",
+        "decay_start_days": "DCSTRT_D",
+        "decay_duration_days": "DCDUR_D",
+        "source_time_bin_days": "SRCTB_D",
+    }
+    for metadata_name, header_name in decay_header_mapping.items():
+        value = metadata.get(metadata_name)
+        if value is not None:
+            primary.header[header_name] = float(value)
     primary.header.add_history(
         "Source -> importance launch -> voxel transport -> peel-off -> binning"
     )

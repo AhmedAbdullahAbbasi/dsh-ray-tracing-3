@@ -108,6 +108,11 @@ class TestIdealObserverFits(unittest.TestCase):
                     "max_interactions": 8,
                     "seed": 12,
                     "cloud_description": "test cloud",
+                    "source_model": "exponential-decay",
+                    "decay_time_days": 25.0,
+                    "decay_start_days": 0.0,
+                    "decay_duration_days": 120.0,
+                    "source_time_bin_days": 0.25,
                 },
             )
             self.assertEqual(returned, path)
@@ -144,6 +149,10 @@ class TestIdealObserverFits(unittest.TestCase):
                     int(hdul["STATUS"].data["COUNT"].sum()), 1
                 )
                 self.assertEqual(hdul[0].header["NPACKETS"], 1)
+                self.assertEqual(
+                    hdul[0].header["SRCMODEL"], "exponential-decay"
+                )
+                self.assertEqual(hdul[0].header["DCTAU_D"], 25.0)
                 self.assertEqual(
                     hdul["STATUS"].data["STATUS_CODE"][1],
                     REACHED_OBSERVER_PLANE,

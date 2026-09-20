@@ -315,6 +315,42 @@ runner produces ideal-observer physical fluence only. Telescope effective
 area, PSF, exposure maps, detector energy redistribution, background, and
 counting noise are deferred to Version 2.
 
+### Post-outburst exponential decay
+
+The local runner can replace the one-hour flare with a post-peak exponential
+in each Version-1 energy channel,
+
+```text
+F_i(t) = F_base,i + (F_peak,i - F_base,i) exp(-t / tau).
+```
+
+The tabulated interval fluxes are analytic averages of this continuous model,
+so integrated fluence is independent of source time-bin width. Short source
+bins still improve the sampled emission-time resolution. The following
+million-packet example starts at the outburst peak, follows 120 days of a
+25-day decay, and leaves another 120 days for scattering delays:
+
+```powershell
+python -m scripts.run_dsh_v1 `
+  --source-model exponential-decay `
+  --peak-band-fluxes 0.020 0.012 0.006 `
+  --baseline-band-fluxes 0 0 0 `
+  --decay-time-days 25 `
+  --decay-start-days 0 `
+  --decay-duration-days 120 `
+  --source-time-bin-days 0.25 `
+  --arrival-days 240 `
+  --packets 1000000 `
+  --chunk-size 512 `
+  --output outputs/dsh_v1_decay_1m.npz
+```
+
+For these illustrative fluxes and a zero baseline, the simulated source
+fluence is 81,404.5 `ph cm^-2`. This is still a generic test outburst, not a
+fit to a particular object. To simulate only a late segment, set
+`--decay-start-days` to its time after the peak; to model an echo observed
+after a complete outburst, retain the full source history from day zero.
+
 ## Native cloud-input convention
 
 `utils/clouds.py` is the physical adapter for an angular--distance hydrogen

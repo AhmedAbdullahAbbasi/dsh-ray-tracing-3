@@ -30,7 +30,10 @@ from utils.simulation import (
     TRANSPORT_STATUS_LABELS,
     run_tabulated_source_to_observer_chunked,
 )
-from utils.source import build_tabulated_band_source
+from utils.source import (
+    build_post_peak_exponential_band_source,
+    build_tabulated_band_source,
+)
 from utils.source_launch import build_cloud_launch_geometry
 
 
@@ -82,13 +85,57 @@ def build_synthetic_four_cloud_scene(source_distance_kpc=10.0):
     )
 
 
-def build_v1_test_source(energy_kev):
+def build_v1_test_source(
+    energy_kev,
+    band_flux=(2.0e-2, 1.2e-2, 6.0e-3),
+):
     """One-hour flare sampled at the three tabulated V1 energies."""
 
     return build_tabulated_band_source(
         time_edges_s=[0.0, 3_600.0],
-        band_flux=np.asarray([[2.0e-2, 1.2e-2, 6.0e-3]]),
+        band_flux=np.asarray([band_flux], dtype=np.float64),
         effective_energy_kev=energy_kev,
+    )
+
+
+def _post_peak_time_edges_s(start_days, duration_days, bin_days):
+    values = np.asarray([start_days, duration_days, bin_days], dtype=np.float64)
+    if not np.all(np.isfinite(values)):
+        raise ValueError("decay timing parameters must be finite")
+    if start_days < 0.0:
+        raise ValueError("decay_start_days cannot be negative")
+    if duration_days <= 0.0 or bin_days <= 0.0:
+        raise ValueError("decay duration and source time-bin width must be positive")
+    n_bins = int(np.ceil(duration_days / bin_days))
+    edges_days = start_days + np.arange(n_bins + 1) * bin_days
+    edges_days[-1] = start_days + duration_days
+    return edges_days * DAY_S
+
+
+def build_v1_decay_source(
+    energy_kev,
+    *,
+    peak_band_flux,
+    baseline_band_flux,
+    decay_time_days,
+    decay_start_days,
+    decay_duration_days,
+    source_time_bin_days,
+):
+    """Build the configurable post-outburst source used by the local runner."""
+
+    time_edges_s = _post_peak_time_edges_s(
+        decay_start_days,
+        decay_duration_days,
+        source_time_bin_days,
+    )
+    return build_post_peak_exponential_band_source(
+        time_edges_s,
+        energy_kev,
+        peak_band_flux,
+        decay_time_s=decay_time_days * DAY_S,
+        baseline_band_flux=baseline_band_flux,
+        peak_time_s=0.0,
     )
 
 
@@ -103,6 +150,31 @@ def parse_arguments():
         ),
     )
     parser.add_argument("--source-distance-kpc", type=float, default=10.0)
+    parser.add_argument(
+        "--source-model",
+        choices=("constant-flare", "exponential-decay"),
+        default="constant-flare",
+    )
+    parser.add_argument(
+        "--peak-band-fluxes",
+        type=float,
+        nargs=3,
+        metavar=("F3P3", "F4P9", "F6P9"),
+        default=(2.0e-2, 1.2e-2, 6.0e-3),
+        help="peak band fluxes at 3.3/4.9/6.9 keV in ph cm^-2 s^-1",
+    )
+    parser.add_argument(
+        "--baseline-band-fluxes",
+        type=float,
+        nargs=3,
+        metavar=("F3P3", "F4P9", "F6P9"),
+        default=(0.0, 0.0, 0.0),
+        help="asymptotic band fluxes for exponential-decay mode",
+    )
+    parser.add_argument("--decay-time-days", type=float, default=25.0)
+    parser.add_argument("--decay-start-days", type=float, default=0.0)
+    parser.add_argument("--decay-duration-days", type=float, default=120.0)
+    parser.add_argument("--source-time-bin-days", type=float, default=0.25)
     parser.add_argument("--packets", type=int, default=4_096)
     parser.add_argument("--chunk-size", type=int, default=256)
     parser.add_argument("--max-interactions", type=int, default=8)
@@ -177,15 +249,35 @@ def main():
         )
         cloud_description = str(args.cloud_fits)
 
-    source = build_v1_test_source(scattering.energy_kev)
+    if args.source_model == "constant-flare":
+        source = build_v1_test_source(
+            scattering.energy_kev,
+            band_flux=args.peak_band_fluxes,
+        )
+    else:
+        source = build_v1_decay_source(
+            scattering.energy_kev,
+            peak_band_flux=args.peak_band_fluxes,
+            baseline_band_flux=args.baseline_band_fluxes,
+            decay_time_days=args.decay_time_days,
+            decay_start_days=args.decay_start_days,
+            decay_duration_days=args.decay_duration_days,
+            source_time_bin_days=args.source_time_bin_days,
+        )
+    arrival_edges_s = _arrival_edges(
+        args.arrival_days, args.time_bin_days
+    )
+    if float(np.asarray(source.time_edges_s)[-1]) >= arrival_edges_s[-1]:
+        raise ValueError(
+            "arrival_days must extend beyond the final source-emission time "
+            "to leave room for dust-scattering delays"
+        )
     launch_geometry = build_cloud_launch_geometry(cloud)
     bin_geometry = build_observer_bin_geometry(
         sky_x_edges_arcsec=np.asarray(cloud.x_edges_arcsec),
         sky_y_edges_arcsec=np.asarray(cloud.y_edges_arcsec),
         energy_edges_kev=centers_to_edges(scattering.energy_kev),
-        arrival_time_edges_s=_arrival_edges(
-            args.arrival_days, args.time_bin_days
-        ),
+        arrival_time_edges_s=arrival_edges_s,
     )
 
     print(f"JAX backend: {jax.default_backend()}")
@@ -193,16 +285,29 @@ def main():
     print(f"Cloud: {cloud_description}")
     print(f"Cloud shape (z, y, x): {tuple(cloud.delta_nh_cm2.shape)}")
     print(f"Packets: {args.packets:,} in chunks of {args.chunk_size:,}")
-    print("Input source: constant one-hour unabsorbed observer-equivalent flare")
+    if args.source_model == "constant-flare":
+        print("Input source: constant one-hour unabsorbed observer-equivalent flare")
+    else:
+        print("Input source: unabsorbed observer-equivalent exponential decay")
+        print(
+            "  post-peak interval: "
+            f"{args.decay_start_days:g}--"
+            f"{args.decay_start_days + args.decay_duration_days:g} days; "
+            f"tau={args.decay_time_days:g} days; "
+            f"source bins={args.source_time_bin_days:g} days"
+        )
     for energy, flux in zip(
-        np.asarray(source.effective_energy_kev),
-        np.asarray(source.band_flux)[0],
+        np.asarray(source.effective_energy_kev), args.peak_band_fluxes
     ):
-        print(f"  {float(energy):.1f} keV: {float(flux):.7g} ph cm^-2 s^-1")
+        print(
+            f"  {float(energy):.1f} keV peak: "
+            f"{float(flux):.7g} ph cm^-2 s^-1"
+        )
     print(
-        "  total: "
-        f"{float(np.sum(np.asarray(source.band_flux)[0])):.7g} ph cm^-2 s^-1; "
-        f"fluence={float(np.asarray(source.total_fluence)):.7g} ph cm^-2"
+        "  peak total: "
+        f"{float(np.sum(args.peak_band_fluxes)):.7g} ph cm^-2 s^-1; "
+        f"simulated fluence={float(np.asarray(source.total_fluence)):.7g} "
+        "ph cm^-2"
     )
     print("Starting ideal-observer simulation...")
     result = run_tabulated_source_to_observer_chunked(
@@ -300,10 +405,33 @@ def main():
         launch_solid_angle_sr=np.asarray(
             launch_geometry.launch_solid_angle_sr
         ),
-        output_schema_version=np.asarray(2),
+        output_schema_version=np.asarray(3),
         cloud_description=np.asarray(cloud_description),
         source_flux_convention=np.asarray(
             "unabsorbed observer-equivalent photon flux"
+        ),
+        source_model=np.asarray(args.source_model),
+        source_peak_band_flux=np.asarray(args.peak_band_fluxes),
+        source_baseline_band_flux=np.asarray(args.baseline_band_fluxes),
+        source_decay_time_days=np.asarray(
+            args.decay_time_days
+            if args.source_model == "exponential-decay"
+            else np.nan
+        ),
+        source_decay_start_days=np.asarray(
+            args.decay_start_days
+            if args.source_model == "exponential-decay"
+            else np.nan
+        ),
+        source_decay_duration_days=np.asarray(
+            args.decay_duration_days
+            if args.source_model == "exponential-decay"
+            else np.nan
+        ),
+        source_time_bin_days=np.asarray(
+            args.source_time_bin_days
+            if args.source_model == "exponential-decay"
+            else np.nan
         ),
         random_seed=np.asarray(args.seed),
         requested_packet_count=np.asarray(args.packets),
@@ -326,6 +454,27 @@ def main():
             "max_interactions": args.max_interactions,
             "seed": args.seed,
             "cloud_description": cloud_description,
+            "source_model": args.source_model,
+            "decay_time_days": (
+                args.decay_time_days
+                if args.source_model == "exponential-decay"
+                else None
+            ),
+            "decay_start_days": (
+                args.decay_start_days
+                if args.source_model == "exponential-decay"
+                else None
+            ),
+            "decay_duration_days": (
+                args.decay_duration_days
+                if args.source_model == "exponential-decay"
+                else None
+            ),
+            "source_time_bin_days": (
+                args.source_time_bin_days
+                if args.source_model == "exponential-decay"
+                else None
+            ),
         },
     )
     print(f"Saved: {fits_output.resolve()}")
