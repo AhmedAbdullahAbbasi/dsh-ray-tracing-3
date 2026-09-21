@@ -178,6 +178,18 @@ absorption, repeated interactions, source-launch importance weights, peel-off
 normalization, arrival delays, observer binning, chunked execution, and FITS
 output.
 
+The rigorous physics ladder is documented in
+[`docs/validation.md`](docs/validation.md). Fast analytic/statistical checks
+run with the normal suite. The production-path, high-statistics experiment is
+run explicitly with:
+
+```powershell
+python -m scripts.run_validation_ladder --packets 1000000
+```
+
+It writes a machine-readable report under `validation_outputs/` and exits
+nonzero if an acceptance criterion fails.
+
 ## Current V1 limits
 
 - Fixed MRN Rayleigh--Gans/Drude dust model.

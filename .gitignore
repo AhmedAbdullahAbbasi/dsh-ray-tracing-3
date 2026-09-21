@@ -21,3 +21,4 @@ dist/
 
 # Local Monte Carlo products
 outputs/
+validation_outputs/
