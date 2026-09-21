@@ -51,7 +51,13 @@ def parse_arguments():
 
 
 def _pass_fail_summary(
-    results, angle_slope, cross_section_slope, scored_fluence_slope, thickness_sweep
+    results,
+    angle_slope,
+    analytic_angle_slope,
+    angle_slope_standard_error,
+    cross_section_slope,
+    scored_fluence_slope,
+    thickness_sweep,
 ):
     checks = {
         "geometry_delay": all(
@@ -63,7 +69,10 @@ def _pass_fail_summary(
         "peeloff_flux_conservation": all(
             0.90 < result.scored_fluence_to_tau < 1.10 for result in results
         ),
-        "energy_width_scaling": abs(angle_slope + 1.0) < 0.03,
+        "energy_width_scaling": (
+            abs(angle_slope - analytic_angle_slope) < 3.0 * angle_slope_standard_error
+        ),
+        "energy_width_precision": angle_slope_standard_error < 0.03,
         "energy_opacity_scaling": abs(cross_section_slope + 2.0) < 0.03,
         "simulated_energy_fluence_scaling": (
             abs(scored_fluence_slope - cross_section_slope) < 0.20
@@ -72,6 +81,21 @@ def _pass_fail_summary(
             result.observer_fluence_relative_standard_error < 0.05
             and result.azimuthal_effective_sample_size >= 400.0
             for result in results
+        ),
+        "image_ring_geometry": (
+            results[0].image is not None
+            and results[0].image.ring_bins_checked >= 6
+            and results[0].image.maximum_ring_bound_violation_arcsec
+            <= results[0].image.half_pixel_diagonal_arcsec
+        ),
+        "image_fluence_closure": (
+            results[0].image is not None
+            and abs(
+                results[0].image.binned_fluence
+                + results[0].image.unbinned_fluence
+                - results[0].scored_observer_fluence
+            )
+            < 1.0e-5 * results[0].scored_observer_fluence
         ),
         "azimuthal_symmetry": all(
             max(result.azimuthal_harmonic_amplitudes)
@@ -135,6 +159,11 @@ def main():
             half_width_arcsec=args.half_width_arcsec,
             sky_pixels=args.sky_pixels,
             radial_cells=args.radial_cells,
+            image_output_path=(
+                str(args.output.with_name(args.output.stem + "_3p3_image.npz"))
+                if energy_index == 0
+                else None
+            ),
         )
         results.append(result)
         print(
@@ -151,6 +180,15 @@ def main():
             f"relative MC SE={result.observer_fluence_relative_standard_error:.4f}; "
             f"aperture N_eff={result.azimuthal_effective_sample_size:.0f}"
         )
+        if result.image is not None:
+            print(
+                f"    image ring slices: {result.image.ring_bins_checked}; "
+                "largest radius outside analytic time-bin bounds: "
+                f"{result.image.maximum_ring_bound_violation_arcsec:.2f} arcsec"
+            )
+            print(f"    saved simulated image: {result.image.path}")
+            if result.image.fits_path is not None:
+                print(f"    saved FITS image: {result.image.fits_path}")
 
     median_angles = phase_containment_angle_rad(
         scattering.scattering_angle_rad,
@@ -165,6 +203,25 @@ def main():
     simulated_radius_slope = log_log_power_law_slope(
         scattering.energy_kev,
         [result.weighted_median_radius_arcsec for result in results],
+    )
+    log_energies = np.log(scattering.energy_kev)
+    slope_gradient = (log_energies - np.mean(log_energies)) / np.sum(
+        (log_energies - np.mean(log_energies)) ** 2
+    )
+    relative_median_errors = np.asarray(
+        [
+            result.median_radius_standard_error_arcsec
+            / result.weighted_median_radius_arcsec
+            for result in results
+        ]
+    )
+    simulated_radius_slope_se = float(
+        np.linalg.norm(slope_gradient * relative_median_errors)
+    )
+    print(
+        "Observed halo-width energy slope: "
+        f"{simulated_radius_slope:.4f} +/- {simulated_radius_slope_se:.4f} "
+        f"(table: {analytic_angle_slope:.4f})"
     )
     simulated_fluence_slope = log_log_power_law_slope(
         scattering.energy_kev,
@@ -219,12 +276,14 @@ def main():
     checks = _pass_fail_summary(
         results,
         simulated_radius_slope,
+        analytic_angle_slope,
+        simulated_radius_slope_se,
         analytic_cross_section_slope,
         simulated_fluence_slope,
         thickness_results,
     )
     report = {
-        "schema_version": 1,
+        "schema_version": 2,
         "configuration": vars(args) | {"output": str(args.output)},
         "hydrogen_column_cm2": float(reference_column_cm2),
         "table_energy_kev": scattering.energy_kev.tolist(),
@@ -236,12 +295,19 @@ def main():
         },
         "simulation": {
             "median_observed_radius_energy_slope": simulated_radius_slope,
+            "median_observed_radius_energy_slope_standard_error": (
+                simulated_radius_slope_se
+            ),
             "scored_observer_fluence_energy_slope": simulated_fluence_slope,
             "uniform_screen": [asdict(result) for result in results],
             "thickness_sweep_3p3_kev": [asdict(result) for result in thickness_results],
         },
         "checks": checks,
         "scope": {
+            "simulated_image": (
+                "3.3-keV midpoint uniform-screen image; near/far-screen "
+                "images and instrument response remain untested"
+            ),
             "single_grain": (
                 "not evaluated: the v1 table is already integrated over the MRN "
                 "grain-size distribution"

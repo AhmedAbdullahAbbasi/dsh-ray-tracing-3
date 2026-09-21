@@ -29,6 +29,7 @@ from .analytic import (
     exact_single_scatter_delay_s,
     phase_containment_angle_rad,
 )
+from .image import ImageValidation, bin_and_validate_ring_image
 from .launch import nested_screen_launch_geometries, sample_mixture_source_launches
 
 
@@ -47,6 +48,8 @@ class UniformScreenValidation:
     scored_fluence_to_tau: float
     phase_probability_inside_inscribed_aperture: float
     weighted_median_radius_arcsec: float
+    median_radius_standard_error_arcsec: float
+    observer_effective_sample_size_all: float
     expected_median_radius_arcsec: float
     maximum_delay_error_s: float
     maximum_relative_delay_error: float
@@ -54,6 +57,7 @@ class UniformScreenValidation:
     azimuthal_effective_sample_size: float
     observer_fluence_relative_standard_error: float
     azimuthal_harmonic_amplitudes: tuple[float, ...]
+    image: ImageValidation | None = None
 
 
 def _uniform_screen_cloud(
@@ -91,11 +95,17 @@ def _uniform_screen_cloud(
 
 
 def _weighted_median(values, weights):
+    return _weighted_quantile(values, weights, 0.5)
+
+
+def _weighted_quantile(values, weights, fraction):
+    """Select one weighted order statistic, including for unequal packet weights."""
+
     order = np.argsort(values)
     sorted_values = values[order]
     sorted_weights = weights[order]
-    midpoint = 0.5 * sorted_weights.sum(dtype=np.float64)
-    index = np.searchsorted(np.cumsum(sorted_weights, dtype=np.float64), midpoint)
+    threshold = fraction * sorted_weights.sum(dtype=np.float64)
+    index = np.searchsorted(np.cumsum(sorted_weights, dtype=np.float64), threshold)
     return float(sorted_values[min(index, sorted_values.size - 1)])
 
 
@@ -113,6 +123,7 @@ def run_uniform_screen_validation(
     half_width_arcsec: float = 2_000.0,
     sky_pixels: int = 32,
     radial_cells: int = 4,
+    image_output_path: str | None = None,
 ) -> UniformScreenValidation:
     """Run a delta flare through one low-opacity, laterally uniform screen.
 
@@ -191,6 +202,8 @@ def run_uniform_screen_validation(
 
     scattered_count = 0
     event_weights = []
+    event_sky_x_arcsec = []
+    event_sky_y_arcsec = []
     event_radius_arcsec = []
     event_azimuth_rad = []
     event_delay_s = []
@@ -225,6 +238,9 @@ def run_uniform_screen_validation(
         if np.any(valid):
             sky_x = np.asarray(events.sky_x_arcsec)[valid, 0].astype(np.float64)
             sky_y = np.asarray(events.sky_y_arcsec)[valid, 0].astype(np.float64)
+            if image_output_path is not None:
+                event_sky_x_arcsec.append(sky_x)
+                event_sky_y_arcsec.append(sky_y)
             event_weights.append(
                 np.asarray(events.weight_observer_fluence)[valid, 0].astype(np.float64)
             )
@@ -279,6 +295,14 @@ def run_uniform_screen_validation(
         (1.0 - fractional_distance) * median_scattering_angle / ARCSEC_TO_RAD
     )
     weighted_median_radius = _weighted_median(radius_arcsec, weights)
+    effective_size_all = scored_fluence**2 / np.sum(weights**2, dtype=np.float64)
+    q40 = _weighted_quantile(radius_arcsec, weights, 0.4)
+    q60 = _weighted_quantile(radius_arcsec, weights, 0.6)
+    # Weighted ECDF uncertainty at the median is approximately
+    # 0.5 / sqrt(N_eff). Convert it to a radius using the empirical local
+    # density (F^-1(.6)-F^-1(.4)) / .2. This is a Monte Carlo standard error,
+    # not a physical uncertainty on the dust-screen location.
+    median_radius_se = 2.5 * (q60 - q40) / np.sqrt(effective_size_all)
 
     aperture = (radius_arcsec > 0.0) & (radius_arcsec <= 0.8 * half_width_arcsec)
     aperture_weights = weights[aperture]
@@ -317,6 +341,19 @@ def run_uniform_screen_validation(
             scattering.scattering_angle_cdf[energy_index],
         )
     )
+    image = None
+    if image_output_path is not None:
+        image = bin_and_validate_ring_image(
+            image_output_path,
+            np.concatenate(event_sky_x_arcsec),
+            np.concatenate(event_sky_y_arcsec),
+            delay_s,
+            weights,
+            energy_kev=energy,
+            source_distance_kpc=source_distance_kpc,
+            fractional_distance=fractional_distance,
+            cloud_half_width_arcsec=half_width_arcsec,
+        )
 
     return UniformScreenValidation(
         energy_kev=energy,
@@ -330,6 +367,8 @@ def run_uniform_screen_validation(
         scored_fluence_to_tau=scored_fluence / target_scattering_optical_depth,
         phase_probability_inside_inscribed_aperture=phase_probability,
         weighted_median_radius_arcsec=weighted_median_radius,
+        median_radius_standard_error_arcsec=float(median_radius_se),
+        observer_effective_sample_size_all=float(effective_size_all),
         expected_median_radius_arcsec=float(expected_median_radius),
         maximum_delay_error_s=float(np.max(np.abs(delay_error))),
         maximum_relative_delay_error=float(np.max(np.abs(delay_error) / delay_scale)),
@@ -337,4 +376,5 @@ def run_uniform_screen_validation(
         azimuthal_effective_sample_size=effective_size,
         observer_fluence_relative_standard_error=fluence_relative_se,
         azimuthal_harmonic_amplitudes=tuple(float(value) for value in harmonics),
+        image=image,
     )

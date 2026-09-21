@@ -35,6 +35,7 @@ from dsh.validation import (
     small_angle_ring_radius_arcsec,
     small_angle_single_scatter_delay_s,
 )
+from dsh.validation.experiments import _weighted_quantile
 
 
 def _empty_cloud(source_distance_kpc=10.0):
@@ -210,6 +211,24 @@ class TestScatteringPhysicsScaling(unittest.TestCase):
             self.scattering.energy_kev * median_angle,
             np.mean(self.scattering.energy_kev * median_angle),
             rtol=3.0e-6,
+        )
+
+    def test_median_error_estimator_matches_repeated_weighted_samples(self):
+        rng = np.random.default_rng(863)
+        medians = []
+        estimated_errors = []
+        for _ in range(250):
+            radii = rng.rayleigh(60.0, 1200)
+            weights = rng.lognormal(0.0, 0.5, radii.size)
+            medians.append(_weighted_quantile(radii, weights, 0.5))
+            q40 = _weighted_quantile(radii, weights, 0.4)
+            q60 = _weighted_quantile(radii, weights, 0.6)
+            effective_size = weights.sum() ** 2 / np.sum(weights**2)
+            estimated_errors.append(2.5 * (q60 - q40) / np.sqrt(effective_size))
+        np.testing.assert_allclose(
+            np.mean(estimated_errors),
+            np.std(medians, ddof=1),
+            rtol=0.20,
         )
 
 

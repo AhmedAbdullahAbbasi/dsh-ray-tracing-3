@@ -15,10 +15,10 @@ x = observer-to-dust distance / observer-to-source distance.
 
 | Step | Fast deterministic/statistical test | Local convergence experiment | Current status |
 |---|---|---|---|
-| 1. Delay geometry | Exact Euclidean broken-path delay at `x=0.1, 0.5, 0.9`; inversion of the small-angle ring relation | Reports the maximum event-by-event delay residual from the production scorer | Implemented |
+| 1. Delay geometry | Exact Euclidean broken-path delay at `x=0.1, 0.5, 0.9`; inversion of the small-angle ring relation | Reports event delay residuals and tests the binned 3.3-keV ring image in 1–4-day time slices at `x=0.5` | Implemented for the midpoint image |
 | 2. Cross section | MRN phase function is forward-peaked, normalized, and matches the intrinsic table | Reports containment angles at all table energies | Implemented for the MRN-integrated table |
 | 3. Flux conservation | Low-`tau` analog scattering fraction is compared with `1-exp(-tau)` | Compares analog collisions and integrated peel-off fluence with the input fluence times `tau_sca` | Implemented |
-| 4. Energy scaling | Fits the slopes of median scattering angle and `sigma_sca` against energy | Holds the screen's hydrogen column fixed and measures halo radii and scattering fluence at 3.3, 4.9, and 6.9 keV | Implemented |
+| 4. Energy scaling | Fits the slopes of median scattering angle and `sigma_sca` against energy | Holds the screen's hydrogen column fixed and measures halo radii and scattering fluence at 3.3, 4.9, and 6.9 keV; reports the weighted-radius slope's Monte Carlo error | Implemented |
 | 5. Screen thickness | Checks analytic inner/outer ring bounds and the zero-thickness limit | Sweeps increasing thickness and requires monotonically increasing delay-width around the central-screen relation | Implemented |
 | 6. Symmetry | Scores a deterministic ring at 64 azimuths and checks equal delays/weights | Measures weighted azimuthal Fourier modes inside a circular aperture | Implemented |
 | 7. Convolution | Scores the same three-angle scattering history for an impulse and a three-bin top-hat source, then bins and compares with discrete convolution | A continuous light-curve convergence case remains for a later stage | Implemented for scorer and binning |
@@ -87,12 +87,30 @@ events. Production source launching and observer scoring are unchanged. The
 report gives both an estimated relative Monte Carlo standard error for the
 total scored fluence and the effective sample size in the symmetry aperture.
 
+The runner also saves a **simulated ideal-observer image** from actual scored
+3.3-keV photons as a time-by-y-by-x NPZ cube. The 128-by-128 sky crop covers
+the predicted 4-day ring radius with 30 percent margin where the cloud field
+allows it. It uses 0.25-day time bins over 0–8 days. Twelve
+time slices from days 1–4 are eligible for the image ring check. Each selected
+image must have its fluence-weighted ring radius inside the analytic bounds
+set by its time-bin edges, allowing half a pixel diagonal for sampling. The
+image-fluence check explicitly includes events outside the sky/time window;
+the cropped image alone should not equal the full observer fluence. No
+instrument response or PSF is applied. The near- and far-screen *images*
+remain to be tested; their event delay geometry already has fast tests.
+
+The energy-width slope has a Monte Carlo standard error inferred from the
+weighted median's local 40–60-percentile span and effective event count. A
+three-sigma consistency check is separate from the precision requirement of
+`0.03` on that slope. A consistent but imprecise run therefore remains
+inconclusive instead of being misclassified as wrong physics.
+
 ## Fast checks
 
 Run the validation tests alone:
 
 ```powershell
-python -m unittest tests.test_validation -v
+python -m unittest tests.test_validation tests.test_validation_launch tests.test_validation_image -v
 ```
 
 Run the entire regression suite:
@@ -126,12 +144,19 @@ limitations. Do not obtain a pass by trying new seeds. Increase the packet
 count when a result is statistically marginal; later, add an ensemble-of-seeds
 test before freezing release tolerances.
 
+The 3.3-keV binned image is saved beside the JSON report with suffix
+`_3p3_image.npz`; its arrays are `fluence_time_y_x`, `event_count_time_y_x`,
+and the corresponding sky and arrival-time bin edges. If Astropy is installed,
+the runner also writes `_3p3_image.fits` containing an integrated image, time
+cube, event-count cube, and exact time-bin table.
+
 Current acceptance thresholds are:
 
 - maximum relative delay error below `1e-3`;
 - analog scattering residual below five binomial standard deviations;
 - integrated peel-off fluence within 10 percent of `fluence * tau_sca`;
-- simulated radius slope within `0.03` of `E^-1`;
+- simulated radius slope within three estimated Monte Carlo standard errors
+  of the table's slope, **and** slope standard error below `0.03`;
 - scattering-opacity slope within `0.03` of `E^-2` for the current RG table;
 - simulated fluence-versus-energy slope within `0.20` of that tabulated slope;
 - estimated observer-fluence Monte Carlo error below 5 percent and at least
