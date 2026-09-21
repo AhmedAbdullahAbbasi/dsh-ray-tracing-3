@@ -171,18 +171,3 @@ def phase_cdf_from_differential_cross_section(
     cdf[:, 0] = 0.0
     cdf[:, -1] = 1.0
     return sigma_sca, cdf
-
-
-def remove_small_angle_dsh_geometry_factor(weighted_values, fractional_distance):
-    """Remove an explicitly embedded ``(1-x)**-2`` DSH geometry factor.
-
-    This only removes the multiplicative factor.  The caller must separately
-    map an observer-angle axis to physical scattering angle using
-    ``theta_sca = theta_obs / (1-x)`` in the small-angle approximation.
-    """
-
-    values = np.asarray(weighted_values)
-    x = np.asarray(fractional_distance)
-    if np.any(~np.isfinite(x)) or np.any((x < 0.0) | (x >= 1.0)):
-        raise ValueError("fractional_distance must satisfy 0 <= x < 1")
-    return values * (1.0 - x) ** 2

@@ -4,11 +4,11 @@ This module deliberately stops at the source boundary. It converts an input
 light curve into Monte Carlo packet energies, emission times, and statistical
 weights; source position and launch direction remain geometry concerns.
 
-The primary test model combines an arbitrary piecewise-constant light curve
-with a power-law spectrum. A fast-rise, exponential-decay helper generates a
-generic X-ray transient, while a separate observation window can enforce that
-the simulated exposure occurs after the outburst peak. A tabulated-band model
-is retained for later observational adapters.
+The production V1 model is a tabulated band light curve on the same energy
+grid as the scattering and absorption tables. A post-peak exponential helper
+constructs the current decay simulations. A continuous power-law sampler is
+also retained as a supported library API for future dense energy tables; it
+uses the same transport kernel and is not a separate scattering model.
 
 Fluxes use the *unabsorbed observer-equivalent* convention. Absorption must be
 applied later by the transport engine. Each packet carries an observer-fluence
