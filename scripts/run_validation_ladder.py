@@ -43,11 +43,57 @@ def parse_arguments():
     )
     parser.add_argument("--sweep-packets", type=int, default=300_000)
     parser.add_argument(
+        "--image-screen-fractions",
+        type=float,
+        nargs="+",
+        default=(0.1, 0.5, 0.9),
+        help="observer-to-dust distance fractions for simulated ring images",
+    )
+    parser.add_argument(
+        "--image-sweep-packets",
+        type=int,
+        default=300_000,
+        help="packets for each extra image (the main screen reuses its energy run)",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=Path("validation_outputs/rigorous_dsh_validation.json"),
     )
     return parser.parse_args()
+
+
+def _ring_image_passes(image):
+    return (
+        image is not None
+        and image.ring_bins_checked >= 6
+        and image.maximum_ring_bound_violation_arcsec
+        <= image.half_pixel_diagonal_arcsec
+    )
+
+
+def _screen_radius_order_passes(image_screen_sweep):
+    """Compare image radii in at least six shared time bins across screens."""
+
+    if len(image_screen_sweep) < 3:
+        return False
+    if any(result.image is None for _, result in image_screen_sweep):
+        return False
+    radii = [
+        {
+            slice_.time_bin_index: slice_.measured_median_radius_arcsec
+            for slice_ in result.image.ring_slices
+        }
+        for _, result in image_screen_sweep
+    ]
+    shared_bins = set.intersection(*(set(measurements) for measurements in radii))
+    return len(shared_bins) >= 6 and all(
+        all(
+            left[bin_index] > right[bin_index]
+            for left, right in zip(radii[:-1], radii[1:], strict=True)
+        )
+        for bin_index in shared_bins
+    )
 
 
 def _pass_fail_summary(
@@ -58,6 +104,7 @@ def _pass_fail_summary(
     cross_section_slope,
     scored_fluence_slope,
     thickness_sweep,
+    image_screen_sweep,
 ):
     checks = {
         "geometry_delay": all(
@@ -82,11 +129,22 @@ def _pass_fail_summary(
             and result.azimuthal_effective_sample_size >= 400.0
             for result in results
         ),
-        "image_ring_geometry": (
-            results[0].image is not None
-            and results[0].image.ring_bins_checked >= 6
-            and results[0].image.maximum_ring_bound_violation_arcsec
-            <= results[0].image.half_pixel_diagonal_arcsec
+        "image_ring_geometry": _ring_image_passes(results[0].image),
+        "image_screen_geometry": all(
+            _ring_image_passes(result.image)
+            and result.maximum_relative_delay_error < 1.0e-3
+            for _, result in image_screen_sweep
+        ),
+        "image_screen_fraction_order": _screen_radius_order_passes(image_screen_sweep),
+        "image_screen_fluence_closure": all(
+            result.image is not None
+            and abs(
+                result.image.binned_fluence
+                + result.image.unbinned_fluence
+                - result.scored_observer_fluence
+            )
+            < 1.0e-5 * result.scored_observer_fluence
+            for _, result in image_screen_sweep
         ),
         "image_fluence_closure": (
             results[0].image is not None
@@ -115,8 +173,25 @@ def _pass_fail_summary(
 
 def main():
     args = parse_arguments()
-    if args.packets <= 0 or args.chunk_size <= 0 or args.sweep_packets <= 0:
+    if (
+        args.packets <= 0
+        or args.chunk_size <= 0
+        or args.sweep_packets <= 0
+        or args.image_sweep_packets <= 0
+    ):
         raise ValueError("packet and chunk counts must be positive")
+    image_fractions = np.asarray(args.image_screen_fractions, dtype=np.float64)
+    if (
+        image_fractions.ndim != 1
+        or image_fractions.size < 3
+        or not np.all(np.isfinite(image_fractions))
+        or np.any(image_fractions <= 0.0)
+        or np.any(image_fractions >= 1.0)
+        or np.any(np.diff(image_fractions) <= 0.0)
+    ):
+        raise ValueError(
+            "image-screen-fractions must have three or more distinct increasing values in (0, 1)"
+        )
     thicknesses = np.asarray(args.thickness_sweep_kpc, dtype=np.float64)
     if (
         thicknesses.ndim != 1
@@ -228,6 +303,44 @@ def main():
         [result.scored_observer_fluence for result in results],
     )
 
+    print("Running 3.3-keV screen-distance image checks:")
+    image_screen_sweep = []
+    for sweep_index, fraction in enumerate(image_fractions):
+        if fraction == args.screen_fraction:
+            result = results[0]
+            print(f"  x={fraction:g}: reusing main image", flush=True)
+        else:
+            fraction_label = f"{fraction:.9g}".replace(".", "p")
+            output_path = args.output.with_name(
+                args.output.stem + f"_x{fraction_label}_3p3_image.npz"
+            )
+            print(f"  x={fraction:g} ...", flush=True)
+            result = run_uniform_screen_validation(
+                random.fold_in(root_key, 20_000 + sweep_index),
+                scattering,
+                energy_index=0,
+                packet_count=args.image_sweep_packets,
+                chunk_size=min(args.chunk_size, args.image_sweep_packets),
+                source_distance_kpc=args.source_distance_kpc,
+                fractional_distance=float(fraction),
+                thickness_kpc=args.screen_thickness_kpc,
+                target_scattering_optical_depth=args.target_tau,
+                half_width_arcsec=args.half_width_arcsec,
+                sky_pixels=args.sky_pixels,
+                radial_cells=args.radial_cells,
+                image_output_path=str(output_path),
+            )
+            print(f"    saved simulated image: {result.image.path}")
+            if result.image.fits_path is not None:
+                print(f"    saved FITS image: {result.image.fits_path}")
+        print(
+            f"    ring slices: {result.image.ring_bins_checked}; "
+            "largest radius outside analytic time-bin bounds: "
+            f"{result.image.maximum_ring_bound_violation_arcsec:.2f} arcsec",
+            flush=True,
+        )
+        image_screen_sweep.append((float(fraction), result))
+
     print("Running 3.3-keV thickness convergence:")
     thickness_results = []
     for sweep_index, thickness in enumerate(thicknesses):
@@ -281,9 +394,10 @@ def main():
         analytic_cross_section_slope,
         simulated_fluence_slope,
         thickness_results,
+        image_screen_sweep,
     )
     report = {
-        "schema_version": 2,
+        "schema_version": 3,
         "configuration": vars(args) | {"output": str(args.output)},
         "hydrogen_column_cm2": float(reference_column_cm2),
         "table_energy_kev": scattering.energy_kev.tolist(),
@@ -300,13 +414,23 @@ def main():
             ),
             "scored_observer_fluence_energy_slope": simulated_fluence_slope,
             "uniform_screen": [asdict(result) for result in results],
+            "image_screen_sweep_3p3_kev": [
+                {
+                    "fractional_distance": fraction,
+                    "packet_count": result.packet_count,
+                    "scored_event_count": result.scored_event_count,
+                    "maximum_relative_delay_error": result.maximum_relative_delay_error,
+                    "image": asdict(result.image),
+                }
+                for fraction, result in image_screen_sweep
+            ],
             "thickness_sweep_3p3_kev": [asdict(result) for result in thickness_results],
         },
         "checks": checks,
         "scope": {
             "simulated_image": (
-                "3.3-keV midpoint uniform-screen image; near/far-screen "
-                "images and instrument response remain untested"
+                "3.3-keV uniform-screen images at the configured screen "
+                "fractions; instrument response remains untested"
             ),
             "single_grain": (
                 "not evaluated: the v1 table is already integrated over the MRN "

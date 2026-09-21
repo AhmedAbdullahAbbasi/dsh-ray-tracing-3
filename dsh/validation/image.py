@@ -14,6 +14,18 @@ from .analytic import small_angle_ring_radius_arcsec
 
 
 @dataclass(frozen=True)
+class RingSliceMeasurement:
+    """Median radius measured directly from one binned observer image."""
+
+    time_bin_index: int
+    time_start_s: float
+    time_end_s: float
+    event_count: int
+    measured_median_radius_arcsec: float
+    analytic_midpoint_radius_arcsec: float
+
+
+@dataclass(frozen=True)
 class ImageValidation:
     path: str
     binned_fluence: float
@@ -22,9 +34,12 @@ class ImageValidation:
     maximum_ring_bound_violation_arcsec: float
     half_pixel_diagonal_arcsec: float
     fits_path: str | None = None
+    ring_slices: tuple[RingSliceMeasurement, ...] = ()
 
 
-def _write_optional_fits(output_path, cube, counts, sky_edges, time_edges, energy):
+def _write_optional_fits(
+    output_path, cube, counts, sky_edges, time_edges, energy, distance_kpc, fraction
+):
     """Write the same image with physical axes when Astropy is available."""
 
     try:
@@ -36,6 +51,11 @@ def _write_optional_fits(output_path, cube, counts, sky_edges, time_edges, energ
     primary.header["BUNIT"] = "ph cm-2"
     primary.header["IDEALOBS"] = True
     primary.header["ENERGY"] = (float(energy), "effective photon energy in keV")
+    primary.header["DISTKPC"] = (float(distance_kpc), "observer-source distance in kpc")
+    primary.header["DUSTX"] = (
+        float(fraction),
+        "observer-dust distance / source distance",
+    )
     temporal = fits.ImageHDU(image, name="TIME_CUBE")
     temporal.header["BUNIT"] = "ph cm-2"
     temporal.header["CTYPE1"] = "XOFFSET"
@@ -132,7 +152,7 @@ def bin_and_validate_ring_image(
     pixel_radii = np.hypot(xx, yy).ravel()
     half_pixel_diagonal = float(np.diff(sky_edges)[0] / np.sqrt(2.0))
     maximum_violation = 0.0
-    checked = 0
+    ring_slices = []
     for i, image in enumerate(cube):
         low, high = time_edges[i : i + 2]
         if low < 86_400.0 or high > 4.0 * 86_400.0 or counts[i].sum() < 20:
@@ -151,7 +171,20 @@ def bin_and_validate_ring_image(
             maximum_violation,
             float(max(bounds[0] - measured, measured - bounds[1], 0.0)),
         )
-        checked += 1
+        ring_slices.append(
+            RingSliceMeasurement(
+                time_bin_index=i,
+                time_start_s=float(low),
+                time_end_s=float(high),
+                event_count=int(counts[i].sum()),
+                measured_median_radius_arcsec=float(measured),
+                analytic_midpoint_radius_arcsec=float(
+                    small_angle_ring_radius_arcsec(
+                        0.5 * (low + high), source_distance_kpc, fractional_distance
+                    )
+                ),
+            )
+        )
 
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -169,14 +202,22 @@ def bin_and_validate_ring_image(
         fluence_unit=np.asarray("ph cm-2 per time and sky pixel"),
     )
     fits_path = _write_optional_fits(
-        output_path, cube, counts, sky_edges, time_edges, energy_kev
+        output_path,
+        cube,
+        counts,
+        sky_edges,
+        time_edges,
+        energy_kev,
+        source_distance_kpc,
+        fractional_distance,
     )
     return ImageValidation(
         path=str(output_path),
         binned_fluence=float(np.asarray(binned.binned_weight_observer_fluence)),
         unbinned_fluence=float(np.asarray(binned.unbinned_weight_observer_fluence)),
-        ring_bins_checked=checked,
+        ring_bins_checked=len(ring_slices),
         maximum_ring_bound_violation_arcsec=maximum_violation,
         half_pixel_diagonal_arcsec=half_pixel_diagonal,
         fits_path=fits_path,
+        ring_slices=tuple(ring_slices),
     )
