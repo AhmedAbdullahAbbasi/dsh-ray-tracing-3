@@ -178,6 +178,27 @@ The 10-percent peel-off threshold is deliberately provisional until the first
 high-statistics run establishes the estimator variance. Tightening it must be
 based on repeated-seed convergence, not on one favorable realization.
 
+The near/far screens can have fewer scored events in late time bins than the
+midpoint screen. When only `image_screen_geometry` and
+`image_screen_fraction_order` fail because a screen has fewer than six time
+bins with at least 20 events, increase the image packet count. The completed
+energy and thickness runs can be reused without simulating them again:
+
+```powershell
+python -m scripts.rerun_screen_images `
+  --previous-report validation_outputs/rigorous_dsh_validation_screen_sweep.json `
+  --packets 1000000 `
+  --chunk-size 100000 `
+  --output validation_outputs/rigorous_dsh_validation_screen_sweep_refined.json
+```
+
+This reuses the saved midpoint image, independently resamples the near and
+far screens with a different random seed, and recalculates only the image
+checks. The JSON records the original report and packet counts for each
+screen. The command rejects a prior report with failures elsewhere in the
+ladder. Do not treat an image with fewer than six usable common time bins as
+a passed geometry check, even when its measured radii are correct.
+
 ## Literature benchmark boundary
 
 The first external benchmark should freeze a machine-readable reference case,
