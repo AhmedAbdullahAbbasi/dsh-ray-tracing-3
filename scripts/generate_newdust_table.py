@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Generate the compact JAX-ready v1 NewDust scattering table.
 
 This is an offline preprocessing script.  NewDust/xdust, Astropy, and SciPy
@@ -16,10 +15,10 @@ import argparse
 import hashlib
 import importlib.metadata
 import json
-from pathlib import Path
 import subprocess
-import numpy as np
+from pathlib import Path
 
+import numpy as np
 
 ENERGY_KEV = np.array([3.3, 4.9, 6.9], dtype=np.float64)
 NH_REFERENCE_CM2 = 1.0e22
@@ -113,9 +112,7 @@ def generate(output: Path) -> None:
         log=False,
     )
     population.calculate_ext(ENERGY_KEV, theta=theta * u.radian)
-    differential = (
-        population.int_diff.to("sr^-1").value / NH_REFERENCE_CM2
-    )
+    differential = population.int_diff.to("sr^-1").value / NH_REFERENCE_CM2
 
     # Repeat the transport module's trapezoidal solid-angle integration here
     # so generating data does not itself require JAX.
@@ -209,6 +206,7 @@ def generate(output: Path) -> None:
 def main() -> None:
     default_output = (
         Path(__file__).resolve().parent.parent
+        / "dsh"
         / "data"
         / "newdust"
         / "mrn_rg_drude_v1.npz"

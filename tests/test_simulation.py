@@ -7,31 +7,31 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 
-from utils.absorption import load_photoelectric_absorption_table
-from utils.clouds import build_angular_distance_cloud
-from utils.newdust import (
-    build_dust_physics_from_tables,
-    load_newdust_scattering_table,
-)
-from utils.observer import score_peeloff_events
-from utils.observer_binning import (
+from dsh.geometry.clouds import build_angular_distance_cloud
+from dsh.observer.binning import (
     bin_observer_events,
     build_observer_bin_geometry,
 )
-from utils.simulation import (
+from dsh.observer.scoring import score_peeloff_events
+from dsh.physics.absorption import load_photoelectric_absorption_table
+from dsh.physics.newdust import (
+    build_dust_physics_from_tables,
+    load_newdust_scattering_table,
+)
+from dsh.pipeline import (
     TRANSPORT_STATUS_LABELS,
     add_ideal_observer_simulation_results,
     run_tabulated_source_to_observer_chunked,
     simulate_tabulated_source_to_observer,
     simulate_variable_powerlaw_source_to_observer,
 )
-from utils.source import (
+from dsh.sources.launch import build_cloud_launch_geometry, sample_source_launches
+from dsh.sources.models import (
     build_tabulated_band_source,
     build_variable_powerlaw_source,
     sample_tabulated_band_source,
 )
-from utils.source_launch import build_cloud_launch_geometry, sample_source_launches
-from utils.voxel_transport import transport_photon_batch
+from dsh.transport.kernel import transport_photon_batch
 
 
 class TestIdealObserverSimulation(unittest.TestCase):
@@ -42,9 +42,7 @@ class TestIdealObserverSimulation(unittest.TestCase):
         cls.physics = build_dust_physics_from_tables(scattering, absorption)
         radial_column = np.asarray([7.0e21, 8.0e21, 7.0e21])
         cls.cloud = build_angular_distance_cloud(
-            np.broadcast_to(
-                radial_column[:, None, None], (3, 3, 3)
-            ).copy(),
+            np.broadcast_to(radial_column[:, None, None], (3, 3, 3)).copy(),
             x_centers_arcsec=[-400.0, 0.0, 400.0],
             y_centers_arcsec=[-400.0, 0.0, 400.0],
             z_centers_kpc=[2.0, 4.0, 6.0],
@@ -87,12 +85,8 @@ class TestIdealObserverSimulation(unittest.TestCase):
 
         source_key, pipeline_key = random.split(key)
         launch_key, transport_key = random.split(pipeline_key)
-        packets = sample_tabulated_band_source(
-            source_key, self.source, n_packets
-        )
-        launched = sample_source_launches(
-            launch_key, packets, self.launch_geometry
-        )
+        packets = sample_tabulated_band_source(source_key, self.source, n_packets)
+        launched = sample_source_launches(launch_key, packets, self.launch_geometry)
         transported = transport_photon_batch(
             transport_key,
             launched.position_pc,
@@ -101,9 +95,7 @@ class TestIdealObserverSimulation(unittest.TestCase):
             self.physics,
             max_interactions=max_interactions,
         )
-        events = score_peeloff_events(
-            launched, transported, self.cloud, self.physics
-        )
+        events = score_peeloff_events(launched, transported, self.cloud, self.physics)
         expected_products = bin_observer_events(events, self.bin_geometry)
 
         for field in expected_products._fields:
@@ -118,9 +110,7 @@ class TestIdealObserverSimulation(unittest.TestCase):
         np.testing.assert_array_equal(
             result.diagnostics.transport_status_count, expected_status
         )
-        self.assertEqual(
-            int(result.diagnostics.source_packet_count), n_packets
-        )
+        self.assertEqual(int(result.diagnostics.source_packet_count), n_packets)
         self.assertEqual(
             int(result.diagnostics.analog_interaction_count),
             int(jnp.sum(transported.n_interactions)),
@@ -211,11 +201,11 @@ class TestIdealObserverSimulation(unittest.TestCase):
             right,
         )
         for value, expected_value in zip(
-            jax.tree.leaves(combined), jax.tree.leaves(expected)
+            jax.tree.leaves(combined),
+            jax.tree.leaves(expected),
+            strict=True,
         ):
-            np.testing.assert_array_equal(
-                np.asarray(value), np.asarray(expected_value)
-            )
+            np.testing.assert_array_equal(np.asarray(value), np.asarray(expected_value))
 
     def test_variable_powerlaw_entry_point_is_jittable(self):
         source = build_variable_powerlaw_source(
@@ -240,9 +230,7 @@ class TestIdealObserverSimulation(unittest.TestCase):
             max_interactions=3,
         )
         self.assertEqual(int(result.diagnostics.source_packet_count), 16)
-        self.assertEqual(
-            int(jnp.sum(result.diagnostics.transport_status_count)), 16
-        )
+        self.assertEqual(int(jnp.sum(result.diagnostics.transport_status_count)), 16)
         np.testing.assert_allclose(
             result.diagnostics.source_fluence,
             source.total_fluence,

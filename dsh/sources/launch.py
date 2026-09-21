@@ -1,8 +1,8 @@
 """Launch physical source packets toward a native DSH cloud frustum.
 
-The source samplers in :mod:`utils.source` assign energy, emission time, and
+The source samplers in :mod:`dsh.sources.models` assign energy, emission time, and
 observer-equivalent fluence.  This module supplies the missing geometric
-state required by :func:`utils.voxel_transport.transport_photon_batch`:
+state required by :func:`dsh.transport.kernel.transport_photon_batch`:
 
 * a source position;
 * a null photon four-momentum; and
@@ -30,9 +30,9 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 
-from .clouds import AngularDistanceCloud
-from .coordinates import ARCSEC_TO_RAD, PC_PER_KPC
-from .source import SourcePackets
+from ..geometry.clouds import AngularDistanceCloud
+from ..geometry.coordinates import ARCSEC_TO_RAD, PC_PER_KPC
+from .models import SourcePackets
 
 
 class SourceLaunchGeometry(NamedTuple):
@@ -80,12 +80,7 @@ def _rectangular_slope_solid_angle(slope_x_bounds, slope_y_bounds):
     def primitive(u, v):
         return np.arctan2(u * v, np.sqrt(1.0 + u * u + v * v))
 
-    return (
-        primitive(u1, v1)
-        - primitive(u0, v1)
-        - primitive(u1, v0)
-        + primitive(u0, v0)
-    )
+    return primitive(u1, v1) - primitive(u0, v1) - primitive(u1, v0) + primitive(u0, v0)
 
 
 def build_rectangular_launch_geometry(
@@ -125,9 +120,7 @@ def build_rectangular_launch_geometry(
     source_distance_pc = source_distance * PC_PER_KPC
     dtype = np.float32
     return SourceLaunchGeometry(
-        source_position_pc=jnp.asarray(
-            [source_distance_pc, 0.0, 0.0], dtype=dtype
-        ),
+        source_position_pc=jnp.asarray([source_distance_pc, 0.0, 0.0], dtype=dtype),
         source_distance_pc=jnp.asarray(source_distance_pc, dtype=dtype),
         slope_x_bounds=jnp.asarray(x_bounds, dtype=dtype),
         slope_y_bounds=jnp.asarray(y_bounds, dtype=dtype),
@@ -240,10 +233,7 @@ def sample_source_launches(
     n_packets = _validate_source_packet_shapes(packets)
     if geometry.source_position_pc.shape != (3,):
         raise ValueError("geometry.source_position_pc must have shape (3,)")
-    if (
-        geometry.slope_x_bounds.shape != (2,)
-        or geometry.slope_y_bounds.shape != (2,)
-    ):
+    if geometry.slope_x_bounds.shape != (2,) or geometry.slope_y_bounds.shape != (2,):
         raise ValueError("geometry slope bounds must each have shape (2,)")
 
     key_x, key_y = random.split(key)
@@ -263,14 +253,10 @@ def sample_source_launches(
     direction = jnp.stack((-1.0 / norm, u / norm, v / norm), axis=1)
 
     energy = jnp.asarray(packets.energy_kev)
-    momentum = jnp.concatenate(
-        [energy[:, None], energy[:, None] * direction], axis=1
-    )
+    momentum = jnp.concatenate([energy[:, None], energy[:, None] * direction], axis=1)
     launch_pdf = norm**3 / geometry.slope_area
     isotropic_importance = 1.0 / (4.0 * jnp.pi * launch_pdf)
-    positions = jnp.broadcast_to(
-        geometry.source_position_pc, (n_packets, 3)
-    )
+    positions = jnp.broadcast_to(geometry.source_position_pc, (n_packets, 3))
 
     return LaunchedSourcePackets(
         position_pc=positions,

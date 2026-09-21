@@ -19,8 +19,8 @@ from typing import NamedTuple
 import jax.numpy as jnp
 import numpy as np
 
-from .coordinates import ARCSEC_TO_RAD
-from .observer import ObserverEventResult
+from ..geometry.coordinates import ARCSEC_TO_RAD
+from .scoring import ObserverEventResult
 
 
 class ObserverBinGeometry(NamedTuple):
@@ -109,12 +109,8 @@ def build_observer_bin_geometry(
 
     x_edges = _validated_edges(sky_x_edges_arcsec, "sky_x_edges_arcsec")
     y_edges = _validated_edges(sky_y_edges_arcsec, "sky_y_edges_arcsec")
-    energy_edges = _validated_edges(
-        energy_edges_kev, "energy_edges_kev", positive=True
-    )
-    time_edges = _validated_edges(
-        arrival_time_edges_s, "arrival_time_edges_s"
-    )
+    energy_edges = _validated_edges(energy_edges_kev, "energy_edges_kev", positive=True)
+    time_edges = _validated_edges(arrival_time_edges_s, "arrival_time_edges_s")
     angular_limit_arcsec = (0.5 * np.pi) / ARCSEC_TO_RAD
     if (
         x_edges[0] <= -angular_limit_arcsec
@@ -141,8 +137,7 @@ def build_observer_bin_geometry(
 def _validate_event_fields(events: ObserverEventResult):
     if events.valid.ndim != 2:
         raise ValueError(
-            "observer event fields must have shape "
-            "(n_packets, max_interactions)"
+            "observer event fields must have shape (n_packets, max_interactions)"
         )
     event_shape = events.valid.shape
     required_fields = (
@@ -162,11 +157,7 @@ def _histogram_index(edges, values):
     n_bins = edges.size - 1
     index = jnp.searchsorted(edges, values, side="right") - 1
     index = jnp.where(values == edges[-1], n_bins - 1, index)
-    inside = (
-        jnp.isfinite(values)
-        & (values >= edges[0])
-        & (values <= edges[-1])
-    )
+    inside = jnp.isfinite(values) & (values >= edges[0]) & (values <= edges[-1])
     return jnp.clip(index, 0, n_bins - 1), inside
 
 
@@ -195,25 +186,15 @@ def bin_observer_events(
     scattering_order = jnp.asarray(events.scattering_order).reshape(-1)
     weight = jnp.asarray(events.weight_observer_fluence).reshape(-1)
 
-    x_index, inside_x = _histogram_index(
-        geometry.sky_x_edges_arcsec, sky_x
-    )
-    y_index, inside_y = _histogram_index(
-        geometry.sky_y_edges_arcsec, sky_y
-    )
-    energy_index, inside_energy = _histogram_index(
-        geometry.energy_edges_kev, energy
-    )
+    x_index, inside_x = _histogram_index(geometry.sky_x_edges_arcsec, sky_x)
+    y_index, inside_y = _histogram_index(geometry.sky_y_edges_arcsec, sky_y)
+    energy_index, inside_energy = _histogram_index(geometry.energy_edges_kev, energy)
     time_index, inside_time = _histogram_index(
         geometry.arrival_time_edges_s, arrival_time
     )
 
     finite_nonnegative_weight = jnp.isfinite(weight) & (weight >= 0.0)
-    eligible = (
-        event_valid
-        & finite_nonnegative_weight
-        & (scattering_order >= 1)
-    )
+    eligible = event_valid & finite_nonnegative_weight & (scattering_order >= 1)
     binned = eligible & inside_x & inside_y & inside_energy & inside_time
     first_scatter = binned & (scattering_order == 1)
     multiple_scatter = binned & (scattering_order >= 2)
@@ -225,19 +206,16 @@ def bin_observer_events(
     cube_shape = (n_time, n_energy, n_y, n_x)
     cube_size = n_time * n_energy * n_y * n_x
     flat_index = (
-        ((time_index * n_energy + energy_index) * n_y + y_index) * n_x
-        + x_index
-    )
+        (time_index * n_energy + energy_index) * n_y + y_index
+    ) * n_x + x_index
     safe_index = jnp.where(binned, flat_index, 0)
 
     first_weight = jnp.where(first_scatter, weight, 0.0)
     multiple_weight = jnp.where(multiple_scatter, weight, 0.0)
-    first_cube = _scatter_sum(safe_index, first_weight, cube_size).reshape(
+    first_cube = _scatter_sum(safe_index, first_weight, cube_size).reshape(cube_shape)
+    multiple_cube = _scatter_sum(safe_index, multiple_weight, cube_size).reshape(
         cube_shape
     )
-    multiple_cube = _scatter_sum(
-        safe_index, multiple_weight, cube_size
-    ).reshape(cube_shape)
     total_cube = first_cube + multiple_cube
     count_cube = _scatter_sum(
         safe_index,
@@ -268,12 +246,8 @@ def bin_observer_events(
         binned_weight_observer_fluence=binned_weight,
         unbinned_weight_observer_fluence=unbinned_weight,
         outside_sky_event_count=jnp.sum(outside_sky, dtype=jnp.int32),
-        outside_energy_event_count=jnp.sum(
-            outside_energy, dtype=jnp.int32
-        ),
-        outside_arrival_time_event_count=jnp.sum(
-            outside_arrival_time, dtype=jnp.int32
-        ),
+        outside_energy_event_count=jnp.sum(outside_energy, dtype=jnp.int32),
+        outside_arrival_time_event_count=jnp.sum(outside_arrival_time, dtype=jnp.int32),
         outside_sky_weight_observer_fluence=jnp.sum(
             jnp.where(outside_sky, weight, 0.0)
         ),
@@ -305,16 +279,12 @@ def add_binned_observer_products(
         event_count=left.event_count + right.event_count,
         valid_event_count=left.valid_event_count + right.valid_event_count,
         binned_event_count=left.binned_event_count + right.binned_event_count,
-        unbinned_event_count=(
-            left.unbinned_event_count + right.unbinned_event_count
-        ),
+        unbinned_event_count=(left.unbinned_event_count + right.unbinned_event_count),
         valid_weight_observer_fluence=(
-            left.valid_weight_observer_fluence
-            + right.valid_weight_observer_fluence
+            left.valid_weight_observer_fluence + right.valid_weight_observer_fluence
         ),
         binned_weight_observer_fluence=(
-            left.binned_weight_observer_fluence
-            + right.binned_weight_observer_fluence
+            left.binned_weight_observer_fluence + right.binned_weight_observer_fluence
         ),
         unbinned_weight_observer_fluence=(
             left.unbinned_weight_observer_fluence
@@ -324,8 +294,7 @@ def add_binned_observer_products(
             left.outside_sky_event_count + right.outside_sky_event_count
         ),
         outside_energy_event_count=(
-            left.outside_energy_event_count
-            + right.outside_energy_event_count
+            left.outside_energy_event_count + right.outside_energy_event_count
         ),
         outside_arrival_time_event_count=(
             left.outside_arrival_time_event_count

@@ -1,32 +1,32 @@
 """Round-trip tests for complete ideal-observer FITS products."""
 
 import importlib.util
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 
 import jax.numpy as jnp
 import numpy as np
 
-from utils.absorption import load_photoelectric_absorption_table
-from utils.clouds import build_angular_distance_cloud
-from utils.fits_output import write_ideal_observer_fits
-from utils.newdust import (
-    build_dust_physics_from_tables,
-    load_newdust_scattering_table,
-)
-from utils.observer import ObserverEventResult
-from utils.observer_binning import (
+from dsh.geometry.clouds import build_angular_distance_cloud
+from dsh.io.fits_output import write_ideal_observer_fits
+from dsh.observer.binning import (
     bin_observer_events,
     build_observer_bin_geometry,
 )
-from utils.simulation import (
+from dsh.observer.scoring import ObserverEventResult
+from dsh.physics.absorption import load_photoelectric_absorption_table
+from dsh.physics.newdust import (
+    build_dust_physics_from_tables,
+    load_newdust_scattering_table,
+)
+from dsh.pipeline import (
     IdealObserverDiagnostics,
     IdealObserverSimulationResult,
 )
-from utils.source import build_tabulated_band_source
-from utils.source_launch import build_cloud_launch_geometry
-from utils.voxel_transport import REACHED_OBSERVER_PLANE
+from dsh.sources.launch import build_cloud_launch_geometry
+from dsh.sources.models import build_tabulated_band_source
+from dsh.transport.kernel import REACHED_OBSERVER_PLANE
 
 
 @unittest.skipUnless(
@@ -82,9 +82,7 @@ class TestIdealObserverFits(unittest.TestCase):
         diagnostics = IdealObserverDiagnostics(
             source_packet_count=jnp.asarray(1, dtype=jnp.int32),
             source_fluence=jnp.asarray(3.8, dtype=jnp.float32),
-            transport_status_count=jnp.asarray(
-                [0, 1, 0, 0, 0, 0, 0], dtype=jnp.int32
-            ),
+            transport_status_count=jnp.asarray([0, 1, 0, 0, 0, 0, 0], dtype=jnp.int32),
             analog_interaction_count=jnp.asarray(1, dtype=jnp.int32),
             analog_scattering_count=jnp.asarray(1, dtype=jnp.int32),
             scored_observer_event_count=jnp.asarray(1, dtype=jnp.int32),
@@ -134,24 +132,16 @@ class TestIdealObserverFits(unittest.TestCase):
                     "STATUS",
                 }
                 self.assertTrue(
-                    expected_extensions.issubset(
-                        {hdu.name for hdu in hdul}
-                    )
+                    expected_extensions.issubset({hdu.name for hdu in hdul})
                 )
                 self.assertEqual(hdul[0].data.shape, (2, 2))
                 self.assertEqual(hdul["TOTAL4D"].data.shape, (2, 3, 2, 2))
                 self.assertAlmostEqual(float(hdul[0].data.sum()), 2.0)
-                self.assertAlmostEqual(
-                    float(hdul["TOTAL4D"].data.sum()), 2.0
-                )
+                self.assertAlmostEqual(float(hdul["TOTAL4D"].data.sum()), 2.0)
                 self.assertEqual(len(hdul["SOURCE"].data), 3)
-                self.assertEqual(
-                    int(hdul["STATUS"].data["COUNT"].sum()), 1
-                )
+                self.assertEqual(int(hdul["STATUS"].data["COUNT"].sum()), 1)
                 self.assertEqual(hdul[0].header["NPACKETS"], 1)
-                self.assertEqual(
-                    hdul[0].header["SRCMODEL"], "exponential-decay"
-                )
+                self.assertEqual(hdul[0].header["SRCMODEL"], "exponential-decay")
                 self.assertEqual(hdul[0].header["DCTAU_D"], 25.0)
                 self.assertEqual(
                     hdul["STATUS"].data["STATUS_CODE"][1],

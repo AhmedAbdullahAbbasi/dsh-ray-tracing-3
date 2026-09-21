@@ -7,16 +7,16 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 
-from utils.clouds import build_angular_distance_cloud
-from utils.coordinates import sky_position_pc
-from utils.dust_physics import build_dust_physics_table
-from utils.source import SourcePackets
-from utils.source_launch import (
+from dsh.geometry.clouds import build_angular_distance_cloud
+from dsh.geometry.coordinates import sky_position_pc
+from dsh.physics.dust import build_dust_physics_table
+from dsh.sources.launch import (
     build_cloud_launch_geometry,
     build_rectangular_launch_geometry,
     sample_source_launches,
 )
-from utils.voxel_transport import REACHED_OBSERVER_PLANE, transport_photon_batch
+from dsh.sources.models import SourcePackets
+from dsh.transport.kernel import REACHED_OBSERVER_PLANE, transport_photon_batch
 
 
 def _packets(n_packets):
@@ -79,9 +79,7 @@ class TestPhysicalSourceLaunch(unittest.TestCase):
 
         np.testing.assert_allclose(
             result.position_pc,
-            np.broadcast_to(
-                np.asarray(self.geometry.source_position_pc), (4096, 3)
-            ),
+            np.broadcast_to(np.asarray(self.geometry.source_position_pc), (4096, 3)),
         )
         np.testing.assert_array_equal(momentum[:, 0], packets.energy_kev)
         np.testing.assert_allclose(
@@ -121,16 +119,10 @@ class TestPhysicalSourceLaunch(unittest.TestCase):
     def test_importance_measure_is_independent_of_outer_launch_cone(self):
         n_packets = 120_000
         packets = _packets(n_packets)
-        inner = build_rectangular_launch_geometry(
-            10.0, (-0.10, 0.10), (-0.08, 0.08)
-        )
+        inner = build_rectangular_launch_geometry(10.0, (-0.10, 0.10), (-0.08, 0.08))
         outer_geometries = (
-            build_rectangular_launch_geometry(
-                10.0, (-0.20, 0.25), (-0.18, 0.22)
-            ),
-            build_rectangular_launch_geometry(
-                10.0, (-0.50, 0.45), (-0.40, 0.35)
-            ),
+            build_rectangular_launch_geometry(10.0, (-0.20, 0.25), (-0.18, 0.22)),
+            build_rectangular_launch_geometry(10.0, (-0.50, 0.45), (-0.40, 0.35)),
         )
         expected = float(inner.launch_solid_angle_sr) / (4.0 * np.pi)
         estimates = []
@@ -139,9 +131,7 @@ class TestPhysicalSourceLaunch(unittest.TestCase):
                 random.PRNGKey(100 + index), packets, geometry
             )
             direction = np.asarray(launched.momentum_kev[:, 1:])
-            direction = direction / np.linalg.norm(
-                direction, axis=1, keepdims=True
-            )
+            direction = direction / np.linalg.norm(direction, axis=1, keepdims=True)
             slope_x = direction[:, 1] / -direction[:, 0]
             slope_y = direction[:, 2] / -direction[:, 0]
             inside = (
@@ -160,9 +150,7 @@ class TestPhysicalSourceLaunch(unittest.TestCase):
 
     def test_launch_output_is_a_voxel_transport_input(self):
         packets = _packets(256)
-        launched = sample_source_launches(
-            random.PRNGKey(20), packets, self.geometry
-        )
+        launched = sample_source_launches(random.PRNGKey(20), packets, self.geometry)
         physics = build_dust_physics_table(
             energy_kev=[3.3, 4.9],
             scattering_cross_section_cm2_per_h=[0.0, 0.0],
@@ -182,22 +170,14 @@ class TestPhysicalSourceLaunch(unittest.TestCase):
             max_interactions=2,
         )
 
-        np.testing.assert_array_equal(
-            transported.status, REACHED_OBSERVER_PLANE
-        )
+        np.testing.assert_array_equal(transported.status, REACHED_OBSERVER_PLANE)
         np.testing.assert_array_equal(transported.n_interactions, 0)
 
     def test_launch_is_reproducible_for_a_fixed_key(self):
         packets = _packets(128)
-        first = sample_source_launches(
-            random.PRNGKey(31), packets, self.geometry
-        )
-        repeated = sample_source_launches(
-            random.PRNGKey(31), packets, self.geometry
-        )
-        changed = sample_source_launches(
-            random.PRNGKey(32), packets, self.geometry
-        )
+        first = sample_source_launches(random.PRNGKey(31), packets, self.geometry)
+        repeated = sample_source_launches(random.PRNGKey(31), packets, self.geometry)
+        changed = sample_source_launches(random.PRNGKey(32), packets, self.geometry)
         np.testing.assert_array_equal(first.momentum_kev, repeated.momentum_kev)
         self.assertFalse(
             np.array_equal(
@@ -221,9 +201,7 @@ class TestPhysicalSourceLaunch(unittest.TestCase):
             weight_observer_fluence=jnp.ones(3, dtype=jnp.float32)
         )
         with self.assertRaisesRegex(ValueError, "same length"):
-            sample_source_launches(
-                random.PRNGKey(40), mismatched, self.geometry
-            )
+            sample_source_launches(random.PRNGKey(40), mismatched, self.geometry)
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ elastic dust scattering plus absorption.  Source sampling, observer scoring,
 detector response, and FITS I/O remain outside this module.
 
 The function integrates each straight flight through the native frustum
-exactly using :mod:`utils.ray_integrals`; it does not take fixed spatial
+exactly using :mod:`dsh.geometry.rays`; it does not take fixed spatial
 substeps.  One exponential optical-depth budget is therefore carried across
 every voxel crossed by a flight.  A new budget is drawn only after a physical
 scattering event.
@@ -22,15 +22,14 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from jax import lax, random, vmap
 import jax.numpy as jnp
+from jax import lax, random, vmap
 
-from .clouds import AngularDistanceCloud
-from .coordinates import PC_PER_KPC
-from .dust_physics import DustPhysicsTable
-from .ray_integrals import locate_ray_column_depth_pc
-from .raytracing import orthonormal_basis
-
+from ..geometry.clouds import AngularDistanceCloud
+from ..geometry.coordinates import PC_PER_KPC
+from ..geometry.rays import locate_ray_column_depth_pc
+from ..physics.dust import DustPhysicsTable
+from .directions import orthonormal_basis
 
 ACTIVE = 0
 REACHED_OBSERVER_PLANE = 1
@@ -104,10 +103,7 @@ def _interpolation_bracket(grid, value):
     upper = jnp.clip(upper, 1, grid.size - 1)
     lower = upper - 1
     log_grid = jnp.log(grid)
-    fraction = (
-        (jnp.log(value) - log_grid[lower])
-        / (log_grid[upper] - log_grid[lower])
-    )
+    fraction = (jnp.log(value) - log_grid[lower]) / (log_grid[upper] - log_grid[lower])
     return lower, upper, jnp.clip(fraction, 0.0, 1.0)
 
 
@@ -133,12 +129,8 @@ def _physics_at_energy(physics: DustPhysicsTable, energy_kev):
         & (energy_kev <= physics.energy_kev[-1])
         & jnp.isfinite(energy_kev)
     )
-    safe_energy = jnp.clip(
-        energy_kev, physics.energy_kev[0], physics.energy_kev[-1]
-    )
-    lower, upper, fraction = _interpolation_bracket(
-        physics.energy_kev, safe_energy
-    )
+    safe_energy = jnp.clip(energy_kev, physics.energy_kev[0], physics.energy_kev[-1])
+    lower, upper, fraction = _interpolation_bracket(physics.energy_kev, safe_energy)
     sigma_sca = _interpolate_nonnegative(
         physics.scattering_cross_section_cm2_per_h,
         lower,
@@ -151,13 +143,8 @@ def _physics_at_energy(physics: DustPhysicsTable, energy_kev):
         upper,
         fraction,
     )
-    phase_cdf = (
-        physics.scattering_angle_cdf[lower]
-        + fraction
-        * (
-            physics.scattering_angle_cdf[upper]
-            - physics.scattering_angle_cdf[lower]
-        )
+    phase_cdf = physics.scattering_angle_cdf[lower] + fraction * (
+        physics.scattering_angle_cdf[upper] - physics.scattering_angle_cdf[lower]
     )
     # A convex interpolation of two nondecreasing CDF rows is itself
     # nondecreasing.  Avoid ``ufunc.accumulate`` here because it is not
@@ -188,9 +175,7 @@ def _direction_from_axis_theta_phi(axis, theta, phi):
     """
 
     tangent_1, tangent_2 = orthonormal_basis(axis)
-    transverse = (
-        jnp.cos(phi) * tangent_1 + jnp.sin(phi) * tangent_2
-    )
+    transverse = jnp.cos(phi) * tangent_1 + jnp.sin(phi) * tangent_2
     return jnp.cos(theta) * axis + jnp.sin(theta) * transverse
 
 
@@ -293,9 +278,7 @@ def transport_photon_voxels(
     spatial_momentum = momentum[1:]
     momentum_norm = jnp.linalg.norm(spatial_momentum)
     direction = spatial_momentum / jnp.maximum(momentum_norm, 1.0e-30)
-    supported, sigma_sca, sigma_abs, phase_cdf = _physics_at_energy(
-        physics, energy
-    )
+    supported, sigma_sca, sigma_abs, phase_cdf = _physics_at_energy(physics, energy)
     valid_state = (
         jnp.isfinite(position).all()
         & jnp.isfinite(momentum).all()
@@ -402,9 +385,7 @@ def transport_photon_voxels(
             interaction_distance,
             jnp.where(escaped, distance_to_boundary, 0.0),
         )
-        next_direction = jnp.where(
-            scattered, scattered_direction, current_direction
-        )
+        next_direction = jnp.where(scattered, scattered_direction, current_direction)
         next_path_length = path_length + travelled
         next_excess_path_length = (
             excess_path_length
@@ -420,9 +401,7 @@ def transport_photon_voxels(
             ),
         )
 
-        incoming_momentum = jnp.concatenate(
-            [energy[None], energy * current_direction]
-        )
+        incoming_momentum = jnp.concatenate([energy[None], energy * current_direction])
         scattered_momentum = jnp.concatenate(
             [energy[None], energy * scattered_direction]
         )
@@ -443,18 +422,14 @@ def transport_photon_voxels(
         record = PhotonInteractionRecord(
             valid=interacted,
             interaction_type=interaction_type,
-            position_pc=jnp.where(
-                interacted, interaction_position, zero_position
-            ),
+            position_pc=jnp.where(interacted, interaction_position, zero_position),
             incoming_momentum_kev=jnp.where(
                 interacted, incoming_momentum, zero_momentum
             ),
             outgoing_momentum_kev=jnp.where(
                 interacted, outgoing_momentum, zero_momentum
             ),
-            cumulative_path_length_pc=jnp.where(
-                interacted, next_path_length, 0.0
-            ),
+            cumulative_path_length_pc=jnp.where(interacted, next_path_length, 0.0),
             cumulative_excess_path_length_pc=jnp.where(
                 interacted, next_excess_path_length, 0.0
             ),
@@ -534,14 +509,12 @@ def transport_photon_batch(
         raise ValueError("photon batch cannot be empty")
     keys = random.split(key, positions.shape[0])
     return vmap(
-        lambda photon_key, photon_position, photon_momentum: (
-            transport_photon_voxels(
-                photon_key,
-                photon_position,
-                photon_momentum,
-                cloud,
-                physics,
-                max_interactions=max_interactions,
-            )
+        lambda photon_key, photon_position, photon_momentum: transport_photon_voxels(
+            photon_key,
+            photon_position,
+            photon_momentum,
+            cloud,
+            physics,
+            max_interactions=max_interactions,
         )
     )(keys, positions, momenta)

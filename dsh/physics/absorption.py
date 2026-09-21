@@ -13,14 +13,13 @@ dense tabulation can replace it without changing the transport interface.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 import json
+from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
 
 import numpy as np
-
 
 DEFAULT_TBABS_TABLE = (
     Path(__file__).resolve().parent.parent
@@ -57,9 +56,7 @@ def load_photoelectric_absorption_table(
     if not table_path.is_file():
         raise FileNotFoundError(f"absorption table not found: {table_path}")
     if not metadata_path.is_file():
-        raise FileNotFoundError(
-            f"absorption-table metadata not found: {metadata_path}"
-        )
+        raise FileNotFoundError(f"absorption-table metadata not found: {metadata_path}")
 
     with metadata_path.open("r", encoding="utf-8") as stream:
         metadata = json.load(stream)
@@ -123,6 +120,4 @@ def monochromatic_transmission(
     column = np.asarray(hydrogen_column_cm2, dtype=np.float64)
     if not np.all(np.isfinite(column)) or np.any(column < 0.0):
         raise ValueError("hydrogen_column_cm2 must be finite and nonnegative")
-    return np.exp(
-        -column[..., None] * absorption.absorption_cross_section_cm2_per_h
-    )
+    return np.exp(-column[..., None] * absorption.absorption_cross_section_cm2_per_h)

@@ -5,16 +5,16 @@ import unittest
 
 import jax
 import jax.numpy as jnp
-from jax import random
 import numpy as np
+from jax import random
 
-from utils.clouds import build_angular_distance_cloud
-from utils.dust_physics import (
+from dsh.geometry.clouds import build_angular_distance_cloud
+from dsh.physics.dust import (
     build_dust_physics_table,
     phase_cdf_from_differential_cross_section,
     remove_small_angle_dsh_geometry_factor,
 )
-from utils.voxel_transport import (
+from dsh.transport.kernel import (
     ABSORBED,
     DUST_SCATTERING,
     ESCAPED_OUTER_BOUNDARY,
@@ -80,9 +80,7 @@ class TestVoxelTransport(unittest.TestCase):
         np.testing.assert_allclose(result.interactions.position_pc, 0.0)
         self.assertEqual(result.interactions.valid.shape, (4,))
         self.assertEqual(result.interactions.position_pc.shape, (4, 3))
-        self.assertEqual(
-            result.interactions.incoming_momentum_kev.shape, (4, 4)
-        )
+        self.assertEqual(result.interactions.incoming_momentum_kev.shape, (4, 4))
 
     def test_arcsecond_scattering_angle_survives_float32(self):
         theta = jnp.asarray(1.0e-5, dtype=jnp.float32)

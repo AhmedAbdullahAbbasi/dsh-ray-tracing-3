@@ -15,32 +15,32 @@ the complete source fluence once per chunk.
 
 from __future__ import annotations
 
-from typing import Callable, NamedTuple
+from collections.abc import Callable
+from typing import NamedTuple
 
 import jax
 import jax.numpy as jnp
 import numpy as np
 from jax import random
 
-from .clouds import AngularDistanceCloud
-from .dust_physics import DustPhysicsTable
-from .observer import score_peeloff_events
-from .observer_binning import (
+from .geometry.clouds import AngularDistanceCloud
+from .observer.binning import (
     BinnedObserverProducts,
     ObserverBinGeometry,
     add_binned_observer_products,
     bin_observer_events,
 )
-from .source import (
+from .observer.scoring import score_peeloff_events
+from .physics.dust import DustPhysicsTable
+from .sources.launch import SourceLaunchGeometry, sample_source_launches
+from .sources.models import (
     SourcePackets,
     TabulatedBandSource,
     VariablePowerLawSource,
     sample_tabulated_band_source,
     sample_variable_powerlaw_source,
 )
-from .source_launch import SourceLaunchGeometry, sample_source_launches
-from .voxel_transport import STATUS_NAMES, transport_photon_batch
-
+from .transport.kernel import STATUS_NAMES, transport_photon_batch
 
 TRANSPORT_STATUS_LABELS = tuple(
     STATUS_NAMES[index] for index in range(len(STATUS_NAMES))
@@ -112,27 +112,19 @@ def simulate_source_packets_to_observer(
     events = score_peeloff_events(launched, transported, cloud, physics)
     products = bin_observer_events(events, bin_geometry)
 
-    status_count = jnp.zeros(
-        (len(TRANSPORT_STATUS_LABELS),), dtype=jnp.int32
-    ).at[transported.status].add(1)
-    valid_event_weight = jnp.where(
-        events.valid, events.weight_observer_fluence, 0.0
+    status_count = (
+        jnp.zeros((len(TRANSPORT_STATUS_LABELS),), dtype=jnp.int32)
+        .at[transported.status]
+        .add(1)
     )
+    valid_event_weight = jnp.where(events.valid, events.weight_observer_fluence, 0.0)
     diagnostics = IdealObserverDiagnostics(
-        source_packet_count=jnp.asarray(
-            packets.energy_kev.shape[0], dtype=jnp.int32
-        ),
+        source_packet_count=jnp.asarray(packets.energy_kev.shape[0], dtype=jnp.int32),
         source_fluence=jnp.sum(packets.weight_observer_fluence),
         transport_status_count=status_count,
-        analog_interaction_count=jnp.sum(
-            transported.n_interactions, dtype=jnp.int32
-        ),
-        analog_scattering_count=jnp.sum(
-            transported.n_scatter, dtype=jnp.int32
-        ),
-        scored_observer_event_count=jnp.sum(
-            events.valid, dtype=jnp.int32
-        ),
+        analog_interaction_count=jnp.sum(transported.n_interactions, dtype=jnp.int32),
+        analog_scattering_count=jnp.sum(transported.n_scatter, dtype=jnp.int32),
+        scored_observer_event_count=jnp.sum(events.valid, dtype=jnp.int32),
         scored_observer_fluence=jnp.sum(valid_event_weight),
     )
     return IdealObserverSimulationResult(
@@ -225,17 +217,9 @@ def add_ideal_observer_simulation_results(
 def _validated_chunk_counts(total_packets, chunk_size):
     total = np.asarray(total_packets)
     chunk = np.asarray(chunk_size)
-    if (
-        total.ndim != 0
-        or not np.issubdtype(total.dtype, np.integer)
-        or int(total) <= 0
-    ):
+    if total.ndim != 0 or not np.issubdtype(total.dtype, np.integer) or int(total) <= 0:
         raise ValueError("total_packets must be one positive integer")
-    if (
-        chunk.ndim != 0
-        or not np.issubdtype(chunk.dtype, np.integer)
-        or int(chunk) <= 0
-    ):
+    if chunk.ndim != 0 or not np.issubdtype(chunk.dtype, np.integer) or int(chunk) <= 0:
         raise ValueError("chunk_size must be one positive integer")
     return int(total), int(chunk)
 

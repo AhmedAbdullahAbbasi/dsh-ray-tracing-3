@@ -105,25 +105,20 @@ def build_dust_physics_table(
         )
         if differential.shape != cdf.shape:
             raise ValueError(
-                "differential cross-section must have shape "
-                "(n_energy, n_angle)"
+                "differential cross-section must have shape (n_energy, n_angle)"
             )
         if not np.all(np.isfinite(differential)) or np.any(differential < 0.0):
             raise ValueError(
                 "differential cross-section must be finite and nonnegative"
             )
-        integrated_sigma, integrated_cdf = (
-            phase_cdf_from_differential_cross_section(angle, differential)
+        integrated_sigma, integrated_cdf = phase_cdf_from_differential_cross_section(
+            angle, differential
         )
-        if not np.allclose(
-            integrated_sigma, sigma_sca, rtol=5.0e-10, atol=0.0
-        ):
+        if not np.allclose(integrated_sigma, sigma_sca, rtol=5.0e-10, atol=0.0):
             raise ValueError(
                 "scattering cross-section does not match the differential table"
             )
-        if not np.allclose(
-            integrated_cdf, cdf, rtol=5.0e-10, atol=5.0e-12
-        ):
+        if not np.allclose(integrated_cdf, cdf, rtol=5.0e-10, atol=5.0e-12):
             raise ValueError(
                 "scattering-angle CDF does not match the differential table"
             )

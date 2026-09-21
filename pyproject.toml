@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dsh-ray-tracing"
+version = "0.1.0"
+description = "JAX Monte Carlo transport for X-ray dust-scattering halos"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "jax>=0.4.34",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+fits = ["astropy>=6"]
+dev = ["astropy>=6", "ruff>=0.16"]
+
+[project.scripts]
+dsh-v1 = "dsh.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["dsh*"]
+
+[tool.setuptools.package-data]
+dsh = ["data/**/*.json", "data/**/*.npz"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["B", "C4", "E4", "E7", "E9", "EXE", "F", "I", "SIM", "UP"]

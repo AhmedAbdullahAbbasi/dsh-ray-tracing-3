@@ -5,9 +5,9 @@ import unittest
 import jax
 import numpy as np
 
-from utils.clouds import build_angular_distance_cloud, total_column_map_cm2
-from utils.coordinates import angular_offset_direction
-from utils.ray_integrals import (
+from dsh.geometry.clouds import build_angular_distance_cloud, total_column_map_cm2
+from dsh.geometry.coordinates import angular_offset_direction
+from dsh.geometry.rays import (
     PC_TO_CM,
     integrate_ray_column_cm2,
     integrate_ray_optical_depth,
@@ -20,9 +20,7 @@ class TestRayColumnIntegrals(unittest.TestCase):
         self.y_arcsec = np.array([-2.0, 0.0, 2.0])
         self.z_kpc = np.array([0.25, 0.75, 1.25, 1.75])
 
-        spatial = np.array(
-            [[1.0, 2.0, 4.0], [3.0, 5.0, 7.0], [6.0, 8.0, 9.0]]
-        ) * 1.0e20
+        spatial = np.array([[1.0, 2.0, 4.0], [3.0, 5.0, 7.0], [6.0, 8.0, 9.0]]) * 1.0e20
         radial = np.array([0.5, 1.0, 2.0, 0.25])
         self.delta_nh = radial[:, None, None] * spatial[None, :, :]
         self.cloud = build_angular_distance_cloud(

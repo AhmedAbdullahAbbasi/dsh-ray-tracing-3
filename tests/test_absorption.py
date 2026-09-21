@@ -4,12 +4,12 @@ import unittest
 
 import numpy as np
 
-from utils.absorption import (
+from dsh.physics.absorption import (
     PhotoelectricAbsorptionTable,
     load_photoelectric_absorption_table,
     monochromatic_transmission,
 )
-from utils.newdust import (
+from dsh.physics.newdust import (
     build_dust_physics_from_tables,
     load_newdust_scattering_table,
 )
@@ -21,9 +21,7 @@ class TestPhotoelectricAbsorptionTable(unittest.TestCase):
         cls.absorption = load_photoelectric_absorption_table()
 
     def test_v1_grid_and_xspec_cross_sections(self):
-        np.testing.assert_array_equal(
-            self.absorption.energy_kev, [3.3, 4.9, 6.9]
-        )
+        np.testing.assert_array_equal(self.absorption.energy_kev, [3.3, 4.9, 6.9])
         np.testing.assert_allclose(
             self.absorption.absorption_cross_section_cm2_per_h,
             [
