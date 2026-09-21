@@ -19,14 +19,13 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from jax import random, vmap
 import jax.numpy as jnp
+from jax import random, vmap
 
-from .clouds import AngularDistanceCloud
-from .ray_integrals import integrate_ray_column_cm2, locate_ray_column_depth_pc
-from .raytracing import direction_from_axis_mu_phi
-from .source import SourcePackets
-
+from ..geometry.clouds import AngularDistanceCloud
+from ..geometry.rays import integrate_ray_column_cm2, locate_ray_column_depth_pc
+from ..sources.models import SourcePackets
+from .directions import direction_from_axis_mu_phi
 
 NO_INTERACTION = 0
 SCATTERED = 1
@@ -113,11 +112,13 @@ def simulate_first_interactions(
     directions = directions / jnp.linalg.norm(directions, axis=1, keepdims=True)
     maximum_distances = _packet_scalar(max_distance_pc, n_packets, "max_distance_pc")
     sigma_scattering = _packet_scalar(
-        scattering_cross_section_cm2_per_h, n_packets,
+        scattering_cross_section_cm2_per_h,
+        n_packets,
         "scattering_cross_section_cm2_per_h",
     )
     sigma_absorption = _packet_scalar(
-        absorption_cross_section_cm2_per_h, n_packets,
+        absorption_cross_section_cm2_per_h,
+        n_packets,
         "absorption_cross_section_cm2_per_h",
     )
     sigma_total = sigma_scattering + sigma_absorption

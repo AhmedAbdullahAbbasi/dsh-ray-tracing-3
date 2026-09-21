@@ -15,11 +15,11 @@ route must retain the column-closure checks provided here.
 
 from __future__ import annotations
 
-from typing import Mapping, NamedTuple
+from collections.abc import Mapping
+from typing import NamedTuple
 
 import jax.numpy as jnp
 import numpy as np
-
 
 KPC_TO_CM = 3.0856775814913673e21
 
@@ -46,7 +46,9 @@ def _axis_in_increasing_order(values, name):
 
     axis = np.asarray(values, dtype=np.float64)
     if axis.ndim != 1 or axis.size < 2:
-        raise ValueError(f"{name} must be a one-dimensional axis with at least two centers")
+        raise ValueError(
+            f"{name} must be a one-dimensional axis with at least two centers"
+        )
     if not np.all(np.isfinite(axis)):
         raise ValueError(f"{name} must contain only finite values")
 
@@ -116,8 +118,12 @@ def build_angular_distance_cloud(
     if source_distance <= 0.0:
         raise ValueError("source_distance_kpc must be positive")
 
-    x_centers, reverse_x = _axis_in_increasing_order(x_centers_arcsec, "x_centers_arcsec")
-    y_centers, reverse_y = _axis_in_increasing_order(y_centers_arcsec, "y_centers_arcsec")
+    x_centers, reverse_x = _axis_in_increasing_order(
+        x_centers_arcsec, "x_centers_arcsec"
+    )
+    y_centers, reverse_y = _axis_in_increasing_order(
+        y_centers_arcsec, "y_centers_arcsec"
+    )
     z_centers, reverse_z = _axis_in_increasing_order(z_centers_kpc, "z_centers_kpc")
 
     expected_shape = (z_centers.size, y_centers.size, x_centers.size)
@@ -161,7 +167,7 @@ def build_angular_distance_cloud(
 
 
 def cloud_from_loaded_fits(cube: Mapping, source_distance_kpc) -> AngularDistanceCloud:
-    """Build a cloud scene from :func:`utils.fits_cube.load_cube` output."""
+    """Build a cloud scene from :func:`dsh.io.cloud_fits.load_cube` output."""
 
     delta_nh = cube.get("delta_nh_cm2", cube.get("density"))
     if delta_nh is None:

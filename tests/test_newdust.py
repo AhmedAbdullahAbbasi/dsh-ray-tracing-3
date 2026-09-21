@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-from utils.newdust import (
+from dsh.physics.newdust import (
     build_dust_physics_from_newdust,
     legacy_screen_kernel_arcsec2,
     load_newdust_scattering_table,

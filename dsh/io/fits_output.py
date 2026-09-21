@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Mapping
 
 import numpy as np
 
-from .clouds import AngularDistanceCloud
-from .dust_physics import DustPhysicsTable
-from .observer_binning import ObserverBinGeometry
-from .simulation import (
-    IdealObserverSimulationResult,
+from ..geometry.clouds import AngularDistanceCloud
+from ..observer.binning import ObserverBinGeometry
+from ..physics.dust import DustPhysicsTable
+from ..pipeline import (
     TRANSPORT_STATUS_LABELS,
+    IdealObserverSimulationResult,
 )
-from .source import TabulatedBandSource
-from .source_launch import SourceLaunchGeometry
+from ..sources.launch import SourceLaunchGeometry
+from ..sources.models import TabulatedBandSource
 
 
 def _import_fits():
@@ -94,12 +94,8 @@ def _source_table_hdu(fits, source: TabulatedBandSource):
     n_time, n_energy = flux.shape
     time_index, energy_index = np.indices((n_time, n_energy))
     columns = [
-        fits.Column(
-            name="TIME_INDEX", format="J", array=time_index.reshape(-1)
-        ),
-        fits.Column(
-            name="ENERGY_INDEX", format="J", array=energy_index.reshape(-1)
-        ),
+        fits.Column(name="TIME_INDEX", format="J", array=time_index.reshape(-1)),
+        fits.Column(name="ENERGY_INDEX", format="J", array=energy_index.reshape(-1)),
         fits.Column(
             name="TIME_LOW",
             format="D",
@@ -186,17 +182,13 @@ def _diagnostics_table_hdu(fits, result: IdealObserverSimulationResult):
             )
         else:
             columns.append(
-                fits.Column(
-                    name=name.upper(), format="D", array=[float(value)]
-                )
+                fits.Column(name=name.upper(), format="D", array=[float(value)])
             )
     return fits.BinTableHDU.from_columns(columns, name="DIAGNOSTICS")
 
 
 def _status_table_hdu(fits, result: IdealObserverSimulationResult):
-    counts = np.asarray(
-        result.diagnostics.transport_status_count, dtype=np.int64
-    )
+    counts = np.asarray(result.diagnostics.transport_status_count, dtype=np.int64)
     width = max(len(label) for label in TRANSPORT_STATUS_LABELS)
     return fits.BinTableHDU.from_columns(
         [
@@ -242,13 +234,9 @@ def write_ideal_observer_fits(
     products = result.products
     total = np.asarray(products.total_fluence, dtype=np.float32)
     first = np.asarray(products.first_scatter_fluence, dtype=np.float32)
-    multiple = np.asarray(
-        products.multiple_scatter_fluence, dtype=np.float32
-    )
+    multiple = np.asarray(products.multiple_scatter_fluence, dtype=np.float32)
     event_count = np.asarray(products.event_count, dtype=np.int32)
-    integrated_total = np.sum(total, axis=(0, 1), dtype=np.float64).astype(
-        np.float32
-    )
+    integrated_total = np.sum(total, axis=(0, 1), dtype=np.float64).astype(np.float32)
 
     primary = fits.PrimaryHDU(integrated_total)
     primary.header["BUNIT"] = "ph cm-2"
@@ -299,13 +287,11 @@ def write_ideal_observer_fits(
         "No effective area, PSF, exposure map, redistribution, background, or noise"
     )
 
-    solid_angle = np.asarray(
-        bin_geometry.sky_pixel_solid_angle_sr, dtype=np.float32
-    )
+    solid_angle = np.asarray(bin_geometry.sky_pixel_solid_angle_sr, dtype=np.float32)
     surface_brightness = integrated_total / solid_angle
-    total_nh = np.sum(
-        np.asarray(cloud.delta_nh_cm2, dtype=np.float64), axis=0
-    ).astype(np.float32)
+    total_nh = np.sum(np.asarray(cloud.delta_nh_cm2, dtype=np.float64), axis=0).astype(
+        np.float32
+    )
 
     hdus = [
         primary,
@@ -352,24 +338,12 @@ def write_ideal_observer_fits(
         fits.ImageHDU(surface_brightness.astype(np.float32), name="SURFBRIT"),
         fits.ImageHDU(solid_angle, name="SOLIDANG"),
         fits.ImageHDU(total_nh, name="TOTALNH"),
-        fits.ImageHDU(
-            np.asarray(cloud.delta_nh_cm2, dtype=np.float32), name="CLOUDNH"
-        ),
-        fits.ImageHDU(
-            np.asarray(cloud.n_h_cm3, dtype=np.float32), name="CLOUDDEN"
-        ),
-        _bin_table_hdu(
-            fits, "X_BINS", bin_geometry.sky_x_edges_arcsec, "arcsec"
-        ),
-        _bin_table_hdu(
-            fits, "Y_BINS", bin_geometry.sky_y_edges_arcsec, "arcsec"
-        ),
-        _bin_table_hdu(
-            fits, "ENERGY_BINS", bin_geometry.energy_edges_kev, "keV"
-        ),
-        _bin_table_hdu(
-            fits, "TIME_BINS", bin_geometry.arrival_time_edges_s, "s"
-        ),
+        fits.ImageHDU(np.asarray(cloud.delta_nh_cm2, dtype=np.float32), name="CLOUDNH"),
+        fits.ImageHDU(np.asarray(cloud.n_h_cm3, dtype=np.float32), name="CLOUDDEN"),
+        _bin_table_hdu(fits, "X_BINS", bin_geometry.sky_x_edges_arcsec, "arcsec"),
+        _bin_table_hdu(fits, "Y_BINS", bin_geometry.sky_y_edges_arcsec, "arcsec"),
+        _bin_table_hdu(fits, "ENERGY_BINS", bin_geometry.energy_edges_kev, "keV"),
+        _bin_table_hdu(fits, "TIME_BINS", bin_geometry.arrival_time_edges_s, "s"),
         _bin_table_hdu(fits, "Z_BINS", cloud.z_edges_kpc, "kpc"),
         _source_table_hdu(fits, source),
         _physics_table_hdu(fits, physics),
@@ -397,7 +371,9 @@ def write_ideal_observer_fits(
         _add_linear_spatial_wcs(hdu.header, bin_geometry)
     next(item for item in hdus if item.name == "FIRSTIMG").header["BUNIT"] = "ph cm-2"
     next(item for item in hdus if item.name == "MULTIIMG").header["BUNIT"] = "ph cm-2"
-    next(item for item in hdus if item.name == "SURFBRIT").header["BUNIT"] = "ph cm-2 sr-1"
+    next(item for item in hdus if item.name == "SURFBRIT").header["BUNIT"] = (
+        "ph cm-2 sr-1"
+    )
     next(item for item in hdus if item.name == "SOLIDANG").header["BUNIT"] = "sr"
     next(item for item in hdus if item.name == "TOTALNH").header["BUNIT"] = "cm-2"
     for name, unit in (("CLOUDNH", "cm-2"), ("CLOUDDEN", "cm-3")):
@@ -405,25 +381,17 @@ def write_ideal_observer_fits(
         hdu.header["BUNIT"] = unit
         hdu.header["AXORDER"] = "Z,Y,X"
     next(item for item in hdus if item.name == "SCATANGL").header["BUNIT"] = "rad"
-    next(item for item in hdus if item.name == "DSIGMA").header["BUNIT"] = "cm2 sr-1 H-1"
+    next(item for item in hdus if item.name == "DSIGMA").header["BUNIT"] = (
+        "cm2 sr-1 H-1"
+    )
 
-    primary.header["SLPXMIN"] = float(
-        np.asarray(launch_geometry.slope_x_bounds)[0]
-    )
-    primary.header["SLPXMAX"] = float(
-        np.asarray(launch_geometry.slope_x_bounds)[1]
-    )
-    primary.header["SLPYMIN"] = float(
-        np.asarray(launch_geometry.slope_y_bounds)[0]
-    )
-    primary.header["SLPYMAX"] = float(
-        np.asarray(launch_geometry.slope_y_bounds)[1]
-    )
+    primary.header["SLPXMIN"] = float(np.asarray(launch_geometry.slope_x_bounds)[0])
+    primary.header["SLPXMAX"] = float(np.asarray(launch_geometry.slope_x_bounds)[1])
+    primary.header["SLPYMIN"] = float(np.asarray(launch_geometry.slope_y_bounds)[0])
+    primary.header["SLPYMAX"] = float(np.asarray(launch_geometry.slope_y_bounds)[1])
     primary.header["LAUNCHSR"] = float(
         np.asarray(launch_geometry.launch_solid_angle_sr)
     )
 
-    fits.HDUList(hdus).writeto(
-        output_path, overwrite=overwrite, checksum=True
-    )
+    fits.HDUList(hdus).writeto(output_path, overwrite=overwrite, checksum=True)
     return output_path

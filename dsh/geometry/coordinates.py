@@ -12,8 +12,8 @@ dimensionless unit vectors.
 
 The FITS cloud cubes use angular sky axes plus radial distance. Those voxels
 form an angular frustum rather than a rectangular Cartesian box. The helper
-functions here convert individual sightlines exactly; resampling a full cube
-onto a Cartesian transport grid is deliberately left to a separate adapter.
+functions here convert individual sightlines exactly, while the ray-integral
+module traverses the native frustum without Cartesian resampling.
 """
 
 from __future__ import annotations
@@ -22,7 +22,6 @@ from typing import NamedTuple
 
 import jax.numpy as jnp
 import numpy as np
-
 
 ARCSEC_TO_RAD = np.pi / (180.0 * 3600.0)
 PC_PER_KPC = 1000.0
@@ -86,12 +85,8 @@ def cartesian_to_sky(position_pc):
         raise ValueError("position_pc must have final dimension 3")
 
     distance_kpc = jnp.linalg.norm(position, axis=-1) / PC_PER_KPC
-    sky_x_arcsec = (
-        jnp.arctan2(position[..., 1], position[..., 0]) / ARCSEC_TO_RAD
-    )
-    sky_y_arcsec = (
-        jnp.arctan2(position[..., 2], position[..., 0]) / ARCSEC_TO_RAD
-    )
+    sky_x_arcsec = jnp.arctan2(position[..., 1], position[..., 0]) / ARCSEC_TO_RAD
+    sky_y_arcsec = jnp.arctan2(position[..., 2], position[..., 0]) / ARCSEC_TO_RAD
     return distance_kpc, sky_x_arcsec, sky_y_arcsec
 
 

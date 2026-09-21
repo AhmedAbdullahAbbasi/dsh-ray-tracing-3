@@ -25,19 +25,18 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-from jax import vmap
 import jax.numpy as jnp
+from jax import vmap
 
-from .clouds import AngularDistanceCloud
-from .coordinates import ARCSEC_TO_RAD, PC_PER_KPC
-from .dust_physics import DustPhysicsTable
-from .ray_integrals import PC_TO_CM, integrate_ray_column_cm2
-from .source_launch import LaunchedSourcePackets
-from .voxel_transport import (
+from ..geometry.clouds import AngularDistanceCloud
+from ..geometry.coordinates import ARCSEC_TO_RAD, PC_PER_KPC
+from ..geometry.rays import PC_TO_CM, integrate_ray_column_cm2
+from ..physics.dust import DustPhysicsTable
+from ..sources.launch import LaunchedSourcePackets
+from ..transport.kernel import (
     DUST_SCATTERING,
     PhotonTransportResult,
 )
-
 
 SPEED_OF_LIGHT_CM_S = 2.99792458e10
 PC_LIGHT_TRAVEL_TIME_S = PC_TO_CM / SPEED_OF_LIGHT_CM_S
@@ -97,10 +96,7 @@ def _interpolate_nonnegative_pair(low, high, fraction):
     logarithmic = jnp.exp(
         jnp.log(jnp.maximum(low, tiny))
         + fraction
-        * (
-            jnp.log(jnp.maximum(high, tiny))
-            - jnp.log(jnp.maximum(low, tiny))
-        )
+        * (jnp.log(jnp.maximum(high, tiny)) - jnp.log(jnp.maximum(low, tiny)))
     )
     return jnp.where((low > 0.0) & (high > 0.0), logarithmic, linear)
 
@@ -108,10 +104,7 @@ def _interpolate_nonnegative_pair(low, high, fraction):
 def _energy_fraction(energy_grid, energy):
     lower, upper = _interpolation_bracket(energy_grid, energy)
     log_grid = jnp.log(energy_grid)
-    fraction = (
-        (jnp.log(energy) - log_grid[lower])
-        / (log_grid[upper] - log_grid[lower])
-    )
+    fraction = (jnp.log(energy) - log_grid[lower]) / (log_grid[upper] - log_grid[lower])
     return lower, upper, jnp.clip(fraction, 0.0, 1.0)
 
 
@@ -122,12 +115,8 @@ def _angle_fraction(angle_grid, angle):
     linear_fraction = (angle - low_angle) / (high_angle - low_angle)
     tiny = jnp.finfo(angle_grid.dtype).tiny
     log_fraction = (
-        (jnp.log(jnp.maximum(angle, tiny)) - jnp.log(jnp.maximum(low_angle, tiny)))
-        / (
-            jnp.log(jnp.maximum(high_angle, tiny))
-            - jnp.log(jnp.maximum(low_angle, tiny))
-        )
-    )
+        jnp.log(jnp.maximum(angle, tiny)) - jnp.log(jnp.maximum(low_angle, tiny))
+    ) / (jnp.log(jnp.maximum(high_angle, tiny)) - jnp.log(jnp.maximum(low_angle, tiny)))
     fraction = jnp.where(low_angle > 0.0, log_fraction, linear_fraction)
     return lower, upper, jnp.clip(fraction, 0.0, 1.0)
 
@@ -159,9 +148,7 @@ def scattering_phase_pdf_per_sr(
         & (angle >= physics.scattering_angle_rad[0])
         & (angle <= physics.scattering_angle_rad[-1])
     )
-    safe_energy = jnp.clip(
-        energy, physics.energy_kev[0], physics.energy_kev[-1]
-    )
+    safe_energy = jnp.clip(energy, physics.energy_kev[0], physics.energy_kev[-1])
     safe_angle = jnp.clip(
         angle,
         physics.scattering_angle_rad[0],
@@ -204,9 +191,7 @@ def _cross_sections_at_energy(physics: DustPhysicsTable, energy_kev):
         & (energy >= physics.energy_kev[0])
         & (energy <= physics.energy_kev[-1])
     )
-    safe_energy = jnp.clip(
-        energy, physics.energy_kev[0], physics.energy_kev[-1]
-    )
+    safe_energy = jnp.clip(energy, physics.energy_kev[0], physics.energy_kev[-1])
     lower, upper, fraction = _energy_fraction(physics.energy_kev, safe_energy)
     sigma_scattering = _interpolate_nonnegative_pair(
         physics.scattering_cross_section_cm2_per_h[lower],
@@ -301,25 +286,19 @@ def score_peeloff_events(
         observer_distance, jnp.finfo(position.dtype).tiny
     )
     observer_direction = -position / safe_observer_distance[..., None]
-    fallback_direction = jnp.asarray(
-        [-1.0, 0.0, 0.0], dtype=position.dtype
-    )
+    fallback_direction = jnp.asarray([-1.0, 0.0, 0.0], dtype=position.dtype)
 
     cosine = jnp.clip(
         jnp.sum(incoming_direction * observer_direction, axis=-1),
         -1.0,
         1.0,
     )
-    sine = jnp.linalg.norm(
-        jnp.cross(incoming_direction, observer_direction), axis=-1
-    )
+    sine = jnp.linalg.norm(jnp.cross(incoming_direction, observer_direction), axis=-1)
     scattering_angle = jnp.arctan2(sine, cosine)
-    energy_supported, sigma_scattering, sigma_absorption = (
-        _cross_sections_at_energy(physics, energy)
+    energy_supported, sigma_scattering, sigma_absorption = _cross_sections_at_energy(
+        physics, energy
     )
-    phase_pdf = scattering_phase_pdf_per_sr(
-        physics, energy, scattering_angle
-    )
+    phase_pdf = scattering_phase_pdf_per_sr(physics, energy, scattering_angle)
 
     valid = (
         records.valid
@@ -348,34 +327,23 @@ def score_peeloff_events(
         escape_distances.reshape((-1,)),
     )
     escape_column = flat_column.reshape((n_packets, n_interactions))
-    escape_optical_depth = escape_column * (
-        sigma_scattering + sigma_absorption
-    )
+    escape_optical_depth = escape_column * (sigma_scattering + sigma_absorption)
     transmission = jnp.exp(-escape_optical_depth)
 
-    sky_x_arcsec = (
-        jnp.arctan2(position[..., 1], position[..., 0]) / ARCSEC_TO_RAD
-    )
-    sky_y_arcsec = (
-        jnp.arctan2(position[..., 2], position[..., 0]) / ARCSEC_TO_RAD
-    )
+    sky_x_arcsec = jnp.arctan2(position[..., 1], position[..., 0]) / ARCSEC_TO_RAD
+    sky_y_arcsec = jnp.arctan2(position[..., 2], position[..., 0]) / ARCSEC_TO_RAD
     transverse_squared = jnp.sum(position[..., 1:] ** 2, axis=-1)
     radial_minus_los = transverse_squared / jnp.maximum(
         observer_distance + position[..., 0],
         jnp.finfo(position.dtype).tiny,
     )
-    excess_path_length = (
-        records.cumulative_excess_path_length_pc + radial_minus_los
-    )
+    excess_path_length = records.cumulative_excess_path_length_pc + radial_minus_los
     arrival_time = (
-        launched.emission_time_s[:, None]
-        + excess_path_length * PC_LIGHT_TRAVEL_TIME_S
+        launched.emission_time_s[:, None] + excess_path_length * PC_LIGHT_TRAVEL_TIME_S
     )
 
     source_distance_pc = cloud.source_distance_kpc * PC_PER_KPC
-    geometric_dilution = (
-        source_distance_pc / safe_observer_distance
-    ) ** 2
+    geometric_dilution = (source_distance_pc / safe_observer_distance) ** 2
     event_weight = (
         launched.weight_observer_fluence[:, None]
         * geometric_dilution

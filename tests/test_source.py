@@ -6,10 +6,10 @@ import jax
 import numpy as np
 from jax import random
 
-from utils.source import (
+from dsh.sources.models import (
     build_decay_observation_window,
-    build_tabulated_band_source,
     build_post_peak_exponential_band_source,
+    build_tabulated_band_source,
     build_variable_powerlaw_source,
     fred_outburst_flux,
     sample_tabulated_band_source,
@@ -65,9 +65,9 @@ class TestTabulatedBandSource(unittest.TestCase):
             random.PRNGKey(9), source, n_packets=100_000
         )
 
-        band_fraction = np.bincount(
-            np.asarray(packets.spectral_bin_index), minlength=2
-        ) / 100_000
+        band_fraction = (
+            np.bincount(np.asarray(packets.spectral_bin_index), minlength=2) / 100_000
+        )
         np.testing.assert_allclose(band_fraction, [0.25, 0.75], atol=0.01)
         self.assertAlmostEqual(
             float(np.asarray(packets.emission_time_s).mean()), 1.0, places=2
@@ -109,11 +109,8 @@ class TestPostPeakExponentialBandSource(unittest.TestCase):
             decay_time,
             baseline_band_flux=baseline,
         )
-        expected_by_band = (
-            baseline * duration
-            + (peak - baseline)
-            * decay_time
-            * (1.0 - np.exp(-duration / decay_time))
+        expected_by_band = baseline * duration + (peak - baseline) * decay_time * (
+            1.0 - np.exp(-duration / decay_time)
         )
         np.testing.assert_allclose(
             np.asarray(coarse.cell_fluence).sum(axis=0),
@@ -123,9 +120,7 @@ class TestPostPeakExponentialBandSource(unittest.TestCase):
         np.testing.assert_allclose(
             coarse.total_fluence, fine.total_fluence, rtol=2.0e-6
         )
-        self.assertTrue(
-            np.all(np.diff(np.asarray(fine.band_flux), axis=0) < 0.0)
-        )
+        self.assertTrue(np.all(np.diff(np.asarray(fine.band_flux), axis=0) < 0.0))
 
     def test_decay_can_begin_after_the_peak(self):
         source = build_post_peak_exponential_band_source(
@@ -142,9 +137,7 @@ class TestPostPeakExponentialBandSource(unittest.TestCase):
 
     def test_rejects_non_decay_inputs(self):
         with self.assertRaisesRegex(ValueError, "cannot precede"):
-            build_post_peak_exponential_band_source(
-                [-1.0, 1.0], [3.3], [1.0], 10.0
-            )
+            build_post_peak_exponential_band_source([-1.0, 1.0], [3.3], [1.0], 10.0)
         with self.assertRaisesRegex(ValueError, "below baseline"):
             build_post_peak_exponential_band_source(
                 [0.0, 1.0],
@@ -154,9 +147,7 @@ class TestPostPeakExponentialBandSource(unittest.TestCase):
                 baseline_band_flux=[1.0],
             )
         with self.assertRaisesRegex(ValueError, "must match"):
-            build_post_peak_exponential_band_source(
-                [0.0, 1.0], [3.3, 4.9], [1.0], 10.0
-            )
+            build_post_peak_exponential_band_source([0.0, 1.0], [3.3, 4.9], [1.0], 10.0)
 
 
 class TestVariablePowerLawSource(unittest.TestCase):
@@ -168,12 +159,14 @@ class TestVariablePowerLawSource(unittest.TestCase):
             energy_max_kev=10.0,
             photon_index=2.0,
         )
-        sampler = jax.jit(sample_variable_powerlaw_source, static_argnames=("n_packets",))
+        sampler = jax.jit(
+            sample_variable_powerlaw_source, static_argnames=("n_packets",)
+        )
         packets = sampler(random.PRNGKey(31), source, n_packets=100_000)
 
-        time_fraction = np.bincount(
-            np.asarray(packets.time_index), minlength=2
-        ) / 100_000
+        time_fraction = (
+            np.bincount(np.asarray(packets.time_index), minlength=2) / 100_000
+        )
         np.testing.assert_allclose(time_fraction, [0.25, 0.75], atol=0.01)
         self.assertAlmostEqual(float(source.total_fluence), 4.0)
         self.assertAlmostEqual(
@@ -236,13 +229,13 @@ class TestVariablePowerLawSource(unittest.TestCase):
         self.assertGreater(float(flux[29]), float(flux[9]))
 
     def test_fred_exact_fluence_is_stable_to_time_binning(self):
-        parameters = dict(
-            baseline_flux=0.1,
-            peak_excess_flux=2.0,
-            peak_time_s=20.0,
-            rise_time_s=3.0,
-            decay_time_s=25.0,
-        )
+        parameters = {
+            "baseline_flux": 0.1,
+            "peak_excess_flux": 2.0,
+            "peak_time_s": 20.0,
+            "rise_time_s": 3.0,
+            "decay_time_s": 25.0,
+        }
         coarse_edges = np.linspace(0.0, 100.0, 21)
         fine_edges = np.linspace(0.0, 100.0, 2001)
         coarse_flux = fred_outburst_flux(coarse_edges, **parameters)

@@ -14,28 +14,24 @@ the transport hot path.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import hashlib
 import json
+from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
 
 import numpy as np
 
-from .dust_physics import (
+from .absorption import PhotoelectricAbsorptionTable
+from .dust import (
     DustPhysicsTable,
     build_dust_physics_table,
     phase_cdf_from_differential_cross_section,
 )
-from .absorption import PhotoelectricAbsorptionTable
-
 
 ARCSEC_PER_RADIAN = 180.0 * 3600.0 / np.pi
 DEFAULT_NEWDUST_TABLE = (
-    Path(__file__).resolve().parent.parent
-    / "data"
-    / "newdust"
-    / "mrn_rg_drude_v1.npz"
+    Path(__file__).resolve().parent.parent / "data" / "newdust" / "mrn_rg_drude_v1.npz"
 )
 
 
@@ -151,7 +147,9 @@ def load_newdust_scattering_table(
         angle, differential
     )
     if not np.allclose(sigma, integrated, rtol=5.0e-12, atol=0.0):
-        raise ValueError("NewDust integrated cross-section does not match dSigma/dOmega")
+        raise ValueError(
+            "NewDust integrated cross-section does not match dSigma/dOmega"
+        )
     if not np.allclose(cdf, rebuilt_cdf, rtol=5.0e-12, atol=5.0e-14):
         raise ValueError("NewDust CDF does not match dSigma/dOmega")
 
@@ -182,9 +180,7 @@ def build_dust_physics_from_newdust(
     energy grid; there is intentionally no silent zero-absorption default.
     """
 
-    absorption = np.asarray(
-        absorption_cross_section_cm2_per_h, dtype=np.float64
-    )
+    absorption = np.asarray(absorption_cross_section_cm2_per_h, dtype=np.float64)
     if absorption.shape != scattering.energy_kev.shape:
         raise ValueError(
             "absorption_cross_section_cm2_per_h must have shape (n_energy,)"
@@ -283,13 +279,10 @@ def legacy_screen_kernel_arcsec2(
     upper = int(np.searchsorted(scattering.energy_kev, energy, side="right"))
     upper = min(max(upper, 1), scattering.energy_kev.size - 1)
     lower = upper - 1
-    fraction = (
-        (np.log(energy) - log_energy[lower])
-        / (log_energy[upper] - log_energy[lower])
+    fraction = (np.log(energy) - log_energy[lower]) / (
+        log_energy[upper] - log_energy[lower]
     )
-    log_differential = log_rows[lower] + fraction * (
-        log_rows[upper] - log_rows[lower]
-    )
+    log_differential = log_rows[lower] + fraction * (log_rows[upper] - log_rows[lower])
     differential_per_sr = np.exp(log_differential)
     differential_per_arcsec2 = differential_per_sr / ARCSEC_PER_RADIAN**2
     return nh * differential_per_arcsec2 / (1.0 - f) ** 2

@@ -103,8 +103,7 @@ def build_tabulated_band_source(
         raise ValueError("effective_energy_kev must be a non-empty 1D array")
     if flux.shape != (edges.size - 1, energies.size):
         raise ValueError(
-            "band_flux shape must be (len(time_edges_s) - 1, "
-            "len(effective_energy_kev))"
+            "band_flux shape must be (len(time_edges_s) - 1, len(effective_energy_kev))"
         )
     if not np.all(np.isfinite(edges)):
         raise ValueError("time_edges_s contains non-finite values")
@@ -215,9 +214,10 @@ def build_post_peak_exponential_band_source(
         * (np.exp(-left / float(decay_time)) - np.exp(-right / float(decay_time)))
         / duration
     )
-    band_flux = baseline_flux[None, :] + (
-        peak_flux - baseline_flux
-    )[None, :] * mean_decay[:, None]
+    band_flux = (
+        baseline_flux[None, :]
+        + (peak_flux - baseline_flux)[None, :] * mean_decay[:, None]
+    )
     return build_tabulated_band_source(edges, band_flux, energy)
 
 
@@ -316,7 +316,9 @@ def build_variable_powerlaw_source(
     if not np.all(np.isfinite(scalar_values)):
         raise ValueError("energy bounds and photon_index must be finite")
     if energy_min_kev <= 0.0 or energy_max_kev <= energy_min_kev:
-        raise ValueError("energy bounds must satisfy 0 < energy_min_kev < energy_max_kev")
+        raise ValueError(
+            "energy bounds must satisfy 0 < energy_min_kev < energy_max_kev"
+        )
 
     dtype = np.result_type(edges.dtype, flux.dtype, np.float32)
     edges = edges.astype(dtype, copy=False)
@@ -343,7 +345,9 @@ def build_variable_powerlaw_source(
     )
 
 
-def _sample_powerlaw_energy(key, energy_min_kev, energy_max_kev, photon_index, n_packets):
+def _sample_powerlaw_energy(
+    key, energy_min_kev, energy_max_kev, photon_index, n_packets
+):
     """Sample exactly from ``p(E) proportional to E**(-photon_index)``."""
 
     u = random.uniform(key, shape=(n_packets,))
@@ -434,7 +438,9 @@ def fred_outburst_flux(
         dtype=np.float64,
     )
     if edges.ndim != 1 or edges.size < 2 or not np.all(np.isfinite(edges)):
-        raise ValueError("time_edges_s must be a finite 1D array with at least two edges")
+        raise ValueError(
+            "time_edges_s must be a finite 1D array with at least two edges"
+        )
     if not np.all(np.diff(edges) > 0.0):
         raise ValueError("time_edges_s must be strictly increasing")
     if not np.all(np.isfinite(parameters)):
@@ -448,15 +454,23 @@ def fred_outburst_flux(
     right = edges[1:]
     duration = right - left
 
-    rise_integral = peak_excess_flux * rise_time_s * (
-        np.exp((np.minimum(right, peak_time_s) - peak_time_s) / rise_time_s)
-        - np.exp((np.minimum(left, peak_time_s) - peak_time_s) / rise_time_s)
+    rise_integral = (
+        peak_excess_flux
+        * rise_time_s
+        * (
+            np.exp((np.minimum(right, peak_time_s) - peak_time_s) / rise_time_s)
+            - np.exp((np.minimum(left, peak_time_s) - peak_time_s) / rise_time_s)
+        )
     )
     rise_integral = np.where(left < peak_time_s, rise_integral, 0.0)
 
-    decay_integral = peak_excess_flux * decay_time_s * (
-        np.exp(-(np.maximum(left, peak_time_s) - peak_time_s) / decay_time_s)
-        - np.exp(-(np.maximum(right, peak_time_s) - peak_time_s) / decay_time_s)
+    decay_integral = (
+        peak_excess_flux
+        * decay_time_s
+        * (
+            np.exp(-(np.maximum(left, peak_time_s) - peak_time_s) / decay_time_s)
+            - np.exp(-(np.maximum(right, peak_time_s) - peak_time_s) / decay_time_s)
+        )
     )
     decay_integral = np.where(right > peak_time_s, decay_integral, 0.0)
 

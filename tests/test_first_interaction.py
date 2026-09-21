@@ -4,20 +4,20 @@ import math
 import unittest
 
 import jax
-from jax import random
 import numpy as np
+from jax import random
 
-from utils.clouds import build_angular_distance_cloud
-from utils.first_interaction import (
+from dsh.geometry.clouds import build_angular_distance_cloud
+from dsh.sources.models import (
+    build_variable_powerlaw_source,
+    fred_outburst_flux,
+    sample_variable_powerlaw_source,
+)
+from dsh.transport.first_interaction import (
     ABSORBED,
     NO_INTERACTION,
     SCATTERED,
     simulate_first_interactions,
-)
-from utils.source import (
-    build_variable_powerlaw_source,
-    fred_outburst_flux,
-    sample_variable_powerlaw_source,
 )
 
 
@@ -84,9 +84,11 @@ class TestFirstInteractionMonteCarlo(unittest.TestCase):
         expected = {
             NO_INTERACTION: math.exp(-tau),
             SCATTERED: interaction_probability
-            * self.sigma_scattering / self.sigma_total,
+            * self.sigma_scattering
+            / self.sigma_total,
             ABSORBED: interaction_probability
-            * self.sigma_absorption / self.sigma_total,
+            * self.sigma_absorption
+            / self.sigma_total,
         }
         for outcome, expected_fraction in expected.items():
             measured_fraction = np.mean(status == outcome)
@@ -97,8 +99,10 @@ class TestFirstInteractionMonteCarlo(unittest.TestCase):
         weights = np.asarray(self.result.weight_observer_fluence)
         total_weight = weights.sum(dtype=np.float64)
         weighted_fractions = np.array(
-            [weights[status == value].sum(dtype=np.float64) / total_weight
-             for value in (NO_INTERACTION, SCATTERED, ABSORBED)]
+            [
+                weights[status == value].sum(dtype=np.float64) / total_weight
+                for value in (NO_INTERACTION, SCATTERED, ABSORBED)
+            ]
         )
         self.assertAlmostEqual(weighted_fractions.sum(), 1.0, places=7)
         self.assertTrue(np.all(weighted_fractions > 0.0))

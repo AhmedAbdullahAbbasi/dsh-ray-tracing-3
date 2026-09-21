@@ -6,22 +6,20 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from utils.coordinates import ARCSEC_TO_RAD
-from utils.observer import ObserverEventResult
-from utils.observer_binning import (
+from dsh.geometry.coordinates import ARCSEC_TO_RAD
+from dsh.observer.binning import (
     add_binned_observer_products,
     bin_observer_events,
     build_observer_bin_geometry,
     fluence_surface_brightness_per_sr,
     mean_flux_surface_brightness_per_sr_s,
 )
+from dsh.observer.scoring import ObserverEventResult
 
 
 def _test_events():
     shape = (2, 4)
-    valid = np.array(
-        [[True, True, True, True], [True, True, False, True]]
-    )
+    valid = np.array([[True, True, True, True], [True, True, False, True]])
     sky_x = np.array([[-2.0, -1.0, 0.0, 2.0], [2.1, 1.0, -1.0, 1.0]])
     sky_y = np.array([[-2.0, -1.0, 0.0, 2.0], [0.0, 0.0, -1.0, -1.0]])
     energy = np.array([[2.0, 3.0, 4.0, 6.0], [3.0, 3.0, 3.0, 5.0]])
@@ -78,9 +76,7 @@ class TestObserverBinning(unittest.TestCase):
         expected_count[1, 1, 0, 1] = 1
 
         np.testing.assert_array_equal(products.total_fluence, expected_total)
-        np.testing.assert_array_equal(
-            products.first_scatter_fluence, expected_first
-        )
+        np.testing.assert_array_equal(products.first_scatter_fluence, expected_first)
         np.testing.assert_array_equal(
             products.multiple_scatter_fluence, expected_multiple
         )
@@ -97,12 +93,8 @@ class TestObserverBinning(unittest.TestCase):
         self.assertEqual(int(products.outside_sky_event_count), 1)
         self.assertEqual(int(products.outside_energy_event_count), 0)
         self.assertEqual(int(products.outside_arrival_time_event_count), 1)
-        self.assertEqual(
-            float(products.outside_sky_weight_observer_fluence), 5.0
-        )
-        self.assertEqual(
-            float(products.outside_energy_weight_observer_fluence), 0.0
-        )
+        self.assertEqual(float(products.outside_sky_weight_observer_fluence), 5.0)
+        self.assertEqual(float(products.outside_energy_weight_observer_fluence), 0.0)
         self.assertEqual(
             float(products.outside_arrival_time_weight_observer_fluence), 6.0
         )
@@ -111,8 +103,7 @@ class TestObserverBinning(unittest.TestCase):
         self.assertEqual(float(jnp.sum(products.multiple_scatter_fluence)), 7.0)
         np.testing.assert_array_equal(
             products.total_fluence,
-            products.first_scatter_fluence
-            + products.multiple_scatter_fluence,
+            products.first_scatter_fluence + products.multiple_scatter_fluence,
         )
 
     def test_exact_solid_angles_and_surface_brightness_units(self):
@@ -124,8 +115,7 @@ class TestObserverBinning(unittest.TestCase):
         )
         expected_small_angle = ARCSEC_TO_RAD**2
         self.assertAlmostEqual(
-            float(one_arcsec.sky_pixel_solid_angle_sr[0, 0])
-            / expected_small_angle,
+            float(one_arcsec.sky_pixel_solid_angle_sr[0, 0]) / expected_small_angle,
             1.0,
             places=6,
         )
@@ -135,8 +125,7 @@ class TestObserverBinning(unittest.TestCase):
             products.total_fluence, self.geometry
         )
         reconstructed_fluence = (
-            brightness
-            * self.geometry.sky_pixel_solid_angle_sr[None, None, :, :]
+            brightness * self.geometry.sky_pixel_solid_angle_sr[None, None, :, :]
         )
         np.testing.assert_allclose(
             reconstructed_fluence, products.total_fluence, rtol=2.0e-7
@@ -188,9 +177,7 @@ class TestObserverBinning(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "inconsistent"):
             bin_observer_events(bad_events, self.geometry)
         with self.assertRaisesRegex(ValueError, "shape"):
-            fluence_surface_brightness_per_sr(
-                jnp.zeros((1, 1, 1, 1)), self.geometry
-            )
+            fluence_surface_brightness_per_sr(jnp.zeros((1, 1, 1, 1)), self.geometry)
 
 
 if __name__ == "__main__":

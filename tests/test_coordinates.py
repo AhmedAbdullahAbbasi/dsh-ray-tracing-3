@@ -5,7 +5,7 @@ import unittest
 import jax
 import numpy as np
 
-from utils.coordinates import (
+from dsh.geometry.coordinates import (
     ARCSEC_TO_RAD,
     angular_offset_direction,
     build_sightline_geometry,
@@ -64,9 +64,11 @@ class TestPhysicalCoordinates(unittest.TestCase):
 
     def test_rejects_invalid_source_distance(self):
         for invalid in (0.0, -1.0, np.nan, np.inf, [10.0]):
-            with self.subTest(invalid=invalid):
-                with self.assertRaisesRegex(ValueError, "source_distance_kpc"):
-                    build_sightline_geometry(invalid)
+            with (
+                self.subTest(invalid=invalid),
+                self.assertRaisesRegex(ValueError, "source_distance_kpc"),
+            ):
+                build_sightline_geometry(invalid)
 
     def test_rejects_wrong_cartesian_shape(self):
         with self.assertRaisesRegex(ValueError, "final dimension 3"):

@@ -7,27 +7,27 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 
-from utils.absorption import load_photoelectric_absorption_table
-from utils.clouds import build_angular_distance_cloud
-from utils.coordinates import ARCSEC_TO_RAD, sky_position_pc
-from utils.dust_physics import build_dust_physics_table
-from utils.newdust import (
-    build_dust_physics_from_tables,
-    legacy_screen_kernel_arcsec2,
-    load_newdust_scattering_table,
-)
-from utils.observer import (
+from dsh.geometry.clouds import build_angular_distance_cloud
+from dsh.geometry.coordinates import ARCSEC_TO_RAD, sky_position_pc
+from dsh.observer.scoring import (
     PC_LIGHT_TRAVEL_TIME_S,
     scattering_phase_pdf_per_sr,
     score_peeloff_events,
 )
-from utils.source import SourcePackets
-from utils.source_launch import (
+from dsh.physics.absorption import load_photoelectric_absorption_table
+from dsh.physics.dust import build_dust_physics_table
+from dsh.physics.newdust import (
+    build_dust_physics_from_tables,
+    legacy_screen_kernel_arcsec2,
+    load_newdust_scattering_table,
+)
+from dsh.sources.launch import (
     LaunchedSourcePackets,
     build_cloud_launch_geometry,
     sample_source_launches,
 )
-from utils.voxel_transport import (
+from dsh.sources.models import SourcePackets
+from dsh.transport.kernel import (
     ABSORBED,
     DUST_SCATTERING,
     NO_INTERACTION,
@@ -43,9 +43,7 @@ class TestPeeloffObserver(unittest.TestCase):
     def setUpClass(cls):
         cls.scattering = load_newdust_scattering_table()
         cls.absorption = load_photoelectric_absorption_table()
-        cls.physics = build_dust_physics_from_tables(
-            cls.scattering, cls.absorption
-        )
+        cls.physics = build_dust_physics_from_tables(cls.scattering, cls.absorption)
         radial_column = np.array([1.0e21, 2.0e21, 3.0e21])
         cls.cloud = build_angular_distance_cloud(
             np.broadcast_to(radial_column[:, None, None], (3, 3, 3)).copy(),
@@ -75,16 +73,20 @@ class TestPeeloffObserver(unittest.TestCase):
         directions = displacements / distances[:, None]
         cumulative_path = np.cumsum(distances)
         cumulative_excess = np.cumsum(distances * (1.0 + directions[:, 0]))
-        incoming = np.column_stack(
-            (np.full(3, energy), energy * directions)
-        )
+        incoming = np.column_stack((np.full(3, energy), energy * directions))
         outgoing = np.vstack((incoming[1], incoming[2], np.zeros(4)))
 
         max_interactions = 4
         valid = np.array([[True, True, True, False]])
         interaction_type = np.array(
-            [[DUST_SCATTERING, DUST_SCATTERING, PHOTOELECTRIC_ABSORPTION,
-              NO_INTERACTION]],
+            [
+                [
+                    DUST_SCATTERING,
+                    DUST_SCATTERING,
+                    PHOTOELECTRIC_ABSORPTION,
+                    NO_INTERACTION,
+                ]
+            ],
             dtype=np.int32,
         )
         position_record = np.zeros((1, max_interactions, 3), dtype=np.float32)
@@ -95,9 +97,7 @@ class TestPeeloffObserver(unittest.TestCase):
         outgoing_record[0, :3] = outgoing
         cumulative_path_record = np.zeros((1, max_interactions), dtype=np.float32)
         cumulative_path_record[0, :3] = cumulative_path
-        cumulative_excess_record = np.zeros(
-            (1, max_interactions), dtype=np.float32
-        )
+        cumulative_excess_record = np.zeros((1, max_interactions), dtype=np.float32)
         cumulative_excess_record[0, :3] = cumulative_excess
 
         records = PhotonInteractionRecord(
@@ -107,9 +107,7 @@ class TestPeeloffObserver(unittest.TestCase):
             incoming_momentum_kev=jnp.asarray(incoming_record),
             outgoing_momentum_kev=jnp.asarray(outgoing_record),
             cumulative_path_length_pc=jnp.asarray(cumulative_path_record),
-            cumulative_excess_path_length_pc=jnp.asarray(
-                cumulative_excess_record
-            ),
+            cumulative_excess_path_length_pc=jnp.asarray(cumulative_excess_record),
             scattering_order=jnp.asarray([[1, 2, 2, 0]], dtype=jnp.int32),
         )
         transported = PhotonTransportResult(
@@ -143,13 +141,9 @@ class TestPeeloffObserver(unittest.TestCase):
 
     def test_jitted_scorer_returns_exact_geometry_attenuation_and_weight(self):
         scorer = jax.jit(score_peeloff_events)
-        result = scorer(
-            self.launched, self.transported, self.cloud, self.physics
-        )
+        result = scorer(self.launched, self.transported, self.cloud, self.physics)
 
-        np.testing.assert_array_equal(
-            result.valid, [[True, True, False, False]]
-        )
+        np.testing.assert_array_equal(result.valid, [[True, True, False, False]])
         np.testing.assert_allclose(
             np.asarray(result.sky_x_arcsec)[0, :2], [50.0, 80.0], atol=2.0e-5
         )
@@ -182,12 +176,12 @@ class TestPeeloffObserver(unittest.TestCase):
         )
 
         source = np.asarray(self.launched.position_pc)[0].astype(np.float64)
-        event_positions = np.asarray(
-            self.transported.interactions.position_pc
-        )[0, :2].astype(np.float64)
-        incoming = np.asarray(
-            self.transported.interactions.incoming_momentum_kev
-        )[0, :2, 1:].astype(np.float64)
+        event_positions = np.asarray(self.transported.interactions.position_pc)[
+            0, :2
+        ].astype(np.float64)
+        incoming = np.asarray(self.transported.interactions.incoming_momentum_kev)[
+            0, :2, 1:
+        ].astype(np.float64)
         incoming /= np.linalg.norm(incoming, axis=1, keepdims=True)
         to_observer = -event_positions / np.linalg.norm(
             event_positions, axis=1, keepdims=True
@@ -311,12 +305,8 @@ class TestPeeloffObserver(unittest.TestCase):
             launched, transported, self.cloud, self.physics
         )
 
-        expected_valid = (
-            np.asarray(transported.interactions.valid)
-            & (
-                np.asarray(transported.interactions.interaction_type)
-                == DUST_SCATTERING
-            )
+        expected_valid = np.asarray(transported.interactions.valid) & (
+            np.asarray(transported.interactions.interaction_type) == DUST_SCATTERING
         )
         valid = np.asarray(observed.valid)
         np.testing.assert_array_equal(valid, expected_valid)
@@ -326,10 +316,12 @@ class TestPeeloffObserver(unittest.TestCase):
             np.asarray(transported.interactions.scattering_order)[valid],
         )
         self.assertTrue(
-            np.all(np.asarray(observed.arrival_time_s)[valid]
-                   >= np.broadcast_to(
-                       np.asarray(launched.emission_time_s)[:, None], valid.shape
-                   )[valid])
+            np.all(
+                np.asarray(observed.arrival_time_s)[valid]
+                >= np.broadcast_to(
+                    np.asarray(launched.emission_time_s)[:, None], valid.shape
+                )[valid]
+            )
         )
         weights = np.asarray(observed.weight_observer_fluence)[valid]
         self.assertTrue(np.all(np.isfinite(weights)))
@@ -337,18 +329,14 @@ class TestPeeloffObserver(unittest.TestCase):
         self.assertTrue(np.any(weights > 0.0))
 
     def test_phase_density_reconstructs_legacy_newdust_screen_kernel(self):
-        observed_angles_arcsec = np.array(
-            [1.0, 10.0, 100.0, 500.0, 1000.0, 1500.0]
-        )
+        observed_angles_arcsec = np.array([1.0, 10.0, 100.0, 500.0, 1000.0, 1500.0])
         hydrogen_column = 1.0e22
         sigma_scattering = self.scattering.scattering_cross_section_cm2_per_h[0]
         arcsec_per_radian = 1.0 / ARCSEC_TO_RAD
 
         for fractional_distance in (0.007, 0.008, 0.009, 0.010):
             physical_angle = (
-                observed_angles_arcsec
-                / (1.0 - fractional_distance)
-                / arcsec_per_radian
+                observed_angles_arcsec / (1.0 - fractional_distance) / arcsec_per_radian
             )
             phase_pdf = np.asarray(
                 scattering_phase_pdf_per_sr(
@@ -407,13 +395,9 @@ class TestPeeloffObserver(unittest.TestCase):
             )
 
     def test_rejects_packet_and_interaction_shape_mismatch(self):
-        bad_launch = self.launched._replace(
-            weight_observer_fluence=jnp.ones(2)
-        )
+        bad_launch = self.launched._replace(weight_observer_fluence=jnp.ones(2))
         with self.assertRaisesRegex(ValueError, "metadata"):
-            score_peeloff_events(
-                bad_launch, self.transported, self.cloud, self.physics
-            )
+            score_peeloff_events(bad_launch, self.transported, self.cloud, self.physics)
 
 
 if __name__ == "__main__":

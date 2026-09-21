@@ -1,9 +1,14 @@
 # Python virtual environment
 venv/
+.venv/
 
 # Python bytecode/cache
 __pycache__/
 *.pyc
+*.egg-info/
+build/
+dist/
+.ruff_cache/
 
 # Jupyter
 .ipynb_checkpoints/

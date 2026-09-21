@@ -20,9 +20,8 @@ from typing import NamedTuple
 
 import jax.numpy as jnp
 
-from .clouds import AngularDistanceCloud, KPC_TO_CM
+from .clouds import KPC_TO_CM, AngularDistanceCloud
 from .coordinates import ARCSEC_TO_RAD, PC_PER_KPC
-
 
 PC_TO_CM = KPC_TO_CM / PC_PER_KPC
 
@@ -37,7 +36,9 @@ class RaySegments(NamedTuple):
     inside_cloud: jnp.ndarray
 
 
-def _plane_crossing_distances(origin_pc, direction, angle_edges_arcsec, transverse_axis):
+def _plane_crossing_distances(
+    origin_pc, direction, angle_edges_arcsec, transverse_axis
+):
     """Ray parameters where a ray crosses constant sky-angle planes."""
 
     slopes = jnp.tan(jnp.asarray(angle_edges_arcsec) * ARCSEC_TO_RAD)
@@ -90,10 +91,16 @@ def ray_boundary_distances_pc(
         origin, ray_direction, cloud.z_edges_kpc * PC_PER_KPC
     )
     candidates = jnp.concatenate(
-        (jnp.array([0.0, maximum], dtype=origin.dtype),
-         x_crossings, y_crossings, radial_crossings)
+        (
+            jnp.array([0.0, maximum], dtype=origin.dtype),
+            x_crossings,
+            y_crossings,
+            radial_crossings,
+        )
     )
-    inside_segment = jnp.isfinite(candidates) & (candidates > 0.0) & (candidates < maximum)
+    inside_segment = (
+        jnp.isfinite(candidates) & (candidates > 0.0) & (candidates < maximum)
+    )
     candidates = jnp.where(inside_segment, candidates, maximum)
     candidates = candidates.at[0].set(0.0)
     return jnp.sort(candidates)
@@ -130,9 +137,12 @@ def ray_segments(
 
     n_z, n_y, n_x = cloud.n_h_cm3.shape
     inside_cloud = (
-        (z_index >= 0) & (z_index < n_z)
-        & (y_index >= 0) & (y_index < n_y)
-        & (x_index >= 0) & (x_index < n_x)
+        (z_index >= 0)
+        & (z_index < n_z)
+        & (y_index >= 0)
+        & (y_index < n_y)
+        & (x_index >= 0)
+        & (x_index < n_x)
     )
     safe_z = jnp.clip(z_index, 0, n_z - 1)
     safe_y = jnp.clip(y_index, 0, n_y - 1)
@@ -186,9 +196,7 @@ def locate_ray_column_depth_pc(
     segments = ray_segments(cloud, origin, ray_direction, max_distance_pc)
     cumulative_column = jnp.cumsum(segments.column_cm2)
     reaches_here = (
-        (segments.column_cm2 > 0.0)
-        & (cumulative_column >= target)
-        & (target >= 0.0)
+        (segments.column_cm2 > 0.0) & (cumulative_column >= target) & (target >= 0.0)
     )
     reached = jnp.any(reaches_here)
     segment_index = jnp.argmax(reaches_here)
@@ -216,7 +224,5 @@ def integrate_ray_optical_depth(
 ):
     """Return ``tau = sigma_H * integral(n_H ds)`` along one ray segment."""
 
-    column_cm2 = integrate_ray_column_cm2(
-        cloud, origin_pc, direction, max_distance_pc
-    )
+    column_cm2 = integrate_ray_column_cm2(cloud, origin_pc, direction, max_distance_pc)
     return jnp.asarray(cross_section_cm2_per_h) * column_cm2

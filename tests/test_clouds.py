@@ -5,7 +5,7 @@ import unittest
 import jax
 import numpy as np
 
-from utils.clouds import (
+from dsh.geometry.clouds import (
     KPC_TO_CM,
     build_angular_distance_cloud,
     cloud_from_loaded_fits,
@@ -24,13 +24,13 @@ class TestAngularDistanceCloud(unittest.TestCase):
         self.delta_nh = np.full((4, 2, 3), 2.0e20)
 
     def build(self, **overrides):
-        parameters = dict(
-            delta_nh_cm2=self.delta_nh,
-            x_centers_arcsec=self.x_arcsec,
-            y_centers_arcsec=self.y_arcsec,
-            z_centers_kpc=self.z_kpc,
-            source_distance_kpc=10.0,
-        )
+        parameters = {
+            "delta_nh_cm2": self.delta_nh,
+            "x_centers_arcsec": self.x_arcsec,
+            "y_centers_arcsec": self.y_arcsec,
+            "z_centers_kpc": self.z_kpc,
+            "source_distance_kpc": 10.0,
+        }
         parameters.update(overrides)
         return build_angular_distance_cloud(**parameters)
 

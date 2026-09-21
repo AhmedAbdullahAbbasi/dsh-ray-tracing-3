@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Extract a source-independent absorption table from XSPEC ``tbabs``.
 
 This is an offline provenance script.  XSPEC/HEASoft is not a runtime
@@ -17,13 +16,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from pathlib import Path
 import re
 import shutil
 import subprocess
+from pathlib import Path
 
 import numpy as np
-
 
 ENERGY_KEV = np.array([3.3, 4.9, 6.9], dtype=np.float64)
 REFERENCE_NH22 = 10.0
@@ -79,16 +77,10 @@ def _extract_one_energy(
     )
     output = completed.stdout + "\n" + completed.stderr
     if completed.returncode != 0:
-        raise RuntimeError(
-            f"XSPEC failed for E={energy_kev:g} keV:\n{output}"
-        )
+        raise RuntimeError(f"XSPEC failed for E={energy_kev:g} keV:\n{output}")
 
-    absorbed_match = re.search(
-        r"DSH_ABSORBED\s+([0-9.eE+-]+)", output
-    )
-    unabsorbed_match = re.search(
-        r"DSH_UNABSORBED\s+([0-9.eE+-]+)", output
-    )
+    absorbed_match = re.search(r"DSH_ABSORBED\s+([0-9.eE+-]+)", output)
+    unabsorbed_match = re.search(r"DSH_UNABSORBED\s+([0-9.eE+-]+)", output)
     version_match = re.search(r"XSPEC version:\s*([^\s]+)", output)
     if absorbed_match is None or unabsorbed_match is None:
         raise RuntimeError(
@@ -140,9 +132,7 @@ def generate(output: Path, xspec_executable: str) -> None:
     sigma = np.asarray(reference_sigma, dtype=np.float64)
     validation_sigma = np.asarray(validation_sigma, dtype=np.float64)
     if not np.allclose(sigma, validation_sigma, rtol=5.0e-7, atol=0.0):
-        raise RuntimeError(
-            "inferred TBabs cross-section changes with reference column"
-        )
+        raise RuntimeError("inferred TBabs cross-section changes with reference column")
     if len(producer_versions) > 1:
         raise RuntimeError("XSPEC version changed during table generation")
 
@@ -163,8 +153,7 @@ def generate(output: Path, xspec_executable: str) -> None:
         "producer": "XSPEC tbabs",
         "producer_version": producer_version,
         "producer_url": (
-            "https://heasarc.gsfc.nasa.gov/docs/software/xspec/manual/"
-            "XSmodelTbabs.html"
+            "https://heasarc.gsfc.nasa.gov/docs/software/xspec/manual/XSmodelTbabs.html"
         ),
         "tbabs_version": 2,
         "abundance_command": "wilm",
@@ -212,6 +201,7 @@ def generate(output: Path, xspec_executable: str) -> None:
 def main() -> None:
     default_output = (
         Path(__file__).resolve().parent.parent
+        / "dsh"
         / "data"
         / "absorption"
         / "tbabs_wilm_vern_v1.npz"
