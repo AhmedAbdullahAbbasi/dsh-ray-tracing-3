@@ -78,6 +78,15 @@ The uniform screen has a finite square field. The report therefore records the
 phase probability enclosed by an inscribed circular aperture; flux outside the
 simulated field must not be misdiagnosed as a normalization error.
 
+The validation runner uses a three-cone mixture for source launch directions:
+80 percent in a narrow halo cone, 15 percent in a broader cone, and 5 percent
+in the full screen cone. Each photon is weighted by the *complete mixture PDF*,
+including all overlapping cones. This preserves the isotropic source measure
+and full-field support while reducing the variance of forward-peaked peel-off
+events. Production source launching and observer scoring are unchanged. The
+report gives both an estimated relative Monte Carlo standard error for the
+total scored fluence and the effective sample size in the symmetry aperture.
+
 ## Fast checks
 
 Run the validation tests alone:
@@ -125,6 +134,8 @@ Current acceptance thresholds are:
 - simulated radius slope within `0.03` of `E^-1`;
 - scattering-opacity slope within `0.03` of `E^-2` for the current RG table;
 - simulated fluence-versus-energy slope within `0.20` of that tabulated slope;
+- estimated observer-fluence Monte Carlo error below 5 percent and at least
+  400 effective weighted events in the symmetry aperture at each energy;
 - azimuthal harmonics below `5/sqrt(N_eff)`;
 - monotonically increasing ring/delay width with increasing screen thickness.
 

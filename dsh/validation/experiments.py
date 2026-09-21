@@ -21,7 +21,7 @@ from ..physics.newdust import (
     NewDustScatteringTable,
     build_dust_physics_from_newdust,
 )
-from ..sources.launch import build_cloud_launch_geometry, sample_source_launches
+from ..sources.launch import build_cloud_launch_geometry
 from ..sources.models import SourcePackets
 from ..transport.kernel import transport_photon_batch
 from .analytic import (
@@ -29,6 +29,7 @@ from .analytic import (
     exact_single_scatter_delay_s,
     phase_containment_angle_rad,
 )
+from .launch import nested_screen_launch_geometries, sample_mixture_source_launches
 
 
 @dataclass(frozen=True)
@@ -51,6 +52,7 @@ class UniformScreenValidation:
     maximum_relative_delay_error: float
     center_screen_delay_residual_rms_fraction: float
     azimuthal_effective_sample_size: float
+    observer_fluence_relative_standard_error: float
     azimuthal_harmonic_amplitudes: tuple[float, ...]
 
 
@@ -167,7 +169,20 @@ def run_uniform_screen_validation(
         np.zeros_like(scattering.energy_kev),
     )
     launch_geometry = build_cloud_launch_geometry(cloud)
-    launch_jit = jax.jit(sample_source_launches)
+    median_scattering_angle = float(
+        phase_containment_angle_rad(
+            scattering.scattering_angle_rad,
+            scattering.scattering_angle_cdf[energy_index],
+            0.5,
+        )
+    )
+    proposals = nested_screen_launch_geometries(
+        launch_geometry,
+        source_distance_kpc=source_distance_kpc,
+        fractional_distance=fractional_distance,
+        median_scattering_angle_rad=median_scattering_angle,
+    )
+    launch_jit = jax.jit(sample_mixture_source_launches)
     transport_jit = jax.jit(
         transport_photon_batch,
         static_argnames=("max_interactions",),
@@ -195,7 +210,7 @@ def run_uniform_screen_validation(
         )
         chunk_key = random.fold_in(key, chunk_index)
         launch_key, transport_key = random.split(chunk_key)
-        launched = launch_jit(launch_key, packets, launch_geometry)
+        launched = launch_jit(launch_key, packets, proposals)
         transported = transport_jit(
             transport_key,
             launched.position_pc,
@@ -260,15 +275,8 @@ def run_uniform_screen_validation(
         event_theta,
     )
 
-    physical_median = float(
-        phase_containment_angle_rad(
-            scattering.scattering_angle_rad,
-            scattering.scattering_angle_cdf[energy_index],
-            0.5,
-        )
-    )
     expected_median_radius = (
-        (1.0 - fractional_distance) * physical_median / ARCSEC_TO_RAD
+        (1.0 - fractional_distance) * median_scattering_angle / ARCSEC_TO_RAD
     )
     weighted_median_radius = _weighted_median(radius_arcsec, weights)
 
@@ -280,6 +288,12 @@ def run_uniform_screen_validation(
     effective_size = float(
         aperture_weights.sum(dtype=np.float64) ** 2
         / np.sum(aperture_weights**2, dtype=np.float64)
+    )
+    fluence_relative_se = float(
+        np.sqrt(
+            np.sum(weights**2, dtype=np.float64) / scored_fluence**2
+            - 1.0 / packet_count
+        )
     )
     delay_residual_fraction = (
         delay_s[aperture] - center_screen_delay[aperture]
@@ -321,5 +335,6 @@ def run_uniform_screen_validation(
         maximum_relative_delay_error=float(np.max(np.abs(delay_error) / delay_scale)),
         center_screen_delay_residual_rms_fraction=residual_rms,
         azimuthal_effective_sample_size=effective_size,
+        observer_fluence_relative_standard_error=fluence_relative_se,
         azimuthal_harmonic_amplitudes=tuple(float(value) for value in harmonics),
     )

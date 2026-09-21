@@ -68,6 +68,11 @@ def _pass_fail_summary(
         "simulated_energy_fluence_scaling": (
             abs(scored_fluence_slope - cross_section_slope) < 0.20
         ),
+        "observer_mc_precision": all(
+            result.observer_fluence_relative_standard_error < 0.05
+            and result.azimuthal_effective_sample_size >= 400.0
+            for result in results
+        ),
         "azimuthal_symmetry": all(
             max(result.azimuthal_harmonic_amplitudes)
             < 5.0 / np.sqrt(result.azimuthal_effective_sample_size)
@@ -142,7 +147,9 @@ def main():
             "    scored fluence / tau: "
             f"{result.scored_observer_fluence:.7g} / "
             f"{result.target_scattering_optical_depth:.7g}; "
-            f"ratio={result.scored_fluence_to_tau:.4f}"
+            f"ratio={result.scored_fluence_to_tau:.4f}; "
+            f"relative MC SE={result.observer_fluence_relative_standard_error:.4f}; "
+            f"aperture N_eff={result.azimuthal_effective_sample_size:.0f}"
         )
 
     median_angles = phase_containment_angle_rad(
