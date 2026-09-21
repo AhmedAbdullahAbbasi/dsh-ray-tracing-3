@@ -77,12 +77,25 @@ def convolve_scored_impulses(
     variance = ((weights[:, None] ** 2) * probabilities * (1.0 - probabilities)).sum(
         axis=0, dtype=np.float64
     )
-    window_probability = probabilities.sum(axis=1)
+    # The union of the arrival bins is one interval. Summing rounded per-bin
+    # probabilities can yield 1 - 1e-16 even when the source lies entirely
+    # within that interval. Its Bernoulli variance must be exactly zero in
+    # that case, so compute the window probability from its CDF endpoints.
+    window_probability = (
+        np.interp(
+            shifted_edges[:, -1], source_edges, source_cdf, left=0.0, right=1.0
+        )
+        - np.interp(
+            shifted_edges[:, 0], source_edges, source_cdf, left=0.0, right=1.0
+        )
+    )
     return ImpulseConvolutionStatistics(
         impulse_fluence=np.histogram(delays, bins=arrival_edges, weights=weights)[0],
         expected_flare_fluence=expected,
         conditional_variance=variance,
-        expected_window_fluence=float(expected.sum(dtype=np.float64)),
+        expected_window_fluence=float(
+            np.sum(weights * window_probability, dtype=np.float64)
+        ),
         conditional_window_variance=float(
             np.sum(weights**2 * window_probability * (1.0 - window_probability))
         ),

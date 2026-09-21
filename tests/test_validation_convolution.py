@@ -42,6 +42,17 @@ class TestContinuousImpulseConvolution(unittest.TestCase):
             simulated.var(), result.conditional_variance[0], delta=0.02
         )
 
+    def test_fully_contained_window_has_exactly_zero_sampling_variance(self):
+        # For this source CDF, adding the rounded probabilities of the eight
+        # separate arrival bins produces 1 - one floating-point ulp. The
+        # entire source still lies in the arrival window for every emission.
+        source_fluence = np.random.default_rng(25).uniform(size=8)
+        result = convolve_scored_impulses(
+            [0.0], [1.0], np.arange(9), source_fluence, np.arange(9)
+        )
+        self.assertAlmostEqual(result.expected_window_fluence, 1.0)
+        self.assertEqual(result.conditional_window_variance, 0.0)
+
 
 if __name__ == "__main__":
     unittest.main()
