@@ -16,7 +16,7 @@ dsh/
   geometry/   coordinates, physical cloud cubes, exact ray integrals
   physics/    NewDust scattering, TBabs absorption, JAX physics tables
   sources/    light curves, spectra, packet sampling, source launch
-  transport/  direction geometry, one-event checkpoint, photon kernel
+  transport/  direction geometry and repeated-interaction photon kernel
   observer/   peel-off scoring and weighted DSH binning
   io/         cloud FITS input and multi-extension FITS output
   data/       versioned cross-section tables and provenance
@@ -24,9 +24,10 @@ dsh/
   cli.py      local Version-1 runner
 ```
 
-The old Cartesian toy transport, Henyey--Greenstein placeholder, and
-notebook-only detector/plotting modules have been removed. The production
-path uses only the native angular--distance frustum.
+The old Cartesian toy transport, temporary one-event/isotropic transport,
+legacy thin-screen adapters, Henyey--Greenstein placeholder, and notebook-only
+detector/plotting modules have been removed. The production path uses only the
+native angular--distance frustum and intrinsic material cross-sections.
 
 ## Installation
 
@@ -147,6 +148,8 @@ Tables are validated against adjacent JSON provenance and SHA-256 metadata.
 Unsupported energies are rejected rather than extrapolated. The schemas
 already support arbitrary one-dimensional energy grids; dense, edge-aware,
 co-registered scattering and absorption tables are the next physics upgrade.
+The NewDust JSON records a comparison with historical screen files as
+provenance only; no observer-space thin-screen kernel enters the simulation.
 
 Regeneration is an offline operation:
 
@@ -169,14 +172,11 @@ python -m unittest discover -v
 ```
 
 The tests cover source-fluence closure, coordinate conversion, native column
-closure, exact ray integrals, finite-slab interaction statistics, table
-normalization and provenance, null four-momenta, elastic scattering,
-absorption, repeated interactions, source-launch importance weights,
-peel-off normalization, arrival delays, observer binning, chunked execution,
-and FITS output.
-
-`physics_checkpoints.ipynb` retains the analytic checkpoint walkthrough for
-the pre-production layers.
+closure, exact ray integrals, full-kernel finite-slab interaction statistics,
+table normalization and provenance, null four-momenta, elastic scattering,
+absorption, repeated interactions, source-launch importance weights, peel-off
+normalization, arrival delays, observer binning, chunked execution, and FITS
+output.
 
 ## Current V1 limits
 

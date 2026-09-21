@@ -3,10 +3,10 @@
 This is an offline preprocessing script.  NewDust/xdust, Astropy, and SciPy
 are not runtime dependencies of the photon transport kernel.
 
-The explicit 100-point *linear* grain-radius grid is important: newer xdust
-releases changed their default size grid.  Keeping it explicit reproduces the
-legacy 4U 1630-47 ``int_E1/E2/E3`` kernels to their seven-digit storage
-precision when the screen geometry is reapplied.
+The explicit 100-point *linear* grain-radius grid is important because newer
+xdust releases changed their default size grid. Historical 4U 1630-47 screen
+files were used only to identify and cross-check this configuration; no
+observer-space screen kernel is stored in the generated transport table.
 """
 
 from __future__ import annotations
@@ -160,17 +160,13 @@ def generate(output: Path) -> None:
         "grain_radius_spacing": "linear",
         "dust_mass_column_g_cm2": DUST_MASS_COLUMN_G_CM2,
         "hydrogen_column_reference_cm2": NH_REFERENCE_CM2,
-        "legacy_normalization_status": (
-            "configuration recovered by numerical regression against the "
-            "supplied legacy kernels"
-        ),
         "normalization": "NewDust d(tau)/dOmega divided by NH_reference",
         "scattering_cross_section_definition": (
             "solid-angle integral of the tabulated differential cross-section"
         ),
         "normalization_choice": (
             "use the integral of dSigma/dOmega so interaction opacity and the "
-            "sampled phase function close exactly and reproduce legacy halo amplitude"
+            "sampled phase function close exactly"
         ),
         "newdust_reported_tau_sca": reported_tau_sca.tolist(),
         "newdust_reported_scattering_cross_section_cm2_per_h": (
@@ -183,14 +179,20 @@ def generate(output: Path) -> None:
         "positive_angle_samples": N_POSITIVE_ANGLES,
         "minimum_positive_angle_arcsec": MIN_ANGLE_ARCSEC,
         "maximum_angle_rad": float(np.pi),
-        "legacy_kernel_convention": (
-            "K(theta_obs,f)=NH*dSigma/dOmega(theta_obs/(1-f))/(1-f)^2"
-        ),
-        "legacy_reference": {
-            "matrix_shape": [1500, 1000],
-            "observed_angle_arcsec": [1.0, 1500.0, 1.0],
-            "fractional_distance_from_observer": [0.001, 1.0, 0.001],
-            "energy_kev": [3.3, 4.9, 6.9],
+        "historical_validation": {
+            "role": "provenance only; not an input to photon transport",
+            "configuration_origin": (
+                "numerical regression against supplied 4U 1630-47 screen files"
+            ),
+            "screen_kernel_convention": (
+                "K(theta_obs,f)=NH*dSigma/dOmega(theta_obs/(1-f))/(1-f)^2"
+            ),
+            "reference_grid": {
+                "matrix_shape": [1500, 1000],
+                "observed_angle_arcsec": [1.0, 1500.0, 1.0],
+                "fractional_distance_from_observer": [0.001, 1.0, 0.001],
+                "energy_kev": [3.3, 4.9, 6.9],
+            },
         },
         "table_sha256": _sha256(output),
     }

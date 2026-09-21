@@ -8,7 +8,7 @@ import numpy as np
 from jax import random
 
 from dsh.geometry.clouds import build_angular_distance_cloud
-from dsh.geometry.coordinates import ARCSEC_TO_RAD, sky_position_pc
+from dsh.geometry.coordinates import sky_position_pc
 from dsh.observer.scoring import (
     PC_LIGHT_TRAVEL_TIME_S,
     scattering_phase_pdf_per_sr,
@@ -18,7 +18,6 @@ from dsh.physics.absorption import load_photoelectric_absorption_table
 from dsh.physics.dust import build_dust_physics_table
 from dsh.physics.newdust import (
     build_dust_physics_from_tables,
-    legacy_screen_kernel_arcsec2,
     load_newdust_scattering_table,
 )
 from dsh.sources.launch import (
@@ -328,38 +327,24 @@ class TestPeeloffObserver(unittest.TestCase):
         self.assertTrue(np.all(weights >= 0.0))
         self.assertTrue(np.any(weights > 0.0))
 
-    def test_phase_density_reconstructs_legacy_newdust_screen_kernel(self):
-        observed_angles_arcsec = np.array([1.0, 10.0, 100.0, 500.0, 1000.0, 1500.0])
-        hydrogen_column = 1.0e22
-        sigma_scattering = self.scattering.scattering_cross_section_cm2_per_h[0]
-        arcsec_per_radian = 1.0 / ARCSEC_TO_RAD
-
-        for fractional_distance in (0.007, 0.008, 0.009, 0.010):
-            physical_angle = (
-                observed_angles_arcsec / (1.0 - fractional_distance) / arcsec_per_radian
+    def test_phase_density_matches_intrinsic_table_nodes(self):
+        angle_indices = np.array([0, 1, 31, 257, 1023, -1])
+        angles = self.scattering.scattering_angle_rad[angle_indices]
+        energies = self.scattering.energy_kev
+        actual = np.asarray(
+            scattering_phase_pdf_per_sr(
+                self.physics,
+                energies[:, None],
+                angles[None, :],
             )
-            phase_pdf = np.asarray(
-                scattering_phase_pdf_per_sr(
-                    self.physics,
-                    np.full(observed_angles_arcsec.shape, 3.3),
-                    physical_angle,
-                )
-            )
-            reconstructed = (
-                hydrogen_column
-                * sigma_scattering
-                * phase_pdf
-                / arcsec_per_radian**2
-                / (1.0 - fractional_distance) ** 2
-            )
-            expected = legacy_screen_kernel_arcsec2(
-                self.scattering,
-                energy_kev=3.3,
-                observed_angle_arcsec=observed_angles_arcsec,
-                fractional_distance_from_observer=fractional_distance,
-                hydrogen_column_cm2=hydrogen_column,
-            )
-            np.testing.assert_allclose(reconstructed, expected, rtol=2.0e-5)
+        )
+        expected = (
+            self.scattering.differential_cross_section_cm2_per_sr_per_h[
+                :, angle_indices
+            ]
+            / self.scattering.scattering_cross_section_cm2_per_h[:, None]
+        )
+        np.testing.assert_allclose(actual, expected, rtol=3.0e-6)
 
     def test_phase_density_is_normalized_at_grid_and_intermediate_energies(self):
         angle = self.scattering.scattering_angle_rad

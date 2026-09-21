@@ -17,34 +17,37 @@
   "grain_radius_spacing": "linear",
   "hydrogen_column_reference_cm2": 1e+22,
   "integrated_cross_section_unit": "cm2 H-1",
+  "historical_validation": {
+    "configuration_origin": "numerical regression against supplied 4U 1630-47 screen files",
+    "reference_grid": {
+      "energy_kev": [
+        3.3,
+        4.9,
+        6.9
+      ],
+      "fractional_distance_from_observer": [
+        0.001,
+        1.0,
+        0.001
+      ],
+      "matrix_shape": [
+        1500,
+        1000
+      ],
+      "observed_angle_arcsec": [
+        1.0,
+        1500.0,
+        1.0
+      ]
+    },
+    "role": "provenance only; not an input to photon transport",
+    "screen_kernel_convention": "K(theta_obs,f)=NH*dSigma/dOmega(theta_obs/(1-f))/(1-f)^2"
+  },
   "integrated_to_newdust_reported_cross_section_ratio": [
     1.0446327030142029,
     1.0446330721589414,
     1.0446332240424965
   ],
-  "legacy_kernel_convention": "K(theta_obs,f)=NH*dSigma/dOmega(theta_obs/(1-f))/(1-f)^2",
-  "legacy_normalization_status": "configuration recovered by numerical regression against the supplied legacy kernels",
-  "legacy_reference": {
-    "energy_kev": [
-      3.3,
-      4.9,
-      6.9
-    ],
-    "fractional_distance_from_observer": [
-      0.001,
-      1.0,
-      0.001
-    ],
-    "matrix_shape": [
-      1500,
-      1000
-    ],
-    "observed_angle_arcsec": [
-      1.0,
-      1500.0,
-      1.0
-    ]
-  },
   "maximum_angle_rad": 3.141592653589793,
   "minimum_positive_angle_arcsec": 0.001,
   "model": "MRN power law + Rayleigh-Gans/Drude",
@@ -59,7 +62,7 @@
     0.027431125463626187
   ],
   "normalization": "NewDust d(tau)/dOmega divided by NH_reference",
-  "normalization_choice": "use the integral of dSigma/dOmega so interaction opacity and the sampled phase function close exactly and reproduce legacy halo amplitude",
+  "normalization_choice": "use the integral of dSigma/dOmega so interaction opacity and the sampled phase function close exactly",
   "positive_angle_samples": 8192,
   "producer": "NewDust/xdust",
   "producer_import": "xdust",

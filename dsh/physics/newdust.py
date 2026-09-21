@@ -29,7 +29,6 @@ from .dust import (
     phase_cdf_from_differential_cross_section,
 )
 
-ARCSEC_PER_RADIAN = 180.0 * 3600.0 / np.pi
 DEFAULT_NEWDUST_TABLE = (
     Path(__file__).resolve().parent.parent / "data" / "newdust" / "mrn_rg_drude_v1.npz"
 )
@@ -218,71 +217,3 @@ def build_dust_physics_from_tables(
         scattering,
         absorption.absorption_cross_section_cm2_per_h,
     )
-
-
-def legacy_screen_kernel_arcsec2(
-    scattering: NewDustScatteringTable,
-    *,
-    energy_kev: float,
-    observed_angle_arcsec,
-    fractional_distance_from_observer: float,
-    hydrogen_column_cm2: float = 1.0e22,
-):
-    """Reconstruct a legacy thin-screen halo kernel for validation.
-
-    Let ``f = d_dust / d_source``.  In the small-angle DSH geometry,
-
-    ``theta_sca = theta_obs / (1-f)`` and
-    ``K_obs = NH * (d sigma/d Omega)(theta_sca) / (1-f)^2``.
-
-    The returned numerical unit is inverse square arcseconds.  Inputs outside
-    the tabulated energy/angle range are rejected instead of extrapolated.
-    This helper is not used by the voxel transport hot path.
-    """
-
-    energy = float(energy_kev)
-    theta_obs = np.asarray(observed_angle_arcsec, dtype=np.float64)
-    f = float(fractional_distance_from_observer)
-    nh = float(hydrogen_column_cm2)
-    if not np.isfinite(energy):
-        raise ValueError("energy_kev must be finite")
-    if not np.all(np.isfinite(theta_obs)) or np.any(theta_obs <= 0.0):
-        raise ValueError("observed_angle_arcsec must be finite and positive")
-    if not np.isfinite(f) or not 0.0 <= f < 1.0:
-        raise ValueError("fractional_distance_from_observer must satisfy 0 <= f < 1")
-    if not np.isfinite(nh) or nh < 0.0:
-        raise ValueError("hydrogen_column_cm2 must be finite and nonnegative")
-    if energy < scattering.energy_kev[0] or energy > scattering.energy_kev[-1]:
-        raise ValueError("energy lies outside the NewDust table")
-
-    theta_sca = theta_obs / (1.0 - f) / ARCSEC_PER_RADIAN
-    positive_angles = scattering.scattering_angle_rad[1:]
-    if np.any(theta_sca < positive_angles[0]) or np.any(theta_sca > np.pi):
-        raise ValueError("physical scattering angle lies outside the NewDust table")
-
-    # Bilinear interpolation in log(E), log(theta), and log(d sigma/d Omega)
-    # preserves positivity over the many-decade phase-function dynamic range.
-    log_theta = np.log(positive_angles)
-    log_query_theta = np.log(theta_sca)
-    log_rows = np.empty((scattering.energy_kev.size,) + theta_sca.shape)
-    tiny = np.finfo(np.float64).tiny
-    for row, values in enumerate(
-        scattering.differential_cross_section_cm2_per_sr_per_h[:, 1:]
-    ):
-        log_rows[row] = np.interp(
-            log_query_theta,
-            log_theta,
-            np.log(np.maximum(values, tiny)),
-        )
-
-    log_energy = np.log(scattering.energy_kev)
-    upper = int(np.searchsorted(scattering.energy_kev, energy, side="right"))
-    upper = min(max(upper, 1), scattering.energy_kev.size - 1)
-    lower = upper - 1
-    fraction = (np.log(energy) - log_energy[lower]) / (
-        log_energy[upper] - log_energy[lower]
-    )
-    log_differential = log_rows[lower] + fraction * (log_rows[upper] - log_rows[lower])
-    differential_per_sr = np.exp(log_differential)
-    differential_per_arcsec2 = differential_per_sr / ARCSEC_PER_RADIAN**2
-    return nh * differential_per_arcsec2 / (1.0 - f) ** 2

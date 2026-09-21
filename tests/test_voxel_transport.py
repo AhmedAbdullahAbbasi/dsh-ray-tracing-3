@@ -12,7 +12,6 @@ from dsh.geometry.clouds import build_angular_distance_cloud
 from dsh.physics.dust import (
     build_dust_physics_table,
     phase_cdf_from_differential_cross_section,
-    remove_small_angle_dsh_geometry_factor,
 )
 from dsh.transport.kernel import (
     ABSORBED,
@@ -241,14 +240,6 @@ class TestVoxelTransport(unittest.TestCase):
             max_interactions=2,
         )
         self.assertGreater(np.mean(np.asarray(result.status) == MAX_INTERACTIONS), 0.0)
-
-    def test_embedded_dsh_geometry_factor_helper(self):
-        intrinsic = np.array([2.0, 5.0])
-        x = 0.75
-        weighted = intrinsic / (1.0 - x) ** 2
-        np.testing.assert_allclose(
-            remove_small_angle_dsh_geometry_factor(weighted, x), intrinsic
-        )
 
     def test_invalid_energy_and_invalid_four_momentum_are_distinct(self):
         table = isotropic_dust_table(0.0, 0.0)
