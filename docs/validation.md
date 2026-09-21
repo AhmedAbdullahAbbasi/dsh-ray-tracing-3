@@ -21,7 +21,7 @@ x = observer-to-dust distance / observer-to-source distance.
 | 4. Energy scaling | Fits the slopes of median scattering angle and `sigma_sca` against energy | Holds the screen's hydrogen column fixed and measures halo radii and scattering fluence at 3.3, 4.9, and 6.9 keV; reports the weighted-radius slope's Monte Carlo error | Implemented |
 | 5. Screen thickness | Checks analytic inner/outer ring bounds and the zero-thickness limit | Sweeps increasing thickness and requires monotonically increasing delay-width around the central-screen relation | Implemented |
 | 6. Symmetry | Scores a deterministic ring at 64 azimuths and checks equal delays/weights | Measures weighted azimuthal Fourier modes inside a circular aperture | Implemented |
-| 7. Convolution | Scores the same three-angle scattering history for an impulse and a three-bin top-hat source, then bins and compares with discrete convolution | A continuous light-curve convergence case remains for a later stage | Implemented for scorer and binning |
+| 7. Convolution | Scores a three-angle impulse and top-hat source; also checks exact fractional-bin convolution and its conditional Monte Carlo variance | Runs a tabulated post-peak decay through the real source sampler, voxel transport, scorer, and observer bins; compares two annular light curves with exact continuous-time impulse convolution | Implemented; local high-statistics run pending |
 | 8. Literature | None | Requires a frozen external reference case with matched dust, geometry, energy, and normalization conventions | Pending |
 
 ## Geometry reference
@@ -198,6 +198,43 @@ checks. The JSON records the original report and packet counts for each
 screen. The command rejects a prior report with failures elsewhere in the
 ladder. Do not treat an image with fewer than six usable common time bins as
 a passed geometry check, even when its measured radii are correct.
+
+## Flare-convolution experiment
+
+Run the independent temporal checkpoint after the screen-distance images pass:
+
+```powershell
+python -m unittest tests.test_validation_convolution -v
+python -m scripts.run_flare_convolution_validation `
+  --packets 1000000 `
+  --chunk-size 100000 `
+  --output validation_outputs/rigorous_flare_convolution.json
+```
+
+The default case uses the same 10-kpc, `x=0.5`, 3.3-keV, `tau_sca=0.01`
+uniform screen as the image experiment. It generates a 2-day post-peak
+exponential with 0.8-day decay time. Its source cells are 0.125 day wide;
+the flux in each cell is the exact exponential average, and the production
+source sampler draws emission times uniformly within that cell. The report
+records the maximum difference between this tabulated CDF and the true
+continuous exponential CDF.
+
+Every source packet takes the normal path through the importance-weighted
+source launch, native voxel transport, and peel-off scorer. The real event
+times are binned with the production observer binning function in two annuli.
+For the reference, each *same physical scattering history* is treated as an
+impulse at emission time zero. Its actual geometric delay and observer weight
+are convolved with the source CDF by integrating the emission time exactly
+between arrival-bin edges. A 5-sigma threshold uses the conditional variance
+of the independently sampled emission time of every packet; at least six
+time bins per annulus must have an expected signal five times larger than
+that standard error. This paired test isolates source timing and binning from
+transport sampling noise. It is not a second independent transport run.
+
+The JSON report and adjacent `_lightcurves.npz` contain the impulse,
+convolved, and sampled flare curves, plus conditional uncertainties, source
+time bins, and annulus definitions. Absorption and higher scattering orders
+are disabled here so that a failure can be assigned to the time-domain path.
 
 ## Literature benchmark boundary
 
