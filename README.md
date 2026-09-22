@@ -308,6 +308,16 @@ python -m scripts.run_validation_ladder --packets 1000000
 It writes a machine-readable report under `validation_outputs/` and exits
 nonzero if an acceptance criterion fails.
 
+Stage 9A's controlled first-interaction checks are documented in
+dsh/validation/STAGE9A.md. Stage 9B's independent foreground-column check
+for virtual observer extinction is in dsh/validation/STAGE9B.md. The Stage 9B
+gate is small and deterministic; it does not rerun a production simulation:
+
+~~~powershell
+python -m unittest tests.test_validation_escape -v
+python -m scripts.run_escape_attenuation_validation --output validation_outputs/stage9b_escape_attenuation.json
+~~~
+
 ## Current V1 limits
 
 - Fixed MRN Rayleigh--Gans/Drude dust model.
