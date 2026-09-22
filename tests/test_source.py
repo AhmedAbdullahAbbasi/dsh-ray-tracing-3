@@ -19,6 +19,16 @@ from dsh.sources.models import (
 
 
 class TestTabulatedBandSource(unittest.TestCase):
+    def test_powerlaw_sampling_stays_inside_material_bounds_at_seeded_edge(self):
+        source = build_powerlaw_band_source(
+            [0.0, 3600.0], [0.038], [2.0, 4.0, 6.0, 10.0], 1.7
+        )
+        source_key, _ = random.split(random.fold_in(random.PRNGKey(2026), 406))
+        sampler = jax.jit(sample_tabulated_band_source, static_argnames=("n_packets",))
+        energy = np.asarray(sampler(source_key, source, n_packets=512).energy_kev)
+        self.assertGreaterEqual(float(energy.min()), 2.0)
+        self.assertLessEqual(float(energy.max()), 10.0)
+
     def test_continuous_powerlaw_energies_and_band_fluence(self):
         source = build_powerlaw_band_source(
             [0.0, 3600.0], [0.038], [2.0, 4.0, 6.0, 10.0], 1.7

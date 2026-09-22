@@ -422,7 +422,10 @@ def _sample_powerlaw_energy(
     low_power = energy_min_kev**alpha_safe
     high_power = energy_max_kev**alpha_safe
     energy_power = (low_power + u * (high_power - low_power)) ** (1.0 / alpha_safe)
-    return jnp.where(use_log_limit, energy_log, energy_power)
+    energy = jnp.where(use_log_limit, energy_log, energy_power)
+    # Float32 inverse-CDF evaluation can round one ULP below the lower bound
+    # (observed at 2 keV in a 2.5M-packet run). Preserve the requested support.
+    return jnp.clip(energy, energy_min_kev, energy_max_kev)
 
 
 def sample_variable_powerlaw_source(

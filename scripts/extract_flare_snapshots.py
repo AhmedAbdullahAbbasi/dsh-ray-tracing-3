@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -37,6 +38,30 @@ def _snapshot_indices(time_bins, start_day, exposure_days):
     return indices
 
 
+def _coarse_image_hdu(image, image_header, name, bin_factor, unit):
+    """Sum square sky cells and retain a WCS centered on their merged pixels."""
+    height, width = image.shape
+    coarsened = image.reshape(
+        height // bin_factor, bin_factor, width // bin_factor, bin_factor
+    ).sum(axis=(1, 3))
+    extension = fits.ImageHDU(coarsened, name=name)
+    extension.header["BUNIT"] = unit
+    extension.header["BINFACT"] = (bin_factor, "native pixels per coarse image axis")
+    for axis in (1, 2):
+        for prefix in ("CTYPE", "CUNIT"):
+            key = f"{prefix}{axis}"
+            if key in image_header:
+                extension.header[key] = image_header[key]
+        step = image_header[f"CDELT{axis}"]
+        extension.header[f"CRPIX{axis}"] = 1.0
+        extension.header[f"CRVAL{axis}"] = (
+            image_header[f"CRVAL{axis}"]
+            + ((bin_factor + 1) / 2 - image_header[f"CRPIX{axis}"]) * step
+        )
+        extension.header[f"CDELT{axis}"] = bin_factor * step
+    return extension
+
+
 def extract_snapshots(
     input_fits: Path,
     output_dir: Path,
@@ -45,12 +70,15 @@ def extract_snapshots(
     separation_days: int = 3,
     exposure_days: int = 1,
     expected_packets: int = 2_500_000,
+    allow_invalid_energy_count: int = 0,
 ) -> dict:
     """Check transport/product closure, then write three dated 2D FITS images."""
     if first_day < 0 or separation_days <= 0 or exposure_days <= 0:
         raise ValueError(
             "snapshot start must be nonnegative; widths and spacing positive"
         )
+    if allow_invalid_energy_count < 0:
+        raise ValueError("allow_invalid_energy_count must be nonnegative")
     start_days = [first_day + i * separation_days for i in range(3)]
     with fits.open(input_fits, checksum=True, memmap=True) as hdul:
         hdul.verify("exception")
@@ -82,7 +110,10 @@ def extract_snapshots(
         }
         if sum(statuses.values()) != expected_packets:
             raise ValueError("transport terminal counts do not sum to packet count")
-        if any(statuses.get(code, 0) for code in (0, 4, 5, 6)):
+        if (
+            any(statuses.get(code, 0) for code in (0, 4, 6))
+            or statuses.get(5, 0) > allow_invalid_energy_count
+        ):
             raise ValueError(
                 f"transport has numerical/invalid terminal states: {statuses}"
             )
@@ -134,6 +165,7 @@ def extract_snapshots(
             "scattering_table_sha256": header["SCATSHA"],
             "absorption_table_sha256": header["ABSSHA"],
             "status_counts": statuses,
+            "accepted_invalid_energy_packets": statuses.get(5, 0),
             "diagnostics": {
                 name.lower(): np.asarray(hdul["DIAGNOSTICS"].data[name][0]).item()
                 for name in hdul["DIAGNOSTICS"].data.names
@@ -149,6 +181,14 @@ def extract_snapshots(
             image_header["TSTOP"] = (end * DAY_S, "arrival interval stop [s]")
             image_header["TIMEREF"] = "direct source arrival"
             image_header["SRCFITS"] = input_fits.name
+            image_header["INVENER"] = (
+                statuses.get(5, 0),
+                "out-of-range energy packets in original run",
+            )
+            image_header["RUNSTAT"] = (
+                "DIAGNOSTIC" if statuses.get(5, 0) else "CLEAN",
+                "recovered older run if DIAGNOSTIC",
+            )
             image_header["BUNIT"] = "ph cm-2"
             image_header["BTYPE"] = "energy-integrated ideal-observer fluence"
             image_header.add_history(
@@ -179,6 +219,24 @@ def extract_snapshots(
                 ):
                     if key in image_header:
                         extension.header[key] = image_header[key]
+            bin_factor = math.gcd(20, image.shape[0], image.shape[1])
+            if bin_factor > 1:
+                extensions += [
+                    _coarse_image_hdu(
+                        image.astype(np.float32),
+                        image_header,
+                        "COARSEFL",
+                        bin_factor,
+                        "ph cm-2",
+                    ),
+                    _coarse_image_hdu(
+                        count_image.astype(np.int32),
+                        image_header,
+                        "COARSEEV",
+                        bin_factor,
+                        "count",
+                    ),
+                ]
             fits.HDUList(extensions).writeto(output, overwrite=True, checksum=True)
             manifest["products"].append(
                 {
@@ -205,6 +263,12 @@ def main():
     parser.add_argument("--separation-days", type=int, default=3)
     parser.add_argument("--exposure-days", type=int, default=1)
     parser.add_argument("--expected-packets", type=int, default=2_500_000)
+    parser.add_argument(
+        "--allow-invalid-energy-count",
+        type=int,
+        default=0,
+        help="explicitly allow this many rejected energy packets from an older run",
+    )
     args = parser.parse_args()
     report = extract_snapshots(
         args.input_fits,
@@ -213,11 +277,18 @@ def main():
         separation_days=args.separation_days,
         exposure_days=args.exposure_days,
         expected_packets=args.expected_packets,
+        allow_invalid_energy_count=args.allow_invalid_energy_count,
     )
     for product in report["products"]:
         print(
             f"{product['file']}: {product['scored_event_count']:,} events, "
             f"{product['observer_fluence_ph_cm2']:.7g} ph cm^-2"
+        )
+    if report["accepted_invalid_energy_packets"]:
+        print(
+            "Diagnostic recovery only: "
+            f"{report['accepted_invalid_energy_packets']} old-run energy packets "
+            "were excluded; snapshot headers record INVENER."
         )
     print("Wrote flare_snapshots_manifest.json")
 

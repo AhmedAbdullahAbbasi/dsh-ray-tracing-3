@@ -142,6 +142,30 @@ counts. `FIRSTIMG`, `MULTIIMG`, and `EVENTIMG` extensions distinguish scattering
 orders and record the number of weighted Monte Carlo events. The full FITS,
 NPZ, three images, and a `snapshots/flare_snapshots_manifest.json` are written
 under `outputs/flare_2p5m_four_cloud_2_10/`.
+The full FITS primary combines all arrival times through day 60 and all three
+energy bands. Open the three snapshot FITS files for the requested dates.
+Each snapshot also has `COARSEFL` (summed fluence) and `COARSEEV` (event count)
+extensions. On a 500×500 one-arcsecond sky grid these use 20×20-arcsecond
+cells; `BINFACT` records the exact grouping. Rebinning makes sparse Monte Carlo
+events easier to inspect but does not add physical resolution or convergence.
+`BUNIT=ph cm-2` is fluence per image cell, not detector counts or flux per second.
+
+If a run from an older checkout reports exactly two `energy lies outside the
+dust table` packets but no numerical-limit or invalid-momentum states, recover
+its saved full FITS locally without simulating again after applying the endpoint
+sampling fix:
+
+```powershell
+python -m scripts.extract_flare_snapshots `
+  --input-fits outputs/flare_2p5m_four_cloud_2_10/flare_2p5m_full.fits `
+  --output-dir outputs/flare_2p5m_four_cloud_2_10/snapshots `
+  --allow-invalid-energy-count 2
+```
+
+The explicit exception records `INVENER=2`, `RUNSTAT=DIAGNOSTIC`, and the
+accepted count in the manifest. It only recovers images from that existing run;
+it does not make the result a validated, converged science image. A new run with
+the fixed sampler should have zero out-of-range source energies.
 
 The runner accepts explicit nonuniform `--arrival-time-edges-days`. The
 launcher uses `0 3 4 6 7 9 10 60` (shifted with `-FirstSnapshotDay`) to keep

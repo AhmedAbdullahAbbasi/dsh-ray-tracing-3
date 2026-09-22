@@ -72,7 +72,7 @@ class TestHardStateCli(unittest.TestCase):
 
 @unittest.skipUnless(importlib.util.find_spec("astropy"), "requires Astropy")
 class TestFlareSnapshots(unittest.TestCase):
-    def _write_input(self, path, *, limit_count=0):
+    def _write_input(self, path, *, limit_count=0, invalid_energy_count=0):
         from astropy.io import fits
 
         cube = np.zeros((12, 3, 2, 2), dtype=np.float32)
@@ -93,7 +93,15 @@ class TestFlareSnapshots(unittest.TestCase):
         primary.header["SCATSHA"] = "a" * 64
         primary.header["ABSSHA"] = "b" * 64
         primary.header["CTYPE1"] = "XOFFSET"
+        primary.header["CUNIT1"] = "arcsec"
+        primary.header["CRPIX1"] = 1.0
         primary.header["CRVAL1"] = 5.0
+        primary.header["CDELT1"] = 1.0
+        primary.header["CTYPE2"] = "YOFFSET"
+        primary.header["CUNIT2"] = "arcsec"
+        primary.header["CRPIX2"] = 1.0
+        primary.header["CRVAL2"] = -2.0
+        primary.header["CDELT2"] = 1.0
         seconds = np.arange(13, dtype=np.float64) * 86_400.0
         time_bins = fits.BinTableHDU.from_columns(
             [
@@ -113,7 +121,15 @@ class TestFlareSnapshots(unittest.TestCase):
                     name="COUNT",
                     format="K",
                     array=np.asarray(
-                        [0, 2_499_999 - limit_count, 0, 1, limit_count, 0, 0],
+                        [
+                            0,
+                            2_499_999 - limit_count - invalid_energy_count,
+                            0,
+                            1,
+                            limit_count,
+                            invalid_energy_count,
+                            0,
+                        ],
                         dtype=np.int64,
                     ),
                 ),
@@ -172,6 +188,12 @@ class TestFlareSnapshots(unittest.TestCase):
                     self.assertEqual(hdul[0].header["TSTART"], start * 86_400)
                     self.assertEqual(hdul[0].header["CRVAL1"], 5.0)
                     self.assertEqual(int(hdul["EVENTIMG"].data.sum()), 1)
+                    self.assertEqual(hdul[0].header["RUNSTAT"], "CLEAN")
+                    self.assertEqual(hdul["COARSEFL"].data.shape, (1, 1))
+                    self.assertEqual(float(hdul["COARSEFL"].data.sum()), expected)
+                    self.assertEqual(int(hdul["COARSEEV"].data.sum()), 1)
+                    self.assertEqual(hdul["COARSEEV"].header["BINFACT"], 2)
+                    self.assertEqual(hdul["COARSEEV"].header["CRVAL1"], 5.5)
             self.assertTrue(
                 (root / "snapshots" / "flare_snapshots_manifest.json").is_file()
             )
@@ -186,6 +208,25 @@ class TestFlareSnapshots(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "numerical/invalid"):
                 extract_snapshots(input_fits, root / "snapshots")
             self.assertFalse((root / "snapshots").exists())
+
+    def test_old_run_requires_explicit_energy_exception_and_marks_images(self):
+        from astropy.io import fits
+
+        from scripts.extract_flare_snapshots import extract_snapshots
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            input_fits = root / "complete.fits"
+            self._write_input(input_fits, invalid_energy_count=2)
+            with self.assertRaisesRegex(ValueError, "numerical/invalid"):
+                extract_snapshots(input_fits, root / "snapshots")
+            report = extract_snapshots(
+                input_fits, root / "snapshots", allow_invalid_energy_count=2
+            )
+            self.assertEqual(report["accepted_invalid_energy_packets"], 2)
+            with fits.open(root / "snapshots" / "flare_day_003_to_004.fits") as hdul:
+                self.assertEqual(hdul[0].header["INVENER"], 2)
+                self.assertEqual(hdul[0].header["RUNSTAT"], "DIAGNOSTIC")
 
     def test_rejects_old_three_energy_flare(self):
         from astropy.io import fits
