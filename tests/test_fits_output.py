@@ -101,6 +101,9 @@ class TestIdealObserverFits(unittest.TestCase):
                 physics,
                 launch_geometry,
                 run_metadata={
+                    "material_tables": "v1",
+                    "scattering_table_sha256": "a" * 64,
+                    "absorption_table_sha256": "b" * 64,
                     "packets": 1,
                     "chunk_size": 1,
                     "max_interactions": 8,
@@ -142,6 +145,9 @@ class TestIdealObserverFits(unittest.TestCase):
                 self.assertEqual(int(hdul["STATUS"].data["COUNT"].sum()), 1)
                 self.assertEqual(hdul[0].header["NPACKETS"], 1)
                 self.assertEqual(hdul[0].header["SRCMODEL"], "exponential-decay")
+                self.assertEqual(hdul[0].header["MATMODEL"], "v1")
+                self.assertEqual(hdul[0].header["SCATSHA"], "a" * 64)
+                self.assertEqual(hdul[0].header["ABSSHA"], "b" * 64)
                 self.assertEqual(hdul[0].header["DCTAU_D"], 25.0)
                 self.assertEqual(
                     hdul["STATUS"].data["STATUS_CODE"][1],

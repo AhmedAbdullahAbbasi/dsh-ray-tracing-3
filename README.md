@@ -71,6 +71,12 @@ It writes:
 - `outputs/dsh_v1_ideal_observer.fits`: images, cubes, axes, inputs, and
   diagnostics.
 
+New NPZ files use output schema 4 and record `material_tables`,
+`scattering_table_sha256`, and `absorption_table_sha256`. FITS outputs carry
+the same provenance in the primary header as `MATMODEL`, `SCATSHA`, and
+`ABSSHA`. Earlier schema-3 files still contain the material arrays but lack
+these explicit table identifiers.
+
 A larger post-outburst decay run is:
 
 ```powershell

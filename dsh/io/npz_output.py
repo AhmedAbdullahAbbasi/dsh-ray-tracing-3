@@ -80,10 +80,17 @@ def write_ideal_observer_npz(
         launch_slope_y_bounds=np.asarray(launch_geometry.slope_y_bounds),
         launch_slope_area=np.asarray(launch_geometry.slope_area),
         launch_solid_angle_sr=np.asarray(launch_geometry.launch_solid_angle_sr),
-        output_schema_version=np.asarray(3),
+        output_schema_version=np.asarray(4),
         cloud_description=np.asarray(metadata["cloud_description"]),
         source_flux_convention=np.asarray("unabsorbed observer-equivalent photon flux"),
         source_model=np.asarray(metadata["source_model"]),
+        material_tables=np.asarray(metadata.get("material_tables", "unspecified")),
+        scattering_table_sha256=np.asarray(
+            metadata.get("scattering_table_sha256", "unspecified")
+        ),
+        absorption_table_sha256=np.asarray(
+            metadata.get("absorption_table_sha256", "unspecified")
+        ),
         source_peak_band_flux=np.asarray(metadata["peak_band_fluxes"]),
         source_baseline_band_flux=np.asarray(metadata["baseline_band_fluxes"]),
         source_decay_time_days=_optional_float(metadata, "decay_time_days"),

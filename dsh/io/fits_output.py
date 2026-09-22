@@ -270,6 +270,14 @@ def write_ideal_observer_fits(
         primary.header["CLOUD"] = str(metadata["cloud_description"])
     if "source_model" in metadata:
         primary.header["SRCMODEL"] = str(metadata["source_model"])
+    material_headers = {
+        "material_tables": "MATMODEL",
+        "scattering_table_sha256": "SCATSHA",
+        "absorption_table_sha256": "ABSSHA",
+    }
+    for field, keyword in material_headers.items():
+        if field in metadata:
+            primary.header[keyword] = str(metadata[field])
     decay_header_mapping = {
         "decay_time_days": "DCTAU_D",
         "decay_start_days": "DCSTRT_D",

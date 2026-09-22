@@ -81,6 +81,11 @@ class TestIdealObserverNpz(unittest.TestCase):
             bin_observer_events(events, bin_geometry), diagnostics
         )
         metadata = {
+            "material_tables": "v1",
+            "scattering_table_sha256": scattering.metadata["table_sha256"],
+            "absorption_table_sha256": (
+                load_photoelectric_absorption_table().metadata["table_sha256"]
+            ),
             "packets": 1,
             "chunk_size": 1,
             "max_interactions": 8,
@@ -110,7 +115,16 @@ class TestIdealObserverNpz(unittest.TestCase):
 
             self.assertEqual(returned, path)
             with np.load(path, allow_pickle=False) as archive:
-                self.assertEqual(int(archive["output_schema_version"]), 3)
+                self.assertEqual(int(archive["output_schema_version"]), 4)
+                self.assertEqual(str(archive["material_tables"]), "v1")
+                self.assertEqual(
+                    str(archive["scattering_table_sha256"]),
+                    metadata["scattering_table_sha256"],
+                )
+                self.assertEqual(
+                    str(archive["absorption_table_sha256"]),
+                    metadata["absorption_table_sha256"],
+                )
                 self.assertEqual(int(archive["requested_packet_count"]), 1)
                 self.assertEqual(str(archive["source_model"]), "constant-flare")
                 self.assertTrue(np.isnan(archive["source_decay_time_days"]))
