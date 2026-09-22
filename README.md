@@ -161,6 +161,38 @@ python scripts/generate_tbabs_table.py
 NewDust generation requires xdust, Astropy, and SciPy. TBabs generation
 requires an initialized XSPEC/HEASoft environment.
 
+To generate *separate* 2–10 keV materials on a shared adaptive axis, run from
+the repository root after initializing XSPEC/HEASoft:
+
+```bash
+python -m scripts.generate_material_grid --output validation_outputs/material_grid_2_10.json
+python -m scripts.generate_rg_drude_table --energy-grid validation_outputs/material_grid_2_10.json --output validation_outputs/rg_drude_2_10.npz
+python -m scripts.generate_tbabs_table --energy-grid validation_outputs/material_grid_2_10.json --output validation_outputs/tbabs_2_10.npz
+```
+
+The first command checks TBabs against the runtime's log-energy,
+log-cross-section interpolation. It narrows detected absorption edges to at
+most 0.0001 keV and records their still approximate intervals in the grid
+JSON. It checks midpoint errors between 0.1 keV initial samples; this finite
+scan does not establish accuracy for unresolved fine features. XSPEC must
+produce the actual absorption data; the scattering generator does not require
+xdust. The new RG/Drude calculation uses exactly the V1 grain prescription,
+validated against the three frozen NewDust rows and independent 2 and 10 keV
+xdust evaluations. The matching NPZ and JSON files can be loaded explicitly:
+
+```python
+from dsh.physics.absorption import load_photoelectric_absorption_table
+from dsh.physics.newdust import build_dust_physics_from_tables, load_newdust_scattering_table
+
+scattering = load_newdust_scattering_table("validation_outputs/rg_drude_2_10.npz")
+absorption = load_photoelectric_absorption_table("validation_outputs/tbabs_2_10.npz")
+physics = build_dust_physics_from_tables(scattering, absorption)
+```
+
+The production examples still load the frozen three-energy tables by
+default. Selecting the new pair is an explicit application configuration
+change, and source sampling on a continuous 2–10 keV spectrum is separate.
+
 ## Validation
 
 Run the automated suite from the repository root:

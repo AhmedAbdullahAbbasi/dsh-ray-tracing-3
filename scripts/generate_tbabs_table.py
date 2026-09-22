@@ -23,6 +23,8 @@ from pathlib import Path
 
 import numpy as np
 
+from dsh.physics.material_grid import load_material_grid
+
 ENERGY_KEV = np.array([3.3, 4.9, 6.9], dtype=np.float64)
 REFERENCE_NH22 = 10.0
 VALIDATION_NH22 = 1.0
@@ -97,7 +99,7 @@ def _extract_one_energy(
     return sigma, transmission, version_match.group(1) if version_match else None
 
 
-def generate(output: Path, xspec_executable: str) -> None:
+def resolve_xspec(xspec_executable: str) -> str:
     resolved_xspec = shutil.which(xspec_executable)
     if resolved_xspec is None:
         candidate = Path(xspec_executable)
@@ -106,21 +108,41 @@ def generate(output: Path, xspec_executable: str) -> None:
                 "generation requires an initialized XSPEC/HEASoft environment"
             )
         resolved_xspec = str(candidate.resolve())
+    return resolved_xspec
+
+
+def generate(
+    output: Path,
+    xspec_executable: str,
+    energy_kev=None,
+    *,
+    grid_sha256: str | None = None,
+) -> None:
+    resolved_xspec = resolve_xspec(xspec_executable)
+    energy = np.asarray(ENERGY_KEV if energy_kev is None else energy_kev, dtype=float)
+    if (
+        energy.ndim != 1
+        or energy.size < 2
+        or not np.all(np.isfinite(energy))
+        or np.any(np.diff(energy) <= 0.0)
+        or energy[0] <= BIN_HALF_WIDTH_KEV
+    ):
+        raise ValueError("energies must be finite, positive, and strictly increasing")
 
     reference_sigma = []
     reference_transmission = []
     validation_sigma = []
     producer_versions = set()
-    for energy in ENERGY_KEV:
+    for node in energy:
         sigma, transmission, version = _extract_one_energy(
             resolved_xspec,
-            float(energy),
+            float(node),
             REFERENCE_NH22,
             BIN_HALF_WIDTH_KEV,
         )
         check_sigma, _, check_version = _extract_one_energy(
             resolved_xspec,
-            float(energy),
+            float(node),
             VALIDATION_NH22,
             BIN_HALF_WIDTH_KEV,
         )
@@ -139,7 +161,7 @@ def generate(output: Path, xspec_executable: str) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         output,
-        energy_kev=ENERGY_KEV,
+        energy_kev=energy,
         absorption_cross_section_cm2_per_h=sigma,
     )
 
@@ -149,7 +171,7 @@ def generate(output: Path, xspec_executable: str) -> None:
         "quantity": "photoelectric_absorption_cross_section",
         "cross_section_unit": "cm2 H-1",
         "energy_unit": "keV",
-        "energy_kev": ENERGY_KEV.tolist(),
+        "energy_kev": energy.tolist(),
         "producer": "XSPEC tbabs",
         "producer_version": producer_version,
         "producer_url": (
@@ -189,6 +211,8 @@ def generate(output: Path, xspec_executable: str) -> None:
         ),
         "table_sha256": _sha256(output),
     }
+    if grid_sha256 is not None:
+        metadata["shared_energy_grid_sha256"] = grid_sha256
     with output.with_suffix(".json").open("w", encoding="utf-8") as stream:
         json.dump(metadata, stream, indent=2, sort_keys=True)
         stream.write("\n")
@@ -207,14 +231,27 @@ def main() -> None:
         / "tbabs_wilm_vern_v1.npz"
     )
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=Path, default=default_output)
+    parser.add_argument("--output", type=Path)
+    parser.add_argument(
+        "--energy-grid",
+        type=Path,
+        help="JSON from generate_material_grid.py; requires a separate --output",
+    )
     parser.add_argument(
         "--xspec",
         default="xspec",
         help="XSPEC executable in an initialized HEASoft environment",
     )
     args = parser.parse_args()
-    generate(args.output.resolve(), args.xspec)
+    if args.energy_grid is not None and args.output is None:
+        parser.error("--energy-grid requires --output to preserve the V1 table")
+    grid = load_material_grid(args.energy_grid) if args.energy_grid else None
+    generate(
+        (args.output or default_output).resolve(),
+        args.xspec,
+        grid,
+        grid_sha256=_sha256(args.energy_grid) if args.energy_grid else None,
+    )
 
 
 if __name__ == "__main__":

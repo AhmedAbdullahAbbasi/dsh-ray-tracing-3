@@ -1,4 +1,4 @@
-"""Load and validate intrinsic scattering tables generated with NewDust.
+"""Load intrinsic scattering tables in the frozen NewDust-compatible schema.
 
 NewDust's :class:`ScreenGalHalo` output is an observer-space halo kernel.  It
 contains both the physical phase function and the thin-screen geometry.  The
@@ -7,9 +7,9 @@ of source and observer positions.  The table stored with this project is
 therefore generated directly from ``GrainPop.int_diff`` and normalized per H
 atom; it is not a table of ``ScreenGalHalo.norm_int`` values.
 
-This module is deliberately NumPy-only preprocessing.  It validates the
-tabulation on the host and then constructs the fixed-shape JAX table used in
-the transport hot path.
+The independent RG/Drude generator writes the same schema at 2–10 keV. This
+module validates either tabulation on the host and constructs the fixed-shape
+JAX table used in the transport hot path.
 """
 
 from __future__ import annotations
@@ -204,15 +204,21 @@ def build_dust_physics_from_tables(
 ) -> DustPhysicsTable:
     """Combine independently versioned scattering and absorption tables.
 
-    Version 1 deliberately requires identical energy axes.  Interpolating one
-    three-point table onto the other would hide a physically weak
-    approximation.  A later dense common energy grid can use the same API.
+    Both the frozen Version-1 and independently generated dense tables require
+    identical energy axes. Neither table is silently interpolated onto the
+    other. When present, both generated grid checksums must match too.
     """
 
     if not np.array_equal(scattering.energy_kev, absorption.energy_kev):
         raise ValueError(
             "scattering and absorption tables must have identical energy grids"
         )
+    scattering_grid = scattering.metadata.get("shared_energy_grid_sha256")
+    absorption_grid = absorption.metadata.get("shared_energy_grid_sha256")
+    if (scattering_grid is None) != (absorption_grid is None) or (
+        scattering_grid is not None and scattering_grid != absorption_grid
+    ):
+        raise ValueError("scattering and absorption shared-grid checksums differ")
     return build_dust_physics_from_newdust(
         scattering,
         absorption.absorption_cross_section_cm2_per_h,
