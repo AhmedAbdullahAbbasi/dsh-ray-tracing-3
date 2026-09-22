@@ -333,6 +333,14 @@ dsh/validation/STAGE9D.md and run:
 python -m scripts.run_absorbing_multiple_scattering_validation --output validation_outputs/stage9d_absorbing_multiple_scattering.json
 ~~~
 
+Stage 9E screens a saved four-cloud flare for clean terminal states,
+snapshot event counts, spatial sampling, and FITS/NPZ consistency before
+calling three time-separated images ready. See dsh/validation/STAGE9E.md:
+
+~~~powershell
+python -m scripts.audit_four_cloud_flare --input-npz outputs/flare_2p5m_four_cloud_2_10/flare_2p5m_full.npz --output validation_outputs/stage9e_existing_flare_audit.json
+~~~
+
 ## Current V1 limits
 
 - Fixed MRN Rayleigh--Gans/Drude dust model.

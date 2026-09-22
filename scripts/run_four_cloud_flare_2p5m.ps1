@@ -21,6 +21,12 @@ param(
     [int]$MaxInteractions = 16,
     [double]$PhotonIndex = 1.7,
     [double]$PhotonFlux2to10 = 0.038,
+    [ValidateRange(1, 2500000)]
+    [int]$MinSnapshotEvents = 2000,
+    [ValidateRange(1, 2500000)]
+    [int]$MinSupportedCellEvents = 10,
+    [ValidateRange(0.001, 1.0)]
+    [double]$MinSupportedEventFraction = 0.8,
     [string]$OutputDir = 'outputs/flare_2p5m_four_cloud_2_10'
 )
 
@@ -54,6 +60,7 @@ try {
     $npzPath = Join-Path $productDir 'flare_2p5m_full.npz'
     $fitsPath = Join-Path $productDir 'flare_2p5m_full.fits'
     $snapshotDir = Join-Path $productDir 'snapshots'
+    $auditPath = Join-Path $productDir 'flare_readiness_audit.json'
     $secondDay = $FirstSnapshotDay + 3
     $thirdDay = $FirstSnapshotDay + 6
     $firstEnd = $FirstSnapshotDay + 1
@@ -89,7 +96,21 @@ try {
         --expected-packets 2500000
     if ($LASTEXITCODE -ne 0) { throw 'Snapshot validation/extraction failed.' }
 
+    $minimumFractionArgument = $MinSupportedEventFraction.ToString([System.Globalization.CultureInfo]::InvariantCulture)
+    python -m scripts.audit_four_cloud_flare `
+        --input-npz "$npzPath" `
+        --input-fits "$fitsPath" `
+        --snapshot-dir "$snapshotDir" `
+        --first-day $FirstSnapshotDay `
+        --expected-packets 2500000 `
+        --min-snapshot-events $MinSnapshotEvents `
+        --min-supported-cell-events $MinSupportedCellEvents `
+        --min-supported-event-fraction $minimumFractionArgument `
+        --output "$auditPath"
+    if ($LASTEXITCODE -ne 0) { throw "Snapshot readiness audit failed. Review: $auditPath" }
+
     Write-Host "Success. Three time-stamped FITS images and a manifest: $snapshotDir"
+    Write-Host "Readiness audit: $auditPath"
     Write-Host "Full simulation: $fitsPath"
     Write-Host "Reproducibility archive: $npzPath"
 } finally {
