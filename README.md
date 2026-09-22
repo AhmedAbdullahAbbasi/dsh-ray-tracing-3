@@ -119,6 +119,36 @@ python -m scripts.run_dsh_v1 `
 The primary FITS HDU must contain the three-dimensional column-increment
 array with linear `CRPIX`, `CRVAL`, and `CDELT` keywords and `BUNIT=cm-2`.
 
+### Local four-cloud flare run
+
+The PowerShell launcher accepts the previously generated four-cloud realistic
+test cube, which has `(z, y, x) = (200, 500, 500)` and `NMCLOUD=4`. Its radial
+cells end at 10 kpc, so the example places the source at 10.5 kpc:
+
+```powershell
+.\scripts\run_four_cloud_flare_2p5m.ps1 `
+  -CloudFits 'C:\path\to\realistic_nh_cube_500asec_10kpc_dz0p05.fits' `
+  -SourceDistanceKpc 10.5
+```
+
+This checks the installed material/FITS workflow, simulates 2,500,000 packets
+from a one-hour flare using the matched `2-10` material tables, and then
+validates and writes three FITS images. They contain the arrival intervals
+`[3,4)`, `[6,7)`, and `[9,10)` days relative to direct source arrival;
+`-FirstSnapshotDay` shifts all three starts while retaining three-day spacing.
+Their primary HDUs are energy-integrated ideal-observer fluence images, not
+counts. `FIRSTIMG`, `MULTIIMG`, and `EVENTIMG` extensions distinguish scattering
+orders and record the number of weighted Monte Carlo events. The full FITS,
+NPZ, three images, and a `snapshots/flare_snapshots_manifest.json` are written
+under `outputs/flare_2p5m_four_cloud_2_10/`.
+
+The runner accepts explicit nonuniform `--arrival-time-edges-days`. The
+launcher uses `0 3 4 6 7 9 10 60` (shifted with `-FirstSnapshotDay`) to keep
+the 60-day coverage while avoiding a large 60-bin cube for a 500×500 image.
+The realistic test cube represents synthetic gas, not a measured sight line.
+The source still has just the 3.3, 4.9, and 6.9 keV representative energies;
+the broader material grid does not by itself produce a continuous spectrum.
+
 ## Transport physics
 
 For energy `E`, the local extinction coefficient is

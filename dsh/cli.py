@@ -86,6 +86,16 @@ def parse_arguments():
     parser.add_argument("--arrival-days", type=float, default=60.0)
     parser.add_argument("--time-bin-days", type=float, default=1.0)
     parser.add_argument(
+        "--arrival-time-edges-days",
+        type=float,
+        nargs="+",
+        metavar="DAY",
+        help=(
+            "optional explicit observer arrival-bin edges in days, beginning "
+            "at zero; overrides --arrival-days and --time-bin-days"
+        ),
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=Path("outputs/dsh_v1_ideal_observer.npz"),
@@ -98,7 +108,21 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def _arrival_edges(arrival_days, time_bin_days):
+def _arrival_edges(arrival_days, time_bin_days, explicit_edges_days=None):
+    if explicit_edges_days is not None:
+        edges = np.asarray(explicit_edges_days, dtype=np.float64)
+        if (
+            edges.ndim != 1
+            or edges.size < 2
+            or not np.all(np.isfinite(edges))
+            or edges[0] != 0.0
+            or not np.all(np.diff(edges) > 0.0)
+        ):
+            raise ValueError(
+                "arrival-time-edges-days must start at zero and be finite, "
+                "strictly increasing values"
+            )
+        return edges * DAY_S
     if not np.isfinite(arrival_days) or arrival_days <= 0.0:
         raise ValueError("arrival_days must be finite and positive")
     if not np.isfinite(time_bin_days) or time_bin_days <= 0.0:
@@ -169,7 +193,9 @@ def main():
             decay_duration_days=args.decay_duration_days,
             source_time_bin_days=args.source_time_bin_days,
         )
-    arrival_edges_s = _arrival_edges(args.arrival_days, args.time_bin_days)
+    arrival_edges_s = _arrival_edges(
+        args.arrival_days, args.time_bin_days, args.arrival_time_edges_days
+    )
     if float(np.asarray(source.time_edges_s)[-1]) >= arrival_edges_s[-1]:
         raise ValueError(
             "arrival_days must extend beyond the final source-emission time "
