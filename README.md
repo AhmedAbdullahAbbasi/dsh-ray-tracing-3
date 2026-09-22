@@ -145,9 +145,19 @@ The checked-in Version-1 tables share the energy grid 3.3, 4.9, and 6.9 keV:
   atomic cross-section baseline.
 
 Tables are validated against adjacent JSON provenance and SHA-256 metadata.
-Unsupported energies are rejected rather than extrapolated. The schemas
-already support arbitrary one-dimensional energy grids; dense, edge-aware,
-co-registered scattering and absorption tables are the next physics upgrade.
+Unsupported energies are rejected rather than extrapolated. An optional
+2–10 keV material pair is included on the same 130-node energy grid:
+
+- Intrinsic RG/Drude scattering calculated within this library on 8,193
+  physical scattering angles from zero to pi.
+- Intrinsic XSPEC TBabs Version-2 absorption supplied from a separate
+  HEASoft run (XSPEC 12.14.0, Wilms abundances).
+
+The 3.3/4.9/6.9 keV entries agree with the frozen V1 tables. The 2–10 keV
+grid records four narrow unresolved absorption-edge intervals in
+`dsh/data/materials/material_grid_2_10_v2.json`. Opacity interpolation is
+approximate inside each interval (under 0.0001 keV wide); the finite midpoint
+scan also cannot establish that all finer features have been found.
 The NewDust JSON records a comparison with historical screen files as
 provenance only; no observer-space thin-screen kernel enters the simulation.
 
@@ -189,9 +199,16 @@ absorption = load_photoelectric_absorption_table("validation_outputs/tbabs_2_10.
 physics = build_dust_physics_from_tables(scattering, absorption)
 ```
 
-The production examples still load the frozen three-energy tables by
-default. Selecting the new pair is an explicit application configuration
-change, and source sampling on a continuous 2–10 keV spectrum is separate.
+The simulation defaults to the frozen three-energy material tables. To use the
+bundled 130-node material pair with the existing three-band source, pass:
+
+```bash
+python -m scripts.run_dsh_v1 --materials 2-10 --packets 4096 --output outputs/dsh_2_10_materials.npz
+```
+
+This selects the new absorption, scattering opacity, and angular phase tables;
+the source still emits at 3.3, 4.9, and 6.9 keV. Source sampling on a
+continuous 2–10 keV spectrum is a separate change.
 
 ## Validation
 

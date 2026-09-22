@@ -25,6 +25,7 @@ from .io.fits_output import write_ideal_observer_fits
 from .io.npz_output import write_ideal_observer_npz
 from .observer.binning import build_observer_bin_geometry
 from .physics.absorption import load_photoelectric_absorption_table
+from .physics.materials import load_2_10_material_tables
 from .physics.newdust import (
     build_dust_physics_from_tables,
     load_newdust_scattering_table,
@@ -47,6 +48,12 @@ def parse_arguments():
         ),
     )
     parser.add_argument("--source-distance-kpc", type=float, default=10.0)
+    parser.add_argument(
+        "--materials",
+        choices=("v1", "2-10"),
+        default="v1",
+        help="frozen three-energy tables (default) or checked 2–10 keV tables",
+    )
     parser.add_argument(
         "--source-model",
         choices=("constant-flare", "exponential-decay"),
@@ -123,9 +130,17 @@ def main():
             "'python -m pip install astropy'."
         ) from error
 
-    scattering = load_newdust_scattering_table()
-    absorption = load_photoelectric_absorption_table()
-    physics = build_dust_physics_from_tables(scattering, absorption)
+    if args.materials == "2-10":
+        scattering, absorption, physics = load_2_10_material_tables()
+    else:
+        scattering = load_newdust_scattering_table()
+        absorption = load_photoelectric_absorption_table()
+        physics = build_dust_physics_from_tables(scattering, absorption)
+    # Source remains the three representative bands in both material modes.
+    # A continuous source spectrum is a separate change to the source model.
+    source_energies = np.asarray([3.3, 4.9, 6.9], dtype=np.float64)
+    if not np.all(np.isin(source_energies, scattering.energy_kev)):
+        raise ValueError("material tables must include all source-band energies")
 
     if args.cloud_fits is None:
         cloud = build_synthetic_four_cloud_scene(args.source_distance_kpc)
@@ -141,12 +156,12 @@ def main():
 
     if args.source_model == "constant-flare":
         source = build_v1_test_source(
-            scattering.energy_kev,
+            source_energies,
             band_flux=args.peak_band_fluxes,
         )
     else:
         source = build_v1_decay_source(
-            scattering.energy_kev,
+            source_energies,
             peak_band_flux=args.peak_band_fluxes,
             baseline_band_flux=args.baseline_band_fluxes,
             decay_time_days=args.decay_time_days,
@@ -164,11 +179,12 @@ def main():
     bin_geometry = build_observer_bin_geometry(
         sky_x_edges_arcsec=np.asarray(cloud.x_edges_arcsec),
         sky_y_edges_arcsec=np.asarray(cloud.y_edges_arcsec),
-        energy_edges_kev=centers_to_edges(scattering.energy_kev),
+        energy_edges_kev=centers_to_edges(source_energies),
         arrival_time_edges_s=arrival_edges_s,
     )
 
     print(f"JAX backend: {jax.default_backend()}")
+    print(f"Material tables: {args.materials} ({scattering.energy_kev.size} nodes)")
     print(f"Devices: {jax.devices()}")
     print(f"Cloud: {cloud_description}")
     print(f"Cloud shape (z, y, x): {tuple(cloud.delta_nh_cm2.shape)}")
@@ -247,6 +263,9 @@ def main():
 
     decay_mode = args.source_model == "exponential-decay"
     run_metadata = {
+        "material_tables": args.materials,
+        "scattering_table_sha256": scattering.metadata["table_sha256"],
+        "absorption_table_sha256": absorption.metadata["table_sha256"],
         "packets": args.packets,
         "chunk_size": args.chunk_size,
         "max_interactions": args.max_interactions,

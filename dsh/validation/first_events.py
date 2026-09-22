@@ -118,7 +118,7 @@ def run_first_event_case(
     """Run two fixed source rays; compare first events with sphere chords.
 
     ``mode`` is a controlled zero/pure-absorption/pure-scattering/both switch.
-    In the ``both`` case the checked-in NewDust and TBabs coefficients are
+    In the ``both`` case the supplied scattering and TBabs coefficients are
     used without changing their ratio. NH is set by 3.3-keV scattering tau.
     Event location tests use the CDF conditioned on *any* first event.
     """
@@ -134,8 +134,12 @@ def run_first_event_case(
     if packets_per_ray <= 0 or chunk_size <= 0 or sigma_limit <= 0:
         raise ValueError("packet counts and sigma limit must be positive")
 
+    reference_index = np.flatnonzero(scattering.energy_kev == 3.3)
+    if reference_index.size != 1:
+        raise ValueError("material table must contain exactly one 3.3 keV reference")
     central_column = (
-        target_tau_sca_3p3 / scattering.scattering_cross_section_cm2_per_h[0]
+        target_tau_sca_3p3
+        / scattering.scattering_cross_section_cm2_per_h[reference_index[0]]
     )
     sca = np.asarray(scattering.scattering_cross_section_cm2_per_h).copy()
     absorb = np.asarray(absorption.absorption_cross_section_cm2_per_h).copy()

@@ -25,6 +25,11 @@ from dsh.physics.absorption import (
     DEFAULT_TBABS_TABLE,
     load_photoelectric_absorption_table,
 )
+from dsh.physics.materials import (
+    DEFAULT_2_10_ABSORPTION,
+    DEFAULT_2_10_SCATTERING,
+    load_2_10_material_tables,
+)
 from dsh.physics.newdust import DEFAULT_NEWDUST_TABLE, load_newdust_scattering_table
 from dsh.validation.first_events import run_first_event_case
 
@@ -50,7 +55,8 @@ def main() -> int:
     parser.add_argument("--chunk-size", type=int, default=1_000)
     parser.add_argument("--seed", type=int, default=981)
     parser.add_argument("--sigma-limit", type=float, default=5.0)
-    parser.add_argument("--energy-indices", type=int, nargs="+", default=[0, 1, 2])
+    parser.add_argument("--materials", choices=("v1", "2-10"), default="v1")
+    parser.add_argument("--energy-indices", type=int, nargs="+")
     parser.add_argument(
         "--modes", nargs="+", default=["zero", "absorption", "scattering", "both"]
     )
@@ -58,8 +64,28 @@ def main() -> int:
         "--target-tau-sca-3p3", type=float, nargs="+", default=[0.0, 0.1, 0.3, 1.0]
     )
     args = parser.parse_args()
-    scattering = load_newdust_scattering_table()
-    absorption = load_photoelectric_absorption_table()
+    if args.materials == "2-10":
+        scattering, absorption, _ = load_2_10_material_tables()
+        scattering_path, absorption_path = (
+            DEFAULT_2_10_SCATTERING,
+            DEFAULT_2_10_ABSORPTION,
+        )
+    else:
+        scattering = load_newdust_scattering_table()
+        absorption = load_photoelectric_absorption_table()
+        scattering_path, absorption_path = DEFAULT_NEWDUST_TABLE, DEFAULT_TBABS_TABLE
+    energy_indices = (
+        args.energy_indices
+        if args.energy_indices is not None
+        else [
+            int(np.flatnonzero(scattering.energy_kev == energy)[0])
+            for energy in (3.3, 4.9, 6.9)
+        ]
+    )
+    if any(
+        index < 0 or index >= scattering.energy_kev.size for index in energy_indices
+    ):
+        parser.error("--energy-indices must select nodes in the material table")
     report = {
         "stage": "9A_first_events",
         "model": "constant-density 4-5 kpc radial shell; central and 0.2 rad source rays",
@@ -72,15 +98,16 @@ def main() -> int:
         "numpy": np.__version__,
         "backend": jax.default_backend(),
         "table_sha256": {
-            "scattering": _sha256(DEFAULT_NEWDUST_TABLE),
-            "absorption": _sha256(DEFAULT_TBABS_TABLE),
+            "scattering": _sha256(scattering_path),
+            "absorption": _sha256(absorption_path),
         },
         "config": {
+            "materials": args.materials,
             "seed": args.seed,
             "packets_per_ray": args.packets_per_ray,
             "chunk_size": args.chunk_size,
             "sigma_limit": args.sigma_limit,
-            "energy_indices": args.energy_indices,
+            "energy_indices": energy_indices,
             "modes": args.modes,
             "target_tau_sca_3p3": args.target_tau_sca_3p3,
         },
@@ -95,7 +122,7 @@ def main() -> int:
                 continue
             if mode == "zero" and tau not in {0.0, 1.0}:
                 continue
-            for energy_index in args.energy_indices:
+            for energy_index in energy_indices:
                 print(f"{mode}, tau3p3={tau}, energy_index={energy_index}", flush=True)
                 case = run_first_event_case(
                     random.fold_in(random.PRNGKey(args.seed), case_index),
