@@ -325,6 +325,14 @@ in dsh/validation/STAGE9C.md. Run them with:
 python -m scripts.run_multiple_scattering_validation --output validation_outputs/stage9c_multiple_scattering.json
 ~~~
 
+Stage 9D tests repeated analog scattering with physical absorption enabled,
+using independent order-resolved competing-risk predictions. See
+dsh/validation/STAGE9D.md and run:
+
+~~~powershell
+python -m scripts.run_absorbing_multiple_scattering_validation --output validation_outputs/stage9d_absorbing_multiple_scattering.json
+~~~
+
 ## Current V1 limits
 
 - Fixed MRN Rayleigh--Gans/Drude dust model.
