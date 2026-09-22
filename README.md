@@ -318,6 +318,13 @@ python -m unittest tests.test_validation_escape -v
 python -m scripts.run_escape_attenuation_validation --output validation_outputs/stage9b_escape_attenuation.json
 ~~~
 
+Stage 9C's independent repeated pure-scattering flight checks are described
+in dsh/validation/STAGE9C.md. Run them with:
+
+~~~powershell
+python -m scripts.run_multiple_scattering_validation --output validation_outputs/stage9c_multiple_scattering.json
+~~~
+
 ## Current V1 limits
 
 - Fixed MRN Rayleigh--Gans/Drude dust model.
