@@ -21,7 +21,7 @@ from dsh.physics.newdust import (
 )
 from dsh.pipeline import IdealObserverDiagnostics, IdealObserverSimulationResult
 from dsh.sources.launch import build_cloud_launch_geometry
-from dsh.sources.models import build_tabulated_band_source
+from dsh.sources.models import build_powerlaw_band_source, build_tabulated_band_source
 
 
 class TestIdealObserverNpz(unittest.TestCase):
@@ -115,7 +115,7 @@ class TestIdealObserverNpz(unittest.TestCase):
 
             self.assertEqual(returned, path)
             with np.load(path, allow_pickle=False) as archive:
-                self.assertEqual(int(archive["output_schema_version"]), 4)
+                self.assertEqual(int(archive["output_schema_version"]), 5)
                 self.assertEqual(str(archive["material_tables"]), "v1")
                 self.assertEqual(
                     str(archive["scattering_table_sha256"]),
@@ -134,6 +134,32 @@ class TestIdealObserverNpz(unittest.TestCase):
                     scattering.energy_kev,
                     rtol=1.0e-6,
                 )
+
+            powerlaw = build_powerlaw_band_source(
+                [0.0, 100.0], [0.038], [2, 4, 6, 10], 1.7
+            )
+            powerlaw_path = Path(directory) / "powerlaw.npz"
+            write_ideal_observer_npz(
+                powerlaw_path,
+                result,
+                bin_geometry,
+                powerlaw,
+                cloud,
+                physics,
+                launch_geometry,
+                run_metadata={
+                    **metadata,
+                    "source_spectrum": "hard-state-powerlaw",
+                    "peak_band_fluxes": np.asarray(powerlaw.band_flux[0]),
+                },
+            )
+            with np.load(powerlaw_path, allow_pickle=False) as archive:
+                np.testing.assert_allclose(
+                    archive["source_energy_edges_kev"], [2.0, 4.0, 6.0, 10.0]
+                )
+                self.assertAlmostEqual(float(archive["source_photon_index"]), 1.7)
+                self.assertEqual(str(archive["source_spectrum"]), "hard-state-powerlaw")
+                self.assertAlmostEqual(float(archive["source_total_fluence"]), 3.8)
 
 
 if __name__ == "__main__":

@@ -50,6 +50,16 @@ def write_ideal_observer_npz(
         sky_pixel_solid_angle_sr=np.asarray(bin_geometry.sky_pixel_solid_angle_sr),
         transport_status_labels=np.asarray(TRANSPORT_STATUS_LABELS),
         source_energy_kev=np.asarray(source.effective_energy_kev),
+        source_energy_edges_kev=(
+            np.asarray(source.energy_edges_kev)
+            if source.energy_edges_kev is not None
+            else np.asarray([], dtype=np.float64)
+        ),
+        source_photon_index=(
+            np.asarray(source.photon_index)
+            if source.photon_index is not None
+            else np.asarray(np.nan)
+        ),
         source_time_edges_s=np.asarray(source.time_edges_s),
         source_band_flux=np.asarray(source.band_flux),
         source_cell_fluence=np.asarray(source.cell_fluence),
@@ -80,10 +90,11 @@ def write_ideal_observer_npz(
         launch_slope_y_bounds=np.asarray(launch_geometry.slope_y_bounds),
         launch_slope_area=np.asarray(launch_geometry.slope_area),
         launch_solid_angle_sr=np.asarray(launch_geometry.launch_solid_angle_sr),
-        output_schema_version=np.asarray(4),
+        output_schema_version=np.asarray(5),
         cloud_description=np.asarray(metadata["cloud_description"]),
         source_flux_convention=np.asarray("unabsorbed observer-equivalent photon flux"),
         source_model=np.asarray(metadata["source_model"]),
+        source_spectrum=np.asarray(metadata.get("source_spectrum", "representative")),
         material_tables=np.asarray(metadata.get("material_tables", "unspecified")),
         scattering_table_sha256=np.asarray(
             metadata.get("scattering_table_sha256", "unspecified")

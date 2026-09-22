@@ -71,11 +71,12 @@ It writes:
 - `outputs/dsh_v1_ideal_observer.fits`: images, cubes, axes, inputs, and
   diagnostics.
 
-New NPZ files use output schema 4 and record `material_tables`,
+New NPZ files use output schema 5 and record `material_tables`,
 `scattering_table_sha256`, and `absorption_table_sha256`. FITS outputs carry
 the same provenance in the primary header as `MATMODEL`, `SCATSHA`, and
-`ABSSHA`. Earlier schema-3 files still contain the material arrays but lack
-these explicit table identifiers.
+`ABSSHA`. Schema 5 also records the source spectrum and, when applicable,
+the power-law index and energy-band boundaries. Earlier schema-3 files still
+contain material arrays but lack explicit table identifiers.
 
 A larger post-outburst decay run is:
 
@@ -146,8 +147,12 @@ The runner accepts explicit nonuniform `--arrival-time-edges-days`. The
 launcher uses `0 3 4 6 7 9 10 60` (shifted with `-FirstSnapshotDay`) to keep
 the 60-day coverage while avoiding a large 60-bin cube for a 500×500 image.
 The realistic test cube represents synthetic gas, not a measured sight line.
-The source still has just the 3.3, 4.9, and 6.9 keV representative energies;
-the broader material grid does not by itself produce a continuous spectrum.
+The launcher samples each source photon's energy continuously over 2–10 keV
+from `dN/dE ∝ E^(-Gamma)`, with configurable `-PhotonIndex 1.7` and total
+unabsorbed `-PhotonFlux2to10 0.038` ph cm^-2 s^-1. These are representative
+test assumptions; they are not a fitted spectrum or a measured flare flux.
+The output keeps just three broad bands (2–4, 4–6, 6–10 keV) to limit the
+image-cube size. Source-spectrum parameters are recorded in NPZ and FITS.
 
 ## Transport physics
 
@@ -243,8 +248,12 @@ python -m scripts.run_dsh_v1 --materials 2-10 --packets 4096 --output outputs/ds
 ```
 
 This selects the new absorption, scattering opacity, and angular phase tables;
-the source still emits at 3.3, 4.9, and 6.9 keV. Source sampling on a
-continuous 2–10 keV spectrum is a separate change.
+by default the source still emits at 3.3, 4.9, and 6.9 keV. To sample the full
+2–10 keV band using a representative hard-state power law, add
+`--source-spectrum hard-state-powerlaw --photon-index 1.7
+--total-2-10-photon-flux 0.038`. Both cross-sections and the angular phase
+function are interpolated at each sampled photon energy. This continuous
+source mode currently supports a one-hour constant flare.
 
 ## Validation
 
@@ -253,7 +262,7 @@ Run the automated suite from the repository root:
 ```bash
 ruff check dsh scripts tests
 ruff format --check dsh scripts tests
-python -m unittest discover -v
+python -m unittest -v
 ```
 
 The tests cover source-fluence closure, coordinate conversion, native column
@@ -278,7 +287,8 @@ nonzero if an acceptance criterion fails.
 ## Current V1 limits
 
 - Fixed MRN Rayleigh--Gans/Drude dust model.
-- Only three representative energies.
+- Three representative energies by default; the optional continuous 2–10 keV
+  flare currently assumes a single power-law spectral shape.
 - One fixed TBabs abundance mixture per hydrogen atom.
 - No spatially varying abundances, fluorescence, Compton scattering, or
   polarization.

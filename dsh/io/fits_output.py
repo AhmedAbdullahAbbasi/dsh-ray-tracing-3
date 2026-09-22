@@ -132,6 +132,24 @@ def _source_table_hdu(fits, source: TabulatedBandSource):
             array=np.asarray(source.flat_cdf, dtype=np.float64),
         ),
     ]
+    if source.energy_edges_kev is not None:
+        bounds = np.asarray(source.energy_edges_kev, dtype=np.float64)
+        columns.extend(
+            [
+                fits.Column(
+                    name="ENERGY_LOW",
+                    format="D",
+                    unit="keV",
+                    array=bounds[energy_index.reshape(-1)],
+                ),
+                fits.Column(
+                    name="ENERGY_HIGH",
+                    format="D",
+                    unit="keV",
+                    array=bounds[energy_index.reshape(-1) + 1],
+                ),
+            ]
+        )
     return fits.BinTableHDU.from_columns(columns, name="SOURCE")
 
 
@@ -270,6 +288,18 @@ def write_ideal_observer_fits(
         primary.header["CLOUD"] = str(metadata["cloud_description"])
     if "source_model" in metadata:
         primary.header["SRCMODEL"] = str(metadata["source_model"])
+    primary.header["SRCSPEC"] = str(
+        metadata.get(
+            "source_spectrum",
+            "hard-state-powerlaw"
+            if source.photon_index is not None
+            else "representative",
+        )
+    )
+    if source.photon_index is not None:
+        primary.header["PHINDEX"] = (float(source.photon_index), "source photon index")
+        primary.header["EMINKEV"] = float(source.energy_edges_kev[0])
+        primary.header["EMAXKEV"] = float(source.energy_edges_kev[-1])
     material_headers = {
         "material_tables": "MATMODEL",
         "scattering_table_sha256": "SCATSHA",

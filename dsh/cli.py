@@ -35,6 +35,7 @@ from .pipeline import (
     run_tabulated_source_to_observer_chunked,
 )
 from .sources.launch import build_cloud_launch_geometry
+from .sources.models import build_powerlaw_band_source
 
 
 def parse_arguments():
@@ -60,12 +61,30 @@ def parse_arguments():
         default="constant-flare",
     )
     parser.add_argument(
+        "--source-spectrum",
+        choices=("representative", "hard-state-powerlaw"),
+        default="representative",
+        help="three fixed energies (default) or continuous 2–10 keV hard-state power law",
+    )
+    parser.add_argument(
+        "--photon-index",
+        type=float,
+        default=1.7,
+        help="hard-state photon index Gamma (default: 1.7)",
+    )
+    parser.add_argument(
+        "--total-2-10-photon-flux",
+        type=float,
+        default=0.038,
+        help="unabsorbed 2–10 keV photon flux [ph cm^-2 s^-1] in hard-state mode",
+    )
+    parser.add_argument(
         "--peak-band-fluxes",
         type=float,
         nargs=3,
         metavar=("F3P3", "F4P9", "F6P9"),
         default=(2.0e-2, 1.2e-2, 6.0e-3),
-        help="peak band fluxes at 3.3/4.9/6.9 keV in ph cm^-2 s^-1",
+        help="three representative-energy fluxes in ph cm^-2 s^-1 (representative mode only)",
     )
     parser.add_argument(
         "--baseline-band-fluxes",
@@ -160,11 +179,35 @@ def main():
         scattering = load_newdust_scattering_table()
         absorption = load_photoelectric_absorption_table()
         physics = build_dust_physics_from_tables(scattering, absorption)
-    # Source remains the three representative bands in both material modes.
-    # A continuous source spectrum is a separate change to the source model.
-    source_energies = np.asarray([3.3, 4.9, 6.9], dtype=np.float64)
-    if not np.all(np.isin(source_energies, scattering.energy_kev)):
-        raise ValueError("material tables must include all source-band energies")
+    hard_state = args.source_spectrum == "hard-state-powerlaw"
+    if hard_state:
+        if args.materials != "2-10":
+            raise ValueError("hard-state-powerlaw requires --materials 2-10")
+        if args.source_model != "constant-flare":
+            raise ValueError("hard-state-powerlaw currently supports constant-flare")
+        if (
+            not np.isfinite(args.total_2_10_photon_flux)
+            or args.total_2_10_photon_flux <= 0
+        ):
+            raise ValueError("total 2–10 photon flux must be finite and positive")
+        if not np.isfinite(args.photon_index):
+            raise ValueError("photon index must be finite")
+        energy_edges_kev = np.asarray([2.0, 4.0, 6.0, 10.0], dtype=np.float64)
+        if (
+            scattering.energy_kev[0] > energy_edges_kev[0]
+            or scattering.energy_kev[-1] < energy_edges_kev[-1]
+        ):
+            raise ValueError("material tables do not span 2–10 keV")
+        source = build_powerlaw_band_source(
+            [0.0, 3600.0],
+            [args.total_2_10_photon_flux],
+            energy_edges_kev,
+            args.photon_index,
+        )
+    else:
+        source_energies = np.asarray([3.3, 4.9, 6.9], dtype=np.float64)
+        if not np.all(np.isin(source_energies, scattering.energy_kev)):
+            raise ValueError("material tables must include all source-band energies")
 
     if args.cloud_fits is None:
         cloud = build_synthetic_four_cloud_scene(args.source_distance_kpc)
@@ -178,21 +221,23 @@ def main():
         )
         cloud_description = str(args.cloud_fits)
 
-    if args.source_model == "constant-flare":
-        source = build_v1_test_source(
-            source_energies,
-            band_flux=args.peak_band_fluxes,
-        )
-    else:
-        source = build_v1_decay_source(
-            source_energies,
-            peak_band_flux=args.peak_band_fluxes,
-            baseline_band_flux=args.baseline_band_fluxes,
-            decay_time_days=args.decay_time_days,
-            decay_start_days=args.decay_start_days,
-            decay_duration_days=args.decay_duration_days,
-            source_time_bin_days=args.source_time_bin_days,
-        )
+    if not hard_state:
+        if args.source_model == "constant-flare":
+            source = build_v1_test_source(
+                source_energies,
+                band_flux=args.peak_band_fluxes,
+            )
+        else:
+            source = build_v1_decay_source(
+                source_energies,
+                peak_band_flux=args.peak_band_fluxes,
+                baseline_band_flux=args.baseline_band_fluxes,
+                decay_time_days=args.decay_time_days,
+                decay_start_days=args.decay_start_days,
+                decay_duration_days=args.decay_duration_days,
+                source_time_bin_days=args.source_time_bin_days,
+            )
+        energy_edges_kev = centers_to_edges(source_energies)
     arrival_edges_s = _arrival_edges(
         args.arrival_days, args.time_bin_days, args.arrival_time_edges_days
     )
@@ -205,12 +250,20 @@ def main():
     bin_geometry = build_observer_bin_geometry(
         sky_x_edges_arcsec=np.asarray(cloud.x_edges_arcsec),
         sky_y_edges_arcsec=np.asarray(cloud.y_edges_arcsec),
-        energy_edges_kev=centers_to_edges(source_energies),
+        energy_edges_kev=energy_edges_kev,
         arrival_time_edges_s=arrival_edges_s,
     )
 
     print(f"JAX backend: {jax.default_backend()}")
     print(f"Material tables: {args.materials} ({scattering.energy_kev.size} nodes)")
+    if hard_state:
+        print(
+            "Source spectrum: continuous 2–10 keV power law; "
+            f"photon index={args.photon_index:g}; "
+            f"total photon flux={args.total_2_10_photon_flux:.7g} ph cm^-2 s^-1"
+        )
+    else:
+        print("Source spectrum: three representative energies 3.3/4.9/6.9 keV")
     print(f"Devices: {jax.devices()}")
     print(f"Cloud: {cloud_description}")
     print(f"Cloud shape (z, y, x): {tuple(cloud.delta_nh_cm2.shape)}")
@@ -226,15 +279,15 @@ def main():
             f"tau={args.decay_time_days:g} days; "
             f"source bins={args.source_time_bin_days:g} days"
         )
-    for energy, flux in zip(
-        np.asarray(source.effective_energy_kev),
-        args.peak_band_fluxes,
-        strict=True,
-    ):
-        print(f"  {float(energy):.1f} keV peak: {float(flux):.7g} ph cm^-2 s^-1")
+    for index, flux in enumerate(np.asarray(source.band_flux)[0]):
+        if hard_state:
+            label = f"{energy_edges_kev[index]:g}–{energy_edges_kev[index + 1]:g} keV"
+        else:
+            label = f"{source_energies[index]:.1f} keV"
+        print(f"  {label} peak: {float(flux):.7g} ph cm^-2 s^-1")
     print(
         "  peak total: "
-        f"{float(np.sum(args.peak_band_fluxes)):.7g} ph cm^-2 s^-1; "
+        f"{float(np.sum(np.asarray(source.band_flux)[0])):.7g} ph cm^-2 s^-1; "
         f"simulated fluence={float(np.asarray(source.total_fluence)):.7g} "
         "ph cm^-2"
     )
@@ -290,6 +343,8 @@ def main():
     decay_mode = args.source_model == "exponential-decay"
     run_metadata = {
         "material_tables": args.materials,
+        "source_spectrum": args.source_spectrum,
+        "source_photon_index": args.photon_index if hard_state else None,
         "scattering_table_sha256": scattering.metadata["table_sha256"],
         "absorption_table_sha256": absorption.metadata["table_sha256"],
         "packets": args.packets,
@@ -298,8 +353,10 @@ def main():
         "seed": args.seed,
         "cloud_description": cloud_description,
         "source_model": args.source_model,
-        "peak_band_fluxes": args.peak_band_fluxes,
-        "baseline_band_fluxes": args.baseline_band_fluxes,
+        "peak_band_fluxes": np.asarray(source.band_flux)[0],
+        "baseline_band_fluxes": (0.0, 0.0, 0.0)
+        if hard_state
+        else args.baseline_band_fluxes,
         "decay_time_days": args.decay_time_days if decay_mode else None,
         "decay_start_days": args.decay_start_days if decay_mode else None,
         "decay_duration_days": args.decay_duration_days if decay_mode else None,

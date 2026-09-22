@@ -25,7 +25,7 @@ from dsh.pipeline import (
     IdealObserverSimulationResult,
 )
 from dsh.sources.launch import build_cloud_launch_geometry
-from dsh.sources.models import build_tabulated_band_source
+from dsh.sources.models import build_powerlaw_band_source, build_tabulated_band_source
 from dsh.transport.kernel import REACHED_OBSERVER_PLANE
 
 
@@ -158,6 +158,31 @@ class TestIdealObserverFits(unittest.TestCase):
                     np.asarray(
                         physics.differential_cross_section_cm2_per_sr_per_h
                     ).shape,
+                )
+
+            powerlaw = build_powerlaw_band_source(
+                [0.0, 100.0], [0.038], [2, 4, 6, 10], 1.7
+            )
+            powerlaw_path = Path(directory) / "powerlaw.fits"
+            write_ideal_observer_fits(
+                powerlaw_path,
+                result,
+                bin_geometry,
+                powerlaw,
+                cloud,
+                physics,
+                launch_geometry,
+                run_metadata={"source_spectrum": "hard-state-powerlaw"},
+            )
+            with fits.open(powerlaw_path, checksum=True) as hdul:
+                hdul.verify("exception")
+                self.assertEqual(hdul[0].header["SRCSPEC"], "hard-state-powerlaw")
+                self.assertAlmostEqual(hdul[0].header["PHINDEX"], 1.7)
+                np.testing.assert_allclose(
+                    hdul["SOURCE"].data["ENERGY_LOW"], [2.0, 4.0, 6.0]
+                )
+                np.testing.assert_allclose(
+                    hdul["SOURCE"].data["ENERGY_HIGH"], [4.0, 6.0, 10.0]
                 )
 
 

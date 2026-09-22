@@ -40,6 +40,8 @@ class TabulatedBandSource(NamedTuple):
     cell_fluence: jnp.ndarray
     flat_cdf: jnp.ndarray
     total_fluence: jnp.ndarray
+    energy_edges_kev: jnp.ndarray | None = None
+    photon_index: jnp.ndarray | None = None
 
 
 class SourcePackets(NamedTuple):
@@ -143,6 +145,54 @@ def build_tabulated_band_source(
     )
 
 
+def build_powerlaw_band_source(
+    time_edges_s,
+    photon_flux,
+    energy_edges_kev,
+    photon_index,
+) -> TabulatedBandSource:
+    """Integrate a power law into bands while sampling energy within each band.
+
+    ``photon_flux`` is the unabsorbed photon flux integrated over all energy
+    bands in each time interval. Energies are drawn analytically from
+    ``dN/dE proportional to E**(-photon_index)`` inside the selected band;
+    they are not restricted to representative energy nodes.
+    """
+
+    edges = np.asarray(energy_edges_kev, dtype=np.float64)
+    flux = np.asarray(photon_flux, dtype=np.float64)
+    gamma = np.asarray(photon_index, dtype=np.float64)
+    if (
+        edges.ndim != 1
+        or edges.size < 2
+        or not np.all(np.isfinite(edges))
+        or edges[0] <= 0.0
+        or not np.all(np.diff(edges) > 0.0)
+    ):
+        raise ValueError("energy edges must be finite, positive, strictly increasing")
+    if gamma.ndim != 0 or not np.isfinite(gamma):
+        raise ValueError("photon_index must be one finite scalar")
+    if flux.shape != (len(time_edges_s) - 1,):
+        raise ValueError("photon_flux must have one value per source time interval")
+
+    def integral(power):
+        if abs(power + 1.0) < 1e-10:
+            return np.log(edges[1:] / edges[:-1])
+        exponent = power + 1.0
+        return (edges[1:] ** exponent - edges[:-1] ** exponent) / exponent
+
+    photons = integral(-float(gamma))
+    if not np.all(photons > 0.0):
+        raise ValueError("power-law bands must have positive photon weights")
+    band_flux = flux[:, None] * (photons / photons.sum())[None, :]
+    mean_energy = integral(1.0 - float(gamma)) / photons
+    source = build_tabulated_band_source(time_edges_s, band_flux, mean_energy)
+    return source._replace(
+        energy_edges_kev=jnp.asarray(edges, dtype=source.effective_energy_kev.dtype),
+        photon_index=jnp.asarray(gamma, dtype=source.effective_energy_kev.dtype),
+    )
+
+
 def build_post_peak_exponential_band_source(
     time_edges_s,
     effective_energy_kev,
@@ -240,7 +290,10 @@ def sample_tabulated_band_source(
     if n_packets <= 0:
         raise ValueError("n_packets must be positive")
 
-    key_cell, key_time = random.split(key)
+    if source.energy_edges_kev is None:
+        key_cell, key_time = random.split(key)
+    else:
+        key_cell, key_time, key_energy = random.split(key, 3)
     u_cell = random.uniform(key_cell, shape=(n_packets,))
     u_time = random.uniform(key_time, shape=(n_packets,))
 
@@ -254,7 +307,16 @@ def sample_tabulated_band_source(
     t0 = source.time_edges_s[time_index]
     t1 = source.time_edges_s[time_index + 1]
     emission_time_s = t0 + (t1 - t0) * u_time
-    energy_kev = source.effective_energy_kev[band_index]
+    if source.energy_edges_kev is None:
+        energy_kev = source.effective_energy_kev[band_index]
+    else:
+        energy_kev = _sample_powerlaw_energy(
+            key_energy,
+            source.energy_edges_kev[band_index],
+            source.energy_edges_kev[band_index + 1],
+            source.photon_index,
+            n_packets,
+        )
     weight = jnp.full(
         (n_packets,),
         source.total_fluence / n_packets,

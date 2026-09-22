@@ -59,6 +59,16 @@ def extract_snapshots(
             raise ValueError(f"expected {expected_packets:,} simulated photons")
         if header.get("MATMODEL") != "2-10":
             raise ValueError("expected the integrated 2–10 keV material tables")
+        if header.get("SRCSPEC") != "hard-state-powerlaw":
+            raise ValueError(
+                "expected continuously sampled hard-state power-law source"
+            )
+        if (
+            not np.isfinite(header.get("PHINDEX", np.nan))
+            or header.get("EMINKEV") != 2.0
+            or header.get("EMAXKEV") != 10.0
+        ):
+            raise ValueError("missing 2–10 keV power-law source provenance")
         for keyword in ("SCATSHA", "ABSSHA"):
             if len(header.get(keyword, "")) != 64:
                 raise ValueError(f"missing material provenance {keyword}")
@@ -117,6 +127,9 @@ def extract_snapshots(
             "packets": expected_packets,
             "cloud": header.get("CLOUD", "unspecified"),
             "source_model": header.get("SRCMODEL", "unspecified"),
+            "source_spectrum": header["SRCSPEC"],
+            "photon_index": header["PHINDEX"],
+            "energy_range_kev": [header["EMINKEV"], header["EMAXKEV"]],
             "material_tables": header["MATMODEL"],
             "scattering_table_sha256": header["SCATSHA"],
             "absorption_table_sha256": header["ABSSHA"],

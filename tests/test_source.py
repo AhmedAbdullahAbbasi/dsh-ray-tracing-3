@@ -9,6 +9,7 @@ from jax import random
 from dsh.sources.models import (
     build_decay_observation_window,
     build_post_peak_exponential_band_source,
+    build_powerlaw_band_source,
     build_tabulated_band_source,
     build_variable_powerlaw_source,
     fred_outburst_flux,
@@ -18,6 +19,35 @@ from dsh.sources.models import (
 
 
 class TestTabulatedBandSource(unittest.TestCase):
+    def test_continuous_powerlaw_energies_and_band_fluence(self):
+        source = build_powerlaw_band_source(
+            [0.0, 3600.0], [0.038], [2.0, 4.0, 6.0, 10.0], 1.7
+        )
+        energies = np.asarray(
+            sample_tabulated_band_source(random.PRNGKey(23), source, 100_000).energy_kev
+        )
+        expected_fraction_below_four = (2.0**-0.7 - 4.0**-0.7) / (
+            2.0**-0.7 - 10.0**-0.7
+        )
+        self.assertAlmostEqual(float(source.total_fluence), 136.8, places=3)
+        self.assertAlmostEqual(
+            float(np.mean(energies < 4.0)), expected_fraction_below_four, delta=0.01
+        )
+        self.assertGreaterEqual(float(energies.min()), 2.0)
+        self.assertLessEqual(float(energies.max()), 10.0)
+        self.assertGreater(np.unique(energies).size, 50_000)
+        band_flux = np.asarray(source.band_flux[0])
+        self.assertAlmostEqual(float(band_flux.sum()), 0.038, places=7)
+        self.assertTrue(np.all(band_flux > 0))
+
+    def test_powerlaw_gamma_one_and_invalid_bands(self):
+        source = build_powerlaw_band_source([0, 1], [1], [2, 4, 10], 1.0)
+        self.assertAlmostEqual(
+            float(source.band_flux[0, 0]), np.log(2) / np.log(5), places=6
+        )
+        with self.assertRaisesRegex(ValueError, "strictly increasing"):
+            build_powerlaw_band_source([0, 1], [1], [2, 4, 4], 1.7)
+
     def test_fluence_calculation_and_cdf(self):
         source = build_tabulated_band_source(
             time_edges_s=np.array([0.0, 2.0, 5.0], dtype=np.float32),
