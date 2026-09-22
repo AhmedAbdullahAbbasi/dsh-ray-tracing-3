@@ -30,7 +30,11 @@ def load_2_10_material_tables():
     """
 
     grid = load_material_grid(DEFAULT_2_10_GRID)
-    digest = hashlib.sha256(DEFAULT_2_10_GRID.read_bytes()).hexdigest()
+    # Git may check text files out with CRLF on Windows while the XSPEC grid
+    # was generated with LF. Only this newline conversion is permitted: the
+    # checksum still fails for any change to the actual grid contents.
+    grid_bytes = DEFAULT_2_10_GRID.read_bytes().replace(b"\r\n", b"\n")
+    digest = hashlib.sha256(grid_bytes).hexdigest()
     scattering = load_newdust_scattering_table(DEFAULT_2_10_SCATTERING)
     absorption = load_photoelectric_absorption_table(DEFAULT_2_10_ABSORPTION)
     if not np.array_equal(grid, scattering.energy_kev) or not np.array_equal(

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 import jax.numpy as jnp
 import numpy as np
@@ -36,7 +39,9 @@ class BundledV2MaterialTests(unittest.TestCase):
         self.assertEqual(a.metadata["producer_version"], "12.14.0")
         self.assertLess(a.metadata["validation_max_relative_difference"], 5e-7)
         self.assertEqual(len(grid["edge_intervals_kev_and_relative_error"]), 4)
-        digest = hashlib.sha256(DEFAULT_2_10_GRID.read_bytes()).hexdigest()
+        digest = hashlib.sha256(
+            DEFAULT_2_10_GRID.read_bytes().replace(b"\r\n", b"\n")
+        ).hexdigest()
         self.assertEqual(s.metadata["shared_energy_grid_sha256"], digest)
         self.assertEqual(a.metadata["shared_energy_grid_sha256"], digest)
         self.assertEqual(
@@ -47,6 +52,21 @@ class BundledV2MaterialTests(unittest.TestCase):
             hashlib.sha256(DEFAULT_2_10_ABSORPTION.read_bytes()).hexdigest(),
             a.metadata["table_sha256"],
         )
+
+    def test_grid_checksum_allows_windows_checkout_newlines_only(self):
+        with tempfile.TemporaryDirectory() as directory:
+            grid = Path(directory) / "material_grid_2_10_v2.json"
+            original = DEFAULT_2_10_GRID.read_bytes().replace(b"\r\n", b"\n")
+            grid.write_bytes(original.replace(b"\n", b"\r\n"))
+            with patch("dsh.physics.materials.DEFAULT_2_10_GRID", grid):
+                scattering, absorption, _ = load_2_10_material_tables()
+                self.assertTrue(
+                    np.array_equal(scattering.energy_kev, absorption.energy_kev)
+                )
+
+                grid.write_bytes(grid.read_bytes().replace(b"12.14.0", b"12.14.1"))
+                with self.assertRaisesRegex(ValueError, "provenance checksum mismatch"):
+                    load_2_10_material_tables()
 
     def test_v1_anchor_regression_and_runtime_opacity(self):
         old_s = load_newdust_scattering_table()
