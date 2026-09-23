@@ -28,8 +28,12 @@ from scripts.generate_tbabs_table import generate as generate_absorption
 class ScatteringRegressionTests(unittest.TestCase):
     def test_matches_frozen_newdust_at_three_energies(self):
         reference = load_newdust_scattering_table()
-        np.testing.assert_array_equal(
-            default_angle_grid(), reference.scattering_angle_rad
+        # geomspace may differ by a few ulps across NumPy/libm platforms.
+        np.testing.assert_allclose(
+            default_angle_grid(),
+            reference.scattering_angle_rad,
+            rtol=8 * np.finfo(np.float64).eps,
+            atol=0,
         )
         differential, sigma, cdf = gaussian_rg_drude_table(
             reference.energy_kev, reference.scattering_angle_rad
