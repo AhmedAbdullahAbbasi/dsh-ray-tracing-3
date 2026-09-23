@@ -73,10 +73,10 @@ tested with new output, and the actual cloud's FITS header/units are confirmed.
 The current controlled benchmark is monoenergetic at an on-node or specified
 off-node energy. Extend its independent quadrature to the continuous Γ=1.7
 source and band/time/annulus comparisons. Test convergence with interaction
-caps 8, 16 and 32 and a small heterogeneous cloud. The quadrature currently
-gates integrated first order and the broad 0–2 day window; its individual
-short time-bin values need tighter angular-convergence work before they can
-serve as absolute references. The standalone radial audit now addresses this
+caps 8, 16 and 32 and a small heterogeneous cloud. The original Cartesian
+quadrature gated integrated first order and the broad 0–2 day window; its
+individual short time-bin values needed tighter angular integration. The
+standalone radial audit addresses this
 reference-only limitation in the symmetric shell: it integrates the exact
 azimuthal coverage of the rectangular launch cone and splits the radial domain
 at time-bin crossings of both shell surfaces. It reuses the saved reports, so
@@ -92,6 +92,26 @@ agreement. Original Stage 9F reports do not store per-bin analog moments: the
 new audit therefore cannot validate the simulated narrow-bin fluence, just its
 independent reference. The radial simplification applies only to the centered,
 rotationally symmetric shell and source used in Stage 9F, not a real cloud.
+
+The updated absorbed-observer runner now uses that radial reference directly.
+It tests **each** first-order time bin against photon-history covariance and
+records its Monte Carlo error, effective histories, quadrature change, and
+residual in standard errors. Each bin requires at least 30 effective histories,
+at most 10% photon relative standard error, at most 2% quadrature change, and
+at most five combined standard errors of disagreement. The integrated radial
+reference is cross-checked against the original Cartesian calculation. Prior
+100k-per-seed reports lack per-bin photon moments and cannot pass this new gate
+retroactively. Run the first new check locally:
+
+```powershell
+python -m scripts.run_absorbed_observer_validation --packets 100000 --chunk-size 256 --output validation_outputs/stage9f_5p35_time_bins_100k_per_seed.json
+```
+
+If this exits nonzero, inspect `case.first_order_time_bins` and the per-seed
+first-order estimates before increasing packets. Precision and effective-
+history failures are inconclusive: keep the gates and seeds fixed. After the
+on-node case is powered, repeat off-node with `--energy 4.0747680326` and a
+distinct output path.
 
 Next assess a launch proposal with demonstrably complete support. Re-run the
 requested one-day four-cloud images locally and judge photon-level

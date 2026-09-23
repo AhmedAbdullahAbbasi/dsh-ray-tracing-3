@@ -32,6 +32,7 @@ from dsh.transport.kernel import transport_photon_batch
 from dsh.validation.absorbed_observer import (
     DAY_S,
     first_order_quadrature,
+    first_order_radial_quadrature,
     host_material,
     score_scattering_only_histories,
 )
@@ -44,14 +45,77 @@ def _git(*args):
 
 def _compare(left, right, se_left, se_right, *, sigma_limit):
     combined = float(np.hypot(se_left, se_right))
-    z = (left - right) / combined if combined > 0 else float("inf")
+    z = (left - right) / combined if combined > 0 else None
     return {
         "analog": float(left),
         "reference": float(right),
         "standard_error": combined,
         "z": z,
-        "passed": bool(abs(z) <= sigma_limit),
+        "passed": bool(z is not None and abs(z) <= sigma_limit),
     }
+
+
+def _compare_first_order_time_bins(
+    analog_sum,
+    analog_cross,
+    analog_cov,
+    coarse,
+    fine,
+    *,
+    minimum_effective_histories,
+    maximum_relative_standard_error,
+    quadrature_rtol,
+    sigma_limit,
+):
+    """Gate each time bin using per-photon moments, including zero-score histories."""
+    rows = []
+    for t, (reference_coarse, reference_fine) in enumerate(
+        zip(coarse, fine, strict=True)
+    ):
+        index = 3 * t  # first-scatter component of (time, order) covariance
+        analog = float(analog_sum[t, 0])
+        squared = float(analog_cross[index, index])
+        photon_se = float(np.sqrt(max(analog_cov[index, index], 0.0)))
+        quadrature_error = float(abs(reference_fine - reference_coarse))
+        result = _compare(
+            analog,
+            reference_fine,
+            photon_se,
+            quadrature_error,
+            sigma_limit=sigma_limit,
+        )
+        result.update(
+            {
+                "time_index": t,
+                "photon_standard_error": photon_se,
+                "quadrature_difference": quadrature_error,
+                "quadrature_relative_change": quadrature_error
+                / max(reference_fine, 1e-100),
+                "effective_histories": analog**2 / squared if squared > 0 else 0.0,
+                "relative_photon_standard_error": photon_se / analog
+                if analog > 0
+                else None,
+            }
+        )
+        result["powered"] = bool(
+            result["effective_histories"] >= minimum_effective_histories
+        )
+        result["precise"] = bool(
+            result["relative_photon_standard_error"] is not None
+            and result["relative_photon_standard_error"]
+            <= maximum_relative_standard_error
+        )
+        result["quadrature_converged"] = bool(
+            result["quadrature_relative_change"] <= quadrature_rtol
+        )
+        result["passed"] = bool(
+            result["passed"]
+            and result["powered"]
+            and result["precise"]
+            and result["quadrature_converged"]
+        )
+        rows.append(result)
+    return rows
 
 
 def run_case(
@@ -66,6 +130,7 @@ def run_case(
     sigma_limit,
     minimum_effective_histories,
     quadrature_rtol,
+    maximum_time_bin_relative_error=0.10,
 ):
     _, _, _, sigma_sca, _ = host_material(physics, energy)
     column = target_tau / sigma_sca
@@ -87,11 +152,17 @@ def run_case(
             physics.absorption_cross_section_cm2_per_h
         )
     )
-    coarse = first_order_quadrature(
-        physics, energy, column, bounds, time_edges, n_slope=64, n_depth=28
+    coarse = first_order_radial_quadrature(
+        physics, energy, column, bounds, time_edges, n_radius=24, n_depth=24
     )
-    fine = first_order_quadrature(
+    fine = first_order_radial_quadrature(
+        physics, energy, column, bounds, time_edges, n_radius=64, n_depth=56
+    )
+    cartesian = first_order_quadrature(
         physics, energy, column, bounds, time_edges, n_slope=96, n_depth=42
+    )
+    cartesian_integrated_difference = float(
+        abs(fine.sum() - cartesian.sum()) / max(fine.sum(), 1e-100)
     )
     quad_error = float(abs(fine.sum() - coarse.sum()) / max(fine.sum(), 1e-100))
     early_quad_error = float(
@@ -189,6 +260,17 @@ def run_case(
     a_flat, b_flat = a.reshape(-1), b.reshape(-1)
     a_cov = n_total / (n_total - 1) * (a_q - np.outer(a_flat, a_flat) / n_total)
     b_cov = n_total / (n_total - 1) * (b_q - np.outer(b_flat, b_flat) / n_total)
+    first_order_time_bins = _compare_first_order_time_bins(
+        a,
+        a_q,
+        a_cov,
+        coarse,
+        fine,
+        minimum_effective_histories=minimum_effective_histories,
+        maximum_relative_standard_error=maximum_time_bin_relative_error,
+        quadrature_rtol=quadrature_rtol,
+        sigma_limit=sigma_limit,
+    )
 
     comparisons = {}
     for label, tsel, osel in (
@@ -249,6 +331,11 @@ def run_case(
     checks = {
         "first_order_absolute": first_reference["passed"],
         "first_order_early_window": early_reference["passed"],
+        "first_order_each_time_bin": all(
+            row["passed"] for row in first_order_time_bins
+        ),
+        "radial_vs_cartesian_integral": cartesian_integrated_difference
+        <= quadrature_rtol,
         "analog_vs_explicit_absorption": all(c["passed"] for c in comparisons.values()),
         "no_invalid_analog_terminals": not any(statuses_a[i] for i in (0, 4, 5, 6)),
         "no_invalid_pure_terminals": not any(statuses_b[i] for i in (0, 4, 5, 6)),
@@ -277,12 +364,12 @@ def run_case(
         relative = (
             float(np.sqrt(max(a_cov[np.ix_(idx, idx)].sum(), 0.0)) / measured)
             if measured > 0
-            else float("inf")
+            else None
         )
         achieved[name] = {
             "relative_standard_error": relative,
             "maximum": maximum,
-            "passed": bool(relative <= maximum),
+            "passed": bool(relative is not None and relative <= maximum),
         }
     checks["observer_precision_screen"] = all(
         row["passed"] for row in achieved.values()
@@ -293,8 +380,11 @@ def run_case(
         "column_cm2": column,
         "time_edges_s": time_edges.tolist(),
         "quadrature": {
+            "method": "axisymmetric radial shell quadrature with exact rectangular azimuth",
             "coarse": coarse.tolist(),
             "fine": fine.tolist(),
+            "cartesian_fine": cartesian.tolist(),
+            "cartesian_integrated_relative_difference": cartesian_integrated_difference,
             "relative_integrated_error_estimate": quad_error,
             "relative_early_window_error_estimate": early_quad_error,
             "relative_each_time_bin_changes": (
@@ -303,6 +393,7 @@ def run_case(
         },
         "first_order_reference": first_reference,
         "first_order_early_reference": early_reference,
+        "first_order_time_bins": first_order_time_bins,
         "achieved_precision": achieved,
         "comparisons": comparisons,
         "analog_statuses": statuses_a,
@@ -312,6 +403,18 @@ def run_case(
                 "seed": row["seed"],
                 "analog": row["analog_sum"].sum(axis=0).tolist(),
                 "explicit_absorption": row["pure_sum"].sum(axis=0).tolist(),
+                "first_order_time_bins": row["analog_sum"][:, 0].tolist(),
+                "first_order_time_bin_standard_errors": np.sqrt(
+                    np.maximum(
+                        packets
+                        / (packets - 1)
+                        * (
+                            np.diag(row["analog_q"])[::3]
+                            - row["analog_sum"][:, 0] ** 2 / packets
+                        ),
+                        0.0,
+                    )
+                ).tolist(),
             }
             for row in score_rows
         ],
@@ -334,6 +437,12 @@ def main():
     parser.add_argument("--sigma-limit", type=float, default=5.0)
     parser.add_argument("--minimum-effective-histories", type=int, default=30)
     parser.add_argument("--quadrature-rtol", type=float, default=0.02)
+    parser.add_argument(
+        "--max-time-bin-relative-error",
+        type=float,
+        default=0.10,
+        help="maximum first-order per-bin photon standard error divided by its fluence",
+    )
     args = parser.parse_args()
     if (
         args.packets < 2
@@ -341,6 +450,7 @@ def main():
         or args.max_interactions < 4
         or len(set(args.seeds)) != len(args.seeds)
         or args.tau_scattering <= 0
+        or not 0 < args.max_time_bin_relative_error < 1
     ):
         parser.error("invalid photon, seed, optical-depth or interaction-cap settings")
     _, _, physics = load_2_10_material_tables()
@@ -366,6 +476,7 @@ def main():
             "sigma_limit": args.sigma_limit,
             "minimum_effective_histories": args.minimum_effective_histories,
             "quadrature_rtol": args.quadrature_rtol,
+            "max_time_bin_relative_error": args.max_time_bin_relative_error,
         },
         "case": run_case(
             physics,
@@ -378,6 +489,7 @@ def main():
             sigma_limit=args.sigma_limit,
             minimum_effective_histories=args.minimum_effective_histories,
             quadrature_rtol=args.quadrature_rtol,
+            maximum_time_bin_relative_error=args.max_time_bin_relative_error,
         ),
     }
     report["all_passed"] = report["case"]["all_passed"]

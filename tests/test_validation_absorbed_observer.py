@@ -16,6 +16,7 @@ from dsh.validation.absorbed_observer import (
     host_phase,
     score_scattering_only_histories,
 )
+from scripts.run_absorbed_observer_validation import _compare_first_order_time_bins
 
 
 class TestAbsorbedObserverReference(unittest.TestCase):
@@ -97,6 +98,43 @@ class TestAbsorbedObserverReference(unittest.TestCase):
             first_order_radial_quadrature(
                 physics, 5.35, 1e23, ((0.0, 0.003), (-0.003, 0.003)), [0, DAY_S]
             )
+
+    def test_per_bin_comparison_rejects_low_precision_and_missing_histories(self):
+        analog = np.zeros((4, 3))
+        analog[:, 0] = 1.0
+        q = np.zeros((12, 12))
+        cov = np.zeros((12, 12))
+        for t in range(4):
+            q[3 * t, 3 * t] = 0.01
+            cov[3 * t, 3 * t] = 0.0025
+        coarse = np.full(4, 0.99999)
+        fine = np.ones(4)
+
+        def compare():
+            return _compare_first_order_time_bins(
+                analog,
+                q,
+                cov,
+                coarse,
+                fine,
+                minimum_effective_histories=30,
+                maximum_relative_standard_error=0.1,
+                quadrature_rtol=0.02,
+                sigma_limit=5.0,
+            )
+
+        self.assertTrue(all(row["passed"] for row in compare()))
+        q[3, 3] = 0.05
+        cov[6, 6] = 0.04
+        coarse[3] = 0.95
+        rows = compare()
+        self.assertFalse(rows[1]["powered"])
+        self.assertFalse(rows[2]["precise"])
+        self.assertFalse(rows[3]["quadrature_converged"])
+        self.assertFalse(any(row["passed"] for row in rows[1:]))
+        analog[0, 0] = 0.0
+        self.assertIsNone(compare()[0]["relative_photon_standard_error"])
+        self.assertFalse(compare()[0]["passed"])
 
 
 if __name__ == "__main__":
