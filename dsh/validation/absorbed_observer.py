@@ -313,7 +313,16 @@ def score_scattering_only_histories(
     Each photon is grouped before second moments are accumulated; the
     underlying scattering-only transport samples only scattering optical depth.
     """
-    _, _, _, sigma_sca, sigma_abs = host_material(physics, energy)
+    # A scalar preserves the monoenergetic benchmark; a vector permits a
+    # continuous spectrum with an independent material lookup per photon.
+    scalar_energy = np.asarray(energy, dtype=np.float64).ndim == 0
+    energies = np.broadcast_to(
+        np.asarray(energy, dtype=np.float64),
+        (len(launched.launch_pdf_per_sr),),
+    )
+    if not np.all(np.isfinite(energies)):
+        raise ValueError("reference photon energies must be finite")
+    material = host_material(physics, float(energies[0])) if scalar_energy else None
     positions = np.asarray(transported.interactions.position_pc, dtype=np.float64)
     momenta = np.asarray(
         transported.interactions.incoming_momentum_kev, dtype=np.float64
@@ -327,6 +336,10 @@ def score_scattering_only_histories(
     per_packet = np.zeros((n, len(time_edges_s) - 1, 3), dtype=np.float64)
     start_source = np.array([SOURCE_KPC * 1000.0, 0.0, 0.0])
     for photon in range(n):
+        photon_energy = float(energies[photon])
+        _, _, _, sigma_sca, sigma_abs = (
+            material if material is not None else host_material(physics, photon_energy)
+        )
         previous = start_source
         traveled = 0.0
         incoming_column = 0.0
@@ -355,7 +368,7 @@ def score_scattering_only_histories(
             phase = float(
                 host_phase(
                     physics,
-                    energy,
+                    photon_energy,
                     math.atan2(
                         np.linalg.norm(np.cross(indir, obsdir)), np.dot(indir, obsdir)
                     ),

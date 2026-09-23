@@ -113,6 +113,45 @@ history failures are inconclusive: keep the gates and seeds fixed. After the
 on-node case is powered, repeat off-node with `--energy 4.0747680326` and a
 distinct output path.
 
-Next assess a launch proposal with demonstrably complete support. Re-run the
-requested one-day four-cloud images locally and judge photon-level
-uncertainties at the actual desired image resolution.
+Once the remaining controlled and scene-specific checks pass, assess a
+launch proposal with demonstrably complete support. Then run the requested
+one-day four-cloud images locally and judge photon-level uncertainties at
+the desired image resolution.
+
+## Continuous-spectrum shell check
+
+The next controlled check uses the same 4–5 kpc shell and one *fixed* column,
+chosen for scattering depth 1.5 at 5.35 keV. It emits an instantaneous unit
+fluence with a continuous photon spectrum proportional to `E^-1.7` from
+2–10 keV. Photons are stratified among 2–4, 4–6, and 6–10 keV according to
+their exact power-law probabilities, then sampled continuously within each
+band by the production inverse-CDF sampler. This reduces band-to-band
+count noise without changing the expected physical spectrum. It is a
+controlled instantaneous source, not the one-hour production flare.
+
+For each band and arrival interval, an independent energy and radial shell
+quadrature checks first-order fluence with absorption on both flight legs.
+The energy integral is split at short material-grid intervals near absorption
+edges. The separate scattering-only transport and host scorer use each
+photon's energy for the scattering law and deterministic absorption through
+all actual and virtual paths. They are compared with analog transport at
+orders 1, 2, and 3+. Photon-history covariance supplies the Monte Carlo
+standard errors. Any interaction-cap hit or invalid terminal fails the gate.
+
+Run after applying the spectral-validation patch, in the HEASOFT-enabled
+PowerShell environment (the simulator uses the bundled material tables):
+
+```powershell
+python -m unittest tests.test_validation_absorbed_observer -v
+python -m ruff check dsh scripts tests
+python -m ruff format --check dsh scripts tests
+python -m scripts.run_spectral_observer_validation --packets 100000 --chunk-size 256 --max-interactions 16 --output validation_outputs/stage9f_continuous_spectrum_100k_per_seed.json
+```
+
+The last command writes a JSON report even if a statistical gate fails. A
+nonzero exit in that case is not itself evidence of a physics discrepancy:
+inspect `case.bands[*].first_order_time_bins`, `order_comparisons`, and
+`checks`. If precision or effective histories fail, increase `--packets`
+without relaxing the gates. An angular annulus test and a heterogeneous-cloud
+control remain separate validation tasks. This shell result alone does not
+authorize the production four-cloud flare or a push to `dsh`.

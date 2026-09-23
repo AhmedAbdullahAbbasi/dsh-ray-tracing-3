@@ -2,6 +2,7 @@
 
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import jax.numpy as jnp
 import numpy as np
@@ -17,6 +18,11 @@ from dsh.validation.absorbed_observer import (
     score_scattering_only_histories,
 )
 from scripts.run_absorbed_observer_validation import _compare_first_order_time_bins
+from scripts.run_spectral_observer_validation import (
+    _edge_breaks,
+    _powerlaw_integral,
+    spectral_first_order_quadrature,
+)
 
 
 class TestAbsorbedObserverReference(unittest.TestCase):
@@ -40,6 +46,74 @@ class TestAbsorbedObserverReference(unittest.TestCase):
         )
         self.assertEqual(narrow["sum"].sum(), 0.0)
         self.assertGreater(wide["sum"].sum(), 0.0)
+
+    def test_independent_scorer_accepts_per_photon_continuous_energies(self):
+        physics = load_2_10_material_tables()[2]
+        rows = SimpleNamespace(
+            position_pc=np.array([[[4500.0, 0.2, 0.0]]] * 2),
+            incoming_momentum_kev=np.array(
+                [[[2.6, -2.6, 0.0, 0.0]], [[7.3, -7.3, 0.0, 0.0]]]
+            ),
+            valid=np.ones((2, 1), dtype=bool),
+            interaction_type=np.ones((2, 1), dtype=int),
+            scattering_order=np.ones((2, 1), dtype=int),
+        )
+        launched = SimpleNamespace(
+            launch_pdf_per_sr=np.ones(2), weight_observer_fluence=np.ones(2) / 2
+        )
+        history = SimpleNamespace(interactions=rows, status=np.ones(2, dtype=int))
+        args = (physics, 1.0e23, [0.0, 30 * DAY_S], [-1800, 1800], [-1800, 1800])
+        mixed = score_scattering_only_histories(
+            launched, history, args[0], [2.6, 7.3], *args[1:]
+        )
+        singles = []
+        for index, energy in enumerate((2.6, 7.3)):
+            one_launch = SimpleNamespace(
+                launch_pdf_per_sr=launched.launch_pdf_per_sr[index : index + 1],
+                weight_observer_fluence=launched.weight_observer_fluence[
+                    index : index + 1
+                ],
+            )
+            one_history = SimpleNamespace(
+                interactions=SimpleNamespace(
+                    **{
+                        key: getattr(rows, key)[index : index + 1]
+                        for key in (
+                            "position_pc",
+                            "incoming_momentum_kev",
+                            "valid",
+                            "interaction_type",
+                            "scattering_order",
+                        )
+                    }
+                ),
+                status=np.ones(1, dtype=int),
+            )
+            singles.append(
+                score_scattering_only_histories(
+                    one_launch, one_history, physics, energy, *args[1:]
+                )
+            )
+        np.testing.assert_allclose(mixed["sum"], sum(x["sum"] for x in singles))
+        np.testing.assert_allclose(mixed["cross"], sum(x["cross"] for x in singles))
+
+    def test_spectral_quadrature_weights_each_band_and_splits_edges(self):
+        physics = SimpleNamespace(energy_kev=np.array([2, 2.47, 2.4701, 4, 6, 10]))
+        np.testing.assert_allclose(_edge_breaks(physics, 2, 4), [2, 2.47, 2.4701, 4])
+        self.assertAlmostEqual(_powerlaw_integral(2, 10, 0.0), 8.0)
+        with patch(
+            "scripts.run_spectral_observer_validation.first_order_radial_quadrature",
+            side_effect=lambda _, energy, *__args, **__kwargs: np.full(
+                4, 1.0 + energy
+            ),
+        ):
+            result = spectral_first_order_quadrature(
+                physics, 1.0e23, 0.0, n_energy=2
+            )
+        for i, (low, high) in enumerate(((2, 4), (4, 6), (6, 10))):
+            np.testing.assert_allclose(
+                result[i], (high - low) / 8 * (1 + (low + high) / 2)
+            )
 
     def test_host_off_node_phase_and_absorbed_first_order(self):
         physics = load_2_10_material_tables()[2]
