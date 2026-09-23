@@ -11,6 +11,7 @@ from dsh.physics.materials import load_2_10_material_tables
 from dsh.validation.absorbed_observer import (
     DAY_S,
     first_order_quadrature,
+    first_order_radial_quadrature,
     host_material,
     host_phase,
     score_scattering_only_histories,
@@ -67,6 +68,35 @@ class TestAbsorbedObserverReference(unittest.TestCase):
         self.assertGreater(with_abs.sum(), 0)
         self.assertLess(with_abs.sum(), without_abs.sum())
         self.assertTrue(np.all(with_abs >= 0))
+
+    def test_radial_time_bin_reference_crosschecks_cartesian_integral(self):
+        physics = load_2_10_material_tables()[2]
+        bounds = ((-0.003, 0.003), (-0.003, 0.003))
+        edges = np.array([0, 0.5, 2, 6, 30]) * DAY_S
+        for energy in (4.0747680326, 5.35):
+            column = 1.5 / host_material(physics, energy)[3]
+            low = first_order_radial_quadrature(
+                physics, energy, column, bounds, edges, n_radius=24, n_depth=24
+            )
+            high = first_order_radial_quadrature(
+                physics, energy, column, bounds, edges, n_radius=64, n_depth=56
+            )
+            cartesian = first_order_quadrature(
+                physics, energy, column, bounds, edges, n_slope=128, n_depth=48
+            )
+            with self.subTest(energy=energy):
+                np.testing.assert_allclose(low, high, rtol=0.002, atol=0)
+                np.testing.assert_allclose(high.sum(), cartesian.sum(), rtol=1e-4)
+                np.testing.assert_allclose(
+                    high[:2].sum(), cartesian[:2].sum(), rtol=1e-3
+                )
+
+    def test_radial_reference_requires_centered_launch_cone(self):
+        physics = load_2_10_material_tables()[2]
+        with self.assertRaisesRegex(ValueError, "centered rectangular cone"):
+            first_order_radial_quadrature(
+                physics, 5.35, 1e23, ((0.0, 0.003), (-0.003, 0.003)), [0, DAY_S]
+            )
 
 
 if __name__ == "__main__":

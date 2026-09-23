@@ -172,6 +172,132 @@ def first_order_quadrature(
     return np.asarray(totals)
 
 
+def first_order_radial_quadrature(
+    physics, energy, central_column_cm2, bounds, time_edges_s, n_radius=48, n_depth=32
+):
+    """First-order shell fluence, integrating the symmetric launch cone by radius.
+
+    For a centered rectangular cone the shell, source, and observer are
+    rotationally symmetric. At each slope radius we integrate the exactly
+    accessible azimuth of the rectangle. Radial intervals are split wherever
+    a time-bin edge crosses either shell surface, so narrow time bins cannot
+    be smeared across a discontinuity in the angular integration.
+    """
+    if (
+        len(bounds) != 2
+        or any(len(pair) != 2 or pair[0] != -pair[1] or pair[1] <= 0 for pair in bounds)
+        or n_radius < 2
+        or n_depth < 2
+    ):
+        raise ValueError("radial quadrature requires a centered rectangular cone")
+    edges = np.asarray(time_edges_s, dtype=np.float64)
+    if edges.ndim != 1 or edges.size < 2 or not np.all(np.diff(edges) > 0):
+        raise ValueError("time edges must increase")
+
+    a, b = float(bounds[0][1]), float(bounds[1][1])
+    r_max = math.hypot(a, b)
+    source = np.array([SOURCE_KPC * 1000.0, 0.0, 0.0])
+    density = central_column_cm2 / (1000.0 * PC_TO_CM)
+    _, _, _, sigma_sca, sigma_abs = host_material(physics, energy)
+
+    def direction(radius):
+        radius = np.asarray(radius)
+        return (
+            np.stack((-np.ones_like(radius), radius, np.zeros_like(radius)), axis=-1)
+            / np.sqrt(1 + radius**2)[..., None]
+        )
+
+    def delay_at(path, direction_vector):
+        point = source + path[..., None] * direction_vector
+        return (path + np.linalg.norm(point, axis=-1) - source[0]) * PC_LIGHT_S
+
+    # Each surface's arrival delay grows monotonically with slope radius.
+    # Split at both surfaces because the allowed flight-length interval changes
+    # its formula at these radii for every nontrivial time boundary.
+    radial_breaks = [0.0, a, b, r_max]
+    for shell_radius in (OUTER_KPC * 1000.0, INNER_KPC * 1000.0):
+        max_delay = delay_at(
+            _entry_distance(direction(r_max), shell_radius), direction(r_max)
+        )
+        for edge in edges[1:-1]:
+            if not 0.0 < edge < max_delay:
+                continue
+            low, high = 0.0, r_max
+            for _ in range(52):
+                middle = (low + high) * 0.5
+                d_middle = direction(middle)
+                delay = delay_at(_entry_distance(d_middle, shell_radius), d_middle)
+                if delay < edge:
+                    low = middle
+                else:
+                    high = middle
+            radial_breaks.append((low + high) * 0.5)
+
+    roots, weights = np.polynomial.legendre.leggauss(n_radius)
+    segments = np.unique(radial_breaks)
+    radius = np.concatenate(
+        [
+            (lo + hi) / 2 + (hi - lo) / 2 * roots
+            for lo, hi in zip(segments[:-1], segments[1:], strict=True)
+        ]
+    )
+    radial_weight = np.concatenate(
+        [
+            (hi - lo) / 2 * weights
+            for lo, hi in zip(segments[:-1], segments[1:], strict=True)
+        ]
+    )
+    lower_angle = np.arccos(np.minimum(a / radius, 1.0))
+    upper_angle = np.arcsin(np.minimum(b / radius, 1.0))
+    azimuth_width = 4 * np.maximum(upper_angle - lower_angle, 0.0)
+    solid_angle = radial_weight * radius * azimuth_width / (1 + radius**2) ** 1.5
+
+    d = direction(radius)
+    entry = _entry_distance(d, OUTER_KPC * 1000.0)
+    exit_shell = _entry_distance(d, INNER_KPC * 1000.0)
+
+    def path_at_delay(target):
+        low, high = entry.copy(), exit_shell.copy()
+        for _ in range(52):
+            middle = (low + high) * 0.5
+            too_early = delay_at(middle, d) < target
+            low = np.where(too_early, middle, low)
+            high = np.where(too_early, high, middle)
+        return np.where(
+            target <= delay_at(entry, d),
+            entry,
+            np.where(target >= delay_at(exit_shell, d), exit_shell, (low + high) * 0.5),
+        )
+
+    boundaries = [path_at_delay(t) for t in edges]
+    depth_roots, depth_weights = np.polynomial.legendre.leggauss(n_depth)
+    totals = []
+    for beginning, ending in zip(boundaries[:-1], boundaries[1:], strict=True):
+        length = (ending - beginning)[:, None] / 2
+        path = beginning[:, None] + (depth_roots[None, :] + 1) * length
+        pos = source + path[..., None] * d[:, None, :]
+        distance = np.linalg.norm(pos, axis=-1)
+        toward_observer = -pos / distance[..., None]
+        cosine = np.sum(d[:, None, :] * toward_observer, axis=-1)
+        sine = np.linalg.norm(np.cross(d[:, None, :], toward_observer), axis=-1)
+        phase = host_phase(physics, energy, np.arctan2(sine, cosine))
+        incoming = density * (path - entry[:, None]) * PC_TO_CM
+        outgoing = density * (distance - INNER_KPC * 1000.0) * PC_TO_CM
+        integrand = (
+            solid_angle[:, None]
+            * depth_weights[None, :]
+            * length
+            * density
+            * PC_TO_CM
+            * sigma_sca
+            * (source[0] / distance) ** 2
+            * phase
+            * np.exp(-(sigma_sca + sigma_abs) * (incoming + outgoing))
+        )
+        totals.append(float(np.sum(integrand, dtype=np.float64)))
+    return np.asarray(totals)
+
+
 def score_scattering_only_histories(
     launched,
     transported,

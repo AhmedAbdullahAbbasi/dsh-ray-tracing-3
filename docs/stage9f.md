@@ -76,6 +76,23 @@ source and band/time/annulus comparisons. Test convergence with interaction
 caps 8, 16 and 32 and a small heterogeneous cloud. The quadrature currently
 gates integrated first order and the broad 0–2 day window; its individual
 short time-bin values need tighter angular-convergence work before they can
-serve as absolute references. Then assess a launch proposal with demonstrably
-complete support. Re-run the requested one-day four-cloud images locally and
-judge photon-level uncertainties at the actual desired image resolution.
+serve as absolute references. The standalone radial audit now addresses this
+reference-only limitation in the symmetric shell: it integrates the exact
+azimuthal coverage of the rectangular launch cone and splits the radial domain
+at time-bin crossings of both shell surfaces. It reuses the saved reports, so
+it does not repeat the photon transport:
+
+```powershell
+python -m scripts.audit_stage9f_quadrature validation_outputs/stage9f_5p35_100k_per_seed.json validation_outputs/stage9f_4p074768_100k_per_seed.json --output validation_outputs/stage9f_radial_quadrature_audit.json
+```
+
+The radial audit checks convergence of **each reference time bin**, original
+material digests, integrated first-order agreement, and broad 0–2 day
+agreement. Original Stage 9F reports do not store per-bin analog moments: the
+new audit therefore cannot validate the simulated narrow-bin fluence, just its
+independent reference. The radial simplification applies only to the centered,
+rotationally symmetric shell and source used in Stage 9F, not a real cloud.
+
+Next assess a launch proposal with demonstrably complete support. Re-run the
+requested one-day four-cloud images locally and judge photon-level
+uncertainties at the actual desired image resolution.
