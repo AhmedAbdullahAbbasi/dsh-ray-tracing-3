@@ -45,8 +45,12 @@ def _bin_table_hdu(fits, name, edges, unit):
 
 
 def _add_linear_spatial_wcs(header, geometry: ObserverBinGeometry):
-    x_edges = np.asarray(geometry.sky_x_edges_arcsec, dtype=np.float64)
-    y_edges = np.asarray(geometry.sky_y_edges_arcsec, dtype=np.float64)
+    _add_spatial_axes(header, geometry.sky_x_edges_arcsec, geometry.sky_y_edges_arcsec)
+
+
+def _add_spatial_axes(header, sky_x_edges_arcsec, sky_y_edges_arcsec):
+    x_edges = np.asarray(sky_x_edges_arcsec, dtype=np.float64)
+    y_edges = np.asarray(sky_y_edges_arcsec, dtype=np.float64)
     x_centers = 0.5 * (x_edges[:-1] + x_edges[1:])
     y_centers = 0.5 * (y_edges[:-1] + y_edges[1:])
     header["CTYPE1"] = ("XOFFSET", "observer sky-x offset")
@@ -250,10 +254,10 @@ def write_ideal_observer_fits(
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     products = result.products
-    total = np.asarray(products.total_fluence, dtype=np.float32)
-    first = np.asarray(products.first_scatter_fluence, dtype=np.float32)
-    multiple = np.asarray(products.multiple_scatter_fluence, dtype=np.float32)
-    event_count = np.asarray(products.event_count, dtype=np.int32)
+    total = np.asarray(products.total_fluence, dtype=np.float64)
+    first = np.asarray(products.first_scatter_fluence, dtype=np.float64)
+    multiple = np.asarray(products.multiple_scatter_fluence, dtype=np.float64)
+    event_count = np.asarray(products.event_count, dtype=np.int64)
     integrated_total = np.sum(total, axis=(0, 1), dtype=np.float64).astype(np.float32)
 
     primary = fits.PrimaryHDU(integrated_total)
@@ -275,6 +279,11 @@ def write_ideal_observer_fits(
     )
     _add_linear_spatial_wcs(primary.header, bin_geometry)
     metadata = dict(run_metadata or {})
+    primary.header["GITHEAD"] = str(metadata.get("simulation_git_head", "unavailable"))
+    primary.header["GITDIRTY"] = bool(metadata.get("simulation_git_dirty", True))
+    primary.header["PYVER"] = str(metadata.get("simulation_python", "unavailable"))
+    primary.header["NPVER"] = str(metadata.get("simulation_numpy", "unavailable"))
+    primary.header["JAXVER"] = str(metadata.get("simulation_jax", "unavailable"))
     header_mapping = {
         "packets": "NPACKETS",
         "chunk_size": "CHUNKSZ",
@@ -403,10 +412,25 @@ def write_ideal_observer_fits(
         _diagnostics_table_hdu(fits, result),
         _status_table_hdu(fits, result),
     ]
+    for name, value in (
+        ("HISTQ4D", products.total_fluence_squared),
+        ("HISTQIMG", products.time_image_fluence_squared),
+        ("ORDSUM", products.time_order_fluence_sum),
+        ("ORDCROSS", products.time_order_fluence_cross),
+    ):
+        hdu = fits.ImageHDU(np.asarray(value, dtype=np.float64), name=name)
+        hdu.header["NHIST"] = int(products.history_count)
+        hdu.header["BUNIT"] = "ph cm-2" if name == "ORDSUM" else "ph2 cm-4"
+        hdu.header["MOMTYPE"] = "photon grouped raw moment"
+        hdu.header["ORDGROUP"] = "1,2,>=3"
+        hdus.append(hdu)
 
     for name in ("FIRSTIMG", "MULTIIMG", "SURFBRIT", "SOLIDANG", "TOTALNH"):
         hdu = next(item for item in hdus if item.name == name)
-        _add_linear_spatial_wcs(hdu.header, bin_geometry)
+        if name == "TOTALNH":
+            _add_spatial_axes(hdu.header, cloud.x_edges_arcsec, cloud.y_edges_arcsec)
+        else:
+            _add_linear_spatial_wcs(hdu.header, bin_geometry)
     next(item for item in hdus if item.name == "FIRSTIMG").header["BUNIT"] = "ph cm-2"
     next(item for item in hdus if item.name == "MULTIIMG").header["BUNIT"] = "ph cm-2"
     next(item for item in hdus if item.name == "SURFBRIT").header["BUNIT"] = (

@@ -71,12 +71,14 @@ It writes:
 - `outputs/dsh_v1_ideal_observer.fits`: images, cubes, axes, inputs, and
   diagnostics.
 
-New NPZ files use output schema 5 and record `material_tables`,
+New NPZ files use output schema 6 and record `material_tables`,
 `scattering_table_sha256`, and `absorption_table_sha256`. FITS outputs carry
 the same provenance in the primary header as `MATMODEL`, `SCATSHA`, and
-`ABSSHA`. Schema 5 also records the source spectrum and, when applicable,
+`ABSSHA`. Schema 5 and later record the source spectrum and, when applicable,
 the power-law index and energy-band boundaries. Earlier schema-3 files still
 contain material arrays but lack explicit table identifiers.
+Schema 6 adds photon-history uncertainty moments and groups multiple
+scattering contributions from the same packet before estimating their variance.
 
 A larger post-outburst decay run is:
 
@@ -144,7 +146,8 @@ NPZ, three images, and a `snapshots/flare_snapshots_manifest.json` are written
 under `outputs/flare_2p5m_four_cloud_2_10/`.
 The full FITS primary combines all arrival times through day 60 and all three
 energy bands. Open the three snapshot FITS files for the requested dates.
-Each snapshot also has `COARSEFL` (summed fluence) and `COARSEEV` (event count)
+Each one-bin snapshot also has `STDIMG` (photon-history standard error),
+`COARSEFL` (summed fluence) and `COARSEEV` (event count)
 extensions. On a 500×500 one-arcsecond sky grid these use 20×20-arcsecond
 cells; `BINFACT` records the exact grouping. Rebinning makes sparse Monte Carlo
 events easier to inspect but does not add physical resolution or convergence.
@@ -335,11 +338,17 @@ python -m scripts.run_absorbing_multiple_scattering_validation --output validati
 
 Stage 9E screens a saved four-cloud flare for clean terminal states,
 snapshot event counts, spatial sampling, and FITS/NPZ consistency before
-calling three time-separated images ready. See dsh/validation/STAGE9E.md:
+calling three time-separated images ready. Old schema-5 products cannot pass
+the revised integrity and uncertainty gate. See dsh/validation/STAGE9E.md:
 
 ~~~powershell
 python -m scripts.audit_four_cloud_flare --input-npz outputs/flare_2p5m_four_cloud_2_10/flare_2p5m_full.npz --output validation_outputs/stage9e_existing_flare_audit.json
 ~~~
+
+Stage 9F validates absorbed, multiple-scattering observer fluence in a
+controlled shell using independent quadrature and a separately scored
+scattering-only estimator. See [docs/stage9f.md](docs/stage9f.md) for the
+local runner, uncertainty interpretation, and remaining validation work.
 
 ## Current V1 limits
 

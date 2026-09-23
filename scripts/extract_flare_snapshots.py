@@ -122,6 +122,8 @@ def extract_snapshots(
         first = hdul["FIRST4D"].data
         multiple = hdul["MULTI4D"].data
         counts = hdul["EVENT4D"].data
+        squared = hdul["HISTQIMG"].data if "HISTQIMG" in hdul else None
+        histories = int(hdul["HISTQIMG"].header["NHIST"]) if squared is not None else 0
         time_bins = hdul["TIME_BINS"].data
         if total.ndim != 4 or any(
             array.shape != total.shape for array in (first, multiple, counts)
@@ -150,7 +152,21 @@ def extract_snapshots(
                     f"no scored halo events during days [{start}, {start + exposure_days}); "
                     "check the cloud field of view and choose different days"
                 )
-            snapshots.append((start, image, first_image, multiple_image, count_image))
+            uncertainty = None
+            if (
+                squared is not None
+                and histories > 1
+                and selection.stop - selection.start == 1
+            ):
+                q = np.asarray(squared[selection.start], dtype=np.float64)
+                uncertainty = np.sqrt(
+                    histories
+                    / (histories - 1)
+                    * np.maximum(q - image * image / histories, 0)
+                )
+            snapshots.append(
+                (start, image, first_image, multiple_image, count_image, uncertainty)
+            )
 
         output_dir.mkdir(parents=True, exist_ok=True)
         manifest = {
@@ -173,7 +189,14 @@ def extract_snapshots(
             "time_reference": "days after direct source arrival",
             "products": [],
         }
-        for start, image, first_image, multiple_image, count_image in snapshots:
+        for (
+            start,
+            image,
+            first_image,
+            multiple_image,
+            count_image,
+            uncertainty,
+        ) in snapshots:
             end = start + exposure_days
             output = output_dir / f"flare_day_{start:03d}_to_{end:03d}.fits"
             image_header = header.copy()
@@ -191,6 +214,10 @@ def extract_snapshots(
             )
             image_header["BUNIT"] = "ph cm-2"
             image_header["BTYPE"] = "energy-integrated ideal-observer fluence"
+            image_header["NHIST"] = histories
+            image_header["UNCERT"] = (
+                "HISTORY" if uncertainty is not None else "UNAVAILABLE"
+            )
             image_header.add_history(
                 "Sum over all energy bands and requested observer arrival bins"
             )
@@ -201,7 +228,12 @@ def extract_snapshots(
                 fits.ImageHDU(count_image.astype(np.int32), name="EVENTIMG"),
                 hdul["ENERGY_BINS"].copy(),
             ]
-            for extension in extensions[1:4]:
+            if uncertainty is not None:
+                extension = fits.ImageHDU(uncertainty.astype(np.float32), name="STDIMG")
+                extension.header["BUNIT"] = "ph cm-2"
+                extension.header["ERRTYPE"] = "photon-history standard error"
+                extensions.append(extension)
+            for extension in extensions[1:]:
                 extension.header["BUNIT"] = (
                     "count" if extension.name == "EVENTIMG" else "ph cm-2"
                 )
@@ -247,6 +279,7 @@ def extract_snapshots(
                     "scored_event_count": int(count_image.sum()),
                     "first_scatter_fluence_ph_cm2": float(first_image.sum()),
                     "multiple_scatter_fluence_ph_cm2": float(multiple_image.sum()),
+                    "standard_error_image_available": uncertainty is not None,
                 }
             )
 

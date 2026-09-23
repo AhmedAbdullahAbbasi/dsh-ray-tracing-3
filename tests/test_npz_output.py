@@ -115,7 +115,7 @@ class TestIdealObserverNpz(unittest.TestCase):
 
             self.assertEqual(returned, path)
             with np.load(path, allow_pickle=False) as archive:
-                self.assertEqual(int(archive["output_schema_version"]), 5)
+                self.assertEqual(int(archive["output_schema_version"]), 6)
                 self.assertEqual(str(archive["material_tables"]), "v1")
                 self.assertEqual(
                     str(archive["scattering_table_sha256"]),

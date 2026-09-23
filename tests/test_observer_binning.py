@@ -12,7 +12,9 @@ from dsh.observer.binning import (
     bin_observer_events,
     build_observer_bin_geometry,
     fluence_surface_brightness_per_sr,
+    fluence_variance,
     mean_flux_surface_brightness_per_sr_s,
+    time_order_covariance,
 )
 from dsh.observer.scoring import ObserverEventResult
 
@@ -156,6 +158,34 @@ class TestObserverBinning(unittest.TestCase):
                 np.asarray(getattr(combined, field)),
                 np.asarray(getattr(full, field)),
             )
+
+    def test_history_moments_include_same_photon_cross_terms_and_zero_scores(self):
+        zero = jax.tree.map(lambda field: jnp.zeros((3, 3), field.dtype), self.events)
+        events = zero._replace(
+            valid=jnp.asarray([[1, 1, 1], [1, 0, 0], [0, 0, 0]], dtype=bool),
+            sky_x_arcsec=jnp.full((3, 3), -1.0),
+            sky_y_arcsec=jnp.full((3, 3), -1.0),
+            energy_kev=jnp.full((3, 3), 3.0),
+            arrival_time_s=jnp.asarray(
+                [[5.0, 5.0, 15.0], [5.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+            ),
+            scattering_order=jnp.asarray([[1, 2, 2], [1, 0, 0], [0, 0, 0]]),
+            weight_observer_fluence=jnp.asarray(
+                [[1.0, 2.0, 3.0], [5.0, 0.0, 0.0], [0.0, 0.0, 0.0]]
+            ),
+        )
+        product = jax.jit(bin_observer_events)(events, self.geometry)
+        self.assertEqual(int(product.history_count), 3)
+        self.assertEqual(float(product.total_fluence[0, 0, 0, 0]), 8.0)
+        self.assertEqual(float(product.total_fluence_squared[0, 0, 0, 0]), 34.0)
+        self.assertEqual(float(product.time_image_fluence_squared[0, 0, 0]), 34.0)
+        self.assertEqual(float(product.time_order_fluence_cross[0, 0, 0, 1]), 2.0)
+        self.assertEqual(float(product.time_order_fluence_cross[0, 1, 1, 1]), 6.0)
+        self.assertAlmostEqual(
+            float(fluence_variance(8.0, 34.0, product.history_count)), 19.0
+        )
+        cov = time_order_covariance(product)
+        self.assertAlmostEqual(cov[0, 1], 1.5 * (2 - 6 * 2 / 3))
 
     def test_rejects_invalid_edges_and_inconsistent_shapes(self):
         with self.assertRaisesRegex(ValueError, "strictly increasing"):

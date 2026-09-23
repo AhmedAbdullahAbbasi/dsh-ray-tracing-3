@@ -8,6 +8,8 @@ realization is applied.
 from __future__ import annotations
 
 import argparse
+import platform
+import subprocess
 from pathlib import Path
 
 import jax
@@ -341,7 +343,22 @@ def main():
     )
 
     decay_mode = args.source_model == "exponential-decay"
+    head = subprocess.run(
+        ["git", "rev-parse", "HEAD"], text=True, capture_output=True, check=False
+    )
+    dirty = subprocess.run(
+        ["git", "status", "--porcelain"], text=True, capture_output=True, check=False
+    )
     run_metadata = {
+        "simulation_git_head": head.stdout.strip()
+        if head.returncode == 0
+        else "unavailable",
+        "simulation_git_dirty": bool(dirty.stdout.strip())
+        if dirty.returncode == 0
+        else True,
+        "simulation_python": platform.python_version(),
+        "simulation_numpy": np.__version__,
+        "simulation_jax": jax.__version__,
         "material_tables": args.materials,
         "source_spectrum": args.source_spectrum,
         "source_photon_index": args.photon_index if hard_state else None,

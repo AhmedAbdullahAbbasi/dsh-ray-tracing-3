@@ -67,7 +67,7 @@ def inspect_flare_arrays(
     weight = np.asarray(total)
     first_weight = np.asarray(first)
     multi_weight = np.asarray(multiple)
-    status = np.asarray(status_counts, dtype=np.int64)
+    status = np.asarray(status_counts)
     edges = np.asarray(arrival_edges_s, dtype=np.float64)
     if (
         count.ndim != 4
@@ -81,7 +81,17 @@ def inspect_flare_arrays(
     height, width = count.shape[2:]
     if height % coarse_factor or width % coarse_factor:
         raise ValueError("coarse factor must divide both sky image axes")
-    if np.any(count < 0) or np.any(~np.isfinite(weight)) or np.any(weight < 0):
+    if (
+        np.any(~np.isfinite(count))
+        or np.any(count != np.floor(count))
+        or np.any(count < 0)
+        or np.any(~np.isfinite(status))
+        or np.any(status != np.floor(status))
+        or np.any(~np.isfinite(weight))
+        or np.any(weight < 0)
+        or np.any(first_weight < 0)
+        or np.any(multi_weight < 0)
+    ):
         raise ValueError("invalid event counts or fluence")
     if not np.allclose(weight, first_weight + multi_weight, rtol=2e-6, atol=1e-10):
         raise ValueError("first and multiple fluence do not close to total")

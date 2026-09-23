@@ -90,7 +90,17 @@ def write_ideal_observer_npz(
         launch_slope_y_bounds=np.asarray(launch_geometry.slope_y_bounds),
         launch_slope_area=np.asarray(launch_geometry.slope_area),
         launch_solid_angle_sr=np.asarray(launch_geometry.launch_solid_angle_sr),
-        output_schema_version=np.asarray(5),
+        output_schema_version=np.asarray(6),
+        simulation_git_head=np.asarray(
+            metadata.get("simulation_git_head", "unavailable")
+        ),
+        simulation_git_dirty=np.asarray(metadata.get("simulation_git_dirty", True)),
+        simulation_python=np.asarray(metadata.get("simulation_python", "unavailable")),
+        simulation_numpy=np.asarray(metadata.get("simulation_numpy", "unavailable")),
+        simulation_jax=np.asarray(metadata.get("simulation_jax", "unavailable")),
+        uncertainty_convention=np.asarray(
+            "photon-grouped raw moments; order groups 1,2,>=3; zero-score histories included"
+        ),
         cloud_description=np.asarray(metadata["cloud_description"]),
         source_flux_convention=np.asarray("unabsorbed observer-equivalent photon flux"),
         source_model=np.asarray(metadata["source_model"]),

@@ -416,13 +416,12 @@ def _sample_powerlaw_energy(
     alpha = 1.0 - photon_index
     use_log_limit = jnp.abs(alpha) < 1.0e-6
 
-    energy_log = energy_min_kev * (energy_max_kev / energy_min_kev) ** u
-
+    log_ratio = jnp.log(energy_max_kev / energy_min_kev)
     alpha_safe = jnp.where(use_log_limit, 1.0, alpha)
-    low_power = energy_min_kev**alpha_safe
-    high_power = energy_max_kev**alpha_safe
-    energy_power = (low_power + u * (high_power - low_power)) ** (1.0 / alpha_safe)
-    energy = jnp.where(use_log_limit, energy_log, energy_power)
+    log_scaled = jnp.log1p(u * jnp.expm1(alpha_safe * log_ratio)) / alpha_safe
+    energy = energy_min_kev * jnp.exp(
+        jnp.where(use_log_limit, u * log_ratio, log_scaled)
+    )
     # Float32 inverse-CDF evaluation can round one ULP below the lower bound
     # (observed at 2 keV in a 2.5M-packet run). Preserve the requested support.
     return jnp.clip(energy, energy_min_kev, energy_max_kev)

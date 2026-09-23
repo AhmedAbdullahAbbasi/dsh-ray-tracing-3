@@ -81,14 +81,9 @@ def convolve_scored_impulses(
     # probabilities can yield 1 - 1e-16 even when the source lies entirely
     # within that interval. Its Bernoulli variance must be exactly zero in
     # that case, so compute the window probability from its CDF endpoints.
-    window_probability = (
-        np.interp(
-            shifted_edges[:, -1], source_edges, source_cdf, left=0.0, right=1.0
-        )
-        - np.interp(
-            shifted_edges[:, 0], source_edges, source_cdf, left=0.0, right=1.0
-        )
-    )
+    window_probability = np.interp(
+        shifted_edges[:, -1], source_edges, source_cdf, left=0.0, right=1.0
+    ) - np.interp(shifted_edges[:, 0], source_edges, source_cdf, left=0.0, right=1.0)
     return ImpulseConvolutionStatistics(
         impulse_fluence=np.histogram(delays, bins=arrival_edges, weights=weights)[0],
         expected_flare_fluence=expected,

@@ -62,6 +62,11 @@ class BinnedObserverProducts(NamedTuple):
     outside_sky_weight_observer_fluence: jnp.ndarray
     outside_energy_weight_observer_fluence: jnp.ndarray
     outside_arrival_time_weight_observer_fluence: jnp.ndarray
+    history_count: jnp.ndarray
+    total_fluence_squared: jnp.ndarray
+    time_image_fluence_squared: jnp.ndarray
+    time_order_fluence_sum: jnp.ndarray
+    time_order_fluence_cross: jnp.ndarray
 
 
 def _validated_edges(values, name, *, positive=False):
@@ -165,6 +170,51 @@ def _scatter_sum(flat_index, values, size):
     return jnp.zeros(size, dtype=values.dtype).at[flat_index].add(values)
 
 
+def _history_square_sum(index, weight, shape, size):
+    """Sum squared *photon* contributions without a photon-by-image array.
+
+    Pairing events within each history retains all within-bin cross terms.
+    Memory is O(packets * interactions**2), independent of image size.
+    """
+    idx = index.reshape(shape)
+    w = weight.reshape(shape)
+    partners = jnp.sum(
+        jnp.where(idx[:, :, None] == idx[:, None, :], w[:, None, :], 0), axis=2
+    )
+    return _scatter_sum(index, (w * partners).reshape(-1), size)
+
+
+def fluence_variance(sum_weight, sum_history_weight_squared, history_count):
+    """Host float64 sampling variance of a sum, including zero-score photons.
+
+    Weights already contain 1/N. Q must square photon totals, not events.
+    Do not merge variances across bins without their covariance.
+    """
+    n = int(history_count)
+    if n < 2:
+        raise ValueError("at least two launched histories are needed for uncertainty")
+    s = np.asarray(sum_weight, dtype=np.float64)
+    q = np.asarray(sum_history_weight_squared, dtype=np.float64)
+    return n / (n - 1) * np.maximum(q - s * s / n, 0.0)
+
+
+def time_order_covariance(products):
+    """Covariance for (time, order group), with groups 1, 2, and >=3.
+
+    All energies and sky pixels are combined *before* forming the moments.
+    This supports arbitrary time windows and order combinations for integrated
+    fluence; it does not supply arbitrary spatial-bin covariances.
+    """
+    n = int(products.history_count)
+    if n < 2:
+        raise ValueError("at least two launched histories are needed for uncertainty")
+    s = np.asarray(products.time_order_fluence_sum, dtype=np.float64).reshape(-1)
+    q = np.asarray(products.time_order_fluence_cross, dtype=np.float64).reshape(
+        s.size, s.size
+    )
+    return n / (n - 1) * (q - np.outer(s, s) / n)
+
+
 def bin_observer_events(
     events: ObserverEventResult,
     geometry: ObserverBinGeometry,
@@ -177,7 +227,7 @@ def bin_observer_events(
     have a finite nonnegative weight and a scattering order of at least one.
     """
 
-    _validate_event_fields(events)
+    event_shape = _validate_event_fields(events)
     event_valid = jnp.asarray(events.valid).reshape(-1)
     sky_x = jnp.asarray(events.sky_x_arcsec).reshape(-1)
     sky_y = jnp.asarray(events.sky_y_arcsec).reshape(-1)
@@ -234,6 +284,16 @@ def bin_observer_events(
     valid_event_count = jnp.sum(event_valid, dtype=jnp.int32)
     binned_event_count = jnp.sum(binned, dtype=jnp.int32)
 
+    binned_weight_values = jnp.where(binned, weight, 0.0)
+    image_index = (time_index * n_y + y_index) * n_x + x_index
+    image_index = jnp.where(binned, image_index, 0)
+    order_index = jnp.clip(scattering_order - 1, 0, 2)
+    packet_index = jnp.repeat(jnp.arange(event_shape[0]), event_shape[1])
+    moment_index = packet_index * (n_time * 3) + time_index * 3 + order_index
+    history_time_order = _scatter_sum(
+        moment_index, binned_weight_values, event_shape[0] * n_time * 3
+    ).reshape(event_shape[0], n_time * 3)
+
     return BinnedObserverProducts(
         total_fluence=total_cube,
         first_scatter_fluence=first_cube,
@@ -256,6 +316,17 @@ def bin_observer_events(
         ),
         outside_arrival_time_weight_observer_fluence=jnp.sum(
             jnp.where(outside_arrival_time, weight, 0.0)
+        ),
+        history_count=jnp.asarray(event_shape[0], dtype=jnp.int32),
+        total_fluence_squared=_history_square_sum(
+            safe_index, binned_weight_values, event_shape, cube_size
+        ).reshape(cube_shape),
+        time_image_fluence_squared=_history_square_sum(
+            image_index, binned_weight_values, event_shape, n_time * n_y * n_x
+        ).reshape(n_time, n_y, n_x),
+        time_order_fluence_sum=history_time_order.sum(axis=0).reshape(n_time, 3),
+        time_order_fluence_cross=(history_time_order.T @ history_time_order).reshape(
+            n_time, 3, n_time, 3
         ),
     )
 
@@ -312,6 +383,14 @@ def add_binned_observer_products(
             left.outside_arrival_time_weight_observer_fluence
             + right.outside_arrival_time_weight_observer_fluence
         ),
+        history_count=left.history_count + right.history_count,
+        total_fluence_squared=left.total_fluence_squared + right.total_fluence_squared,
+        time_image_fluence_squared=left.time_image_fluence_squared
+        + right.time_image_fluence_squared,
+        time_order_fluence_sum=left.time_order_fluence_sum
+        + right.time_order_fluence_sum,
+        time_order_fluence_cross=left.time_order_fluence_cross
+        + right.time_order_fluence_cross,
     )
 
 

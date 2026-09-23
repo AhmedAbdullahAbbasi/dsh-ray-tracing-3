@@ -83,7 +83,7 @@ class TestFlareSnapshots(unittest.TestCase):
         first[9, 2, 1, 1] = 3.0
         cube[:] = first + multiple
         counts = (cube > 0).astype(np.int32)
-        primary = fits.PrimaryHDU(np.zeros((2, 2), dtype=np.float32))
+        primary = fits.PrimaryHDU(cube.sum(axis=(0, 1)))
         primary.header["NPACKETS"] = 2_500_000
         primary.header["MATMODEL"] = "2-10"
         primary.header["SRCSPEC"] = "hard-state-powerlaw"
@@ -110,10 +110,17 @@ class TestFlareSnapshots(unittest.TestCase):
             ],
             name="TIME_BINS",
         )
-        energy_bins = fits.BinTableHDU.from_columns(
-            [fits.Column(name="LOW", format="D", array=[2.5, 4.1, 5.9])],
-            name="ENERGY_BINS",
-        )
+
+        def bins(name, edges):
+            return fits.BinTableHDU.from_columns(
+                [
+                    fits.Column(name="LOW", format="D", array=edges[:-1]),
+                    fits.Column(name="HIGH", format="D", array=edges[1:]),
+                ],
+                name=name,
+            )
+
+        energy_bins = bins("ENERGY_BINS", np.array([2.0, 4.0, 6.0, 10.0]))
         statuses = fits.BinTableHDU.from_columns(
             [
                 fits.Column(name="STATUS_CODE", format="J", array=np.arange(7)),
@@ -140,19 +147,60 @@ class TestFlareSnapshots(unittest.TestCase):
             [fits.Column(name="BINNED_EVENT_COUNT", format="K", array=[3])],
             name="DIAGNOSTICS",
         )
-        fits.HDUList(
-            [
-                primary,
-                fits.ImageHDU(cube, name="TOTAL4D"),
-                fits.ImageHDU(first, name="FIRST4D"),
-                fits.ImageHDU(multiple, name="MULTI4D"),
-                fits.ImageHDU(counts, name="EVENT4D"),
-                time_bins,
-                energy_bins,
-                statuses,
-                diagnostics,
-            ]
-        ).writeto(path, checksum=True)
+        hdus = [
+            primary,
+            fits.ImageHDU(cube, name="TOTAL4D"),
+            fits.ImageHDU(first, name="FIRST4D"),
+            fits.ImageHDU(multiple, name="MULTI4D"),
+            fits.ImageHDU(counts, name="EVENT4D"),
+            time_bins,
+            energy_bins,
+            bins("X_BINS", np.array([4.5, 5.5, 6.5])),
+            bins("Y_BINS", np.array([-2.5, -1.5, -0.5])),
+            fits.ImageHDU(first.sum(axis=(0, 1)), name="FIRSTIMG"),
+            fits.ImageHDU(multiple.sum(axis=(0, 1)), name="MULTIIMG"),
+            fits.ImageHDU(cube**2, name="HISTQ4D"),
+            fits.ImageHDU((cube.sum(axis=1)) ** 2, name="HISTQIMG"),
+            fits.ImageHDU(
+                np.stack(
+                    (
+                        first.sum(axis=(1, 2, 3)),
+                        multiple.sum(axis=(1, 2, 3)),
+                        np.zeros(12),
+                    ),
+                    axis=1,
+                ),
+                name="ORDSUM",
+            ),
+            fits.ImageHDU(
+                np.einsum(
+                    "ti,uj->tiuj",
+                    np.stack(
+                        (
+                            first.sum(axis=(1, 2, 3)),
+                            multiple.sum(axis=(1, 2, 3)),
+                            np.zeros(12),
+                        ),
+                        axis=1,
+                    ),
+                    np.stack(
+                        (
+                            first.sum(axis=(1, 2, 3)),
+                            multiple.sum(axis=(1, 2, 3)),
+                            np.zeros(12),
+                        ),
+                        axis=1,
+                    ),
+                ),
+                name="ORDCROSS",
+            ),
+            statuses,
+            diagnostics,
+        ]
+        for hdu in hdus:
+            if hdu.name in ("HISTQ4D", "HISTQIMG", "ORDSUM", "ORDCROSS"):
+                hdu.header["NHIST"] = 2_500_000
+        fits.HDUList(hdus).writeto(path, checksum=True)
 
     def test_images_use_three_separate_one_day_arrival_windows(self):
         from astropy.io import fits
@@ -188,6 +236,12 @@ class TestFlareSnapshots(unittest.TestCase):
                     self.assertEqual(hdul[0].header["TSTART"], start * 86_400)
                     self.assertEqual(hdul[0].header["CRVAL1"], 5.0)
                     self.assertEqual(int(hdul["EVENTIMG"].data.sum()), 1)
+                    self.assertEqual(hdul[0].header["UNCERT"], "HISTORY")
+                    self.assertAlmostEqual(
+                        float(hdul["STDIMG"].data.sum()),
+                        expected * np.sqrt(1 - 1 / 2_500_000),
+                        places=5,
+                    )
                     self.assertEqual(hdul[0].header["RUNSTAT"], "CLEAN")
                     self.assertEqual(hdul["COARSEFL"].data.shape, (1, 1))
                     self.assertEqual(float(hdul["COARSEFL"].data.sum()), expected)

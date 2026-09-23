@@ -272,6 +272,14 @@ def _run_source_to_observer_chunked(
             bin_geometry,
             max_interactions=max_interactions,
         )
+        # Persist sums on the host in float64/int64. JAX's default float32 is
+        # appropriate for each bounded batch, not millions of chunk additions.
+        current = jax.tree.map(
+            lambda value: np.asarray(value).astype(
+                np.int64 if np.issubdtype(value.dtype, np.integer) else np.float64
+            ),
+            current,
+        )
         result = (
             current
             if result is None
