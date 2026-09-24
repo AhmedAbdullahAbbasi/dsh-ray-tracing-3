@@ -1,5 +1,13 @@
 # Stage 9F: absorbed observer validation
 
+**Checkpoint status (24 September 2026):** The controlled shell, pooled
+continuous-spectrum, annulus and heterogeneous-cloud reports pass with an
+interaction cap of 32. See
+[`VALIDATED_PRE_REFACTOR_HANDOFF_2026-09-24.md`](VALIDATED_PRE_REFACTOR_HANDOFF_2026-09-24.md)
+for the evidence, exact scope, and remaining real-scene work. The instructions
+below preserve the chronological validation workflow; earlier statements
+that a test or push was pending describe its state before this checkpoint.
+
 The goals are to validate the *observable* (halo fluence) with absorption and
 multiple scattering, and to make photon-level Monte Carlo uncertainty available.
 This is not a detector-response comparison. The 2–10 keV scattering and
@@ -155,3 +163,42 @@ inspect `case.bands[*].first_order_time_bins`, `order_comparisons`, and
 without relaxing the gates. An angular annulus test and a heterogeneous-cloud
 control remain separate validation tasks. This shell result alone does not
 authorize the production four-cloud flare or a push to `dsh`.
+
+### Adding independent histories to two bands
+
+If only the 2–4 and 6–10 keV order-precision gates need more photons, retain
+the accepted 4–6 keV band from the original report. Run a supplement with
+**new seeds** and two diagnostic histories in the unused middle band. The
+supplement will exit nonzero because that band is intentionally underpowered;
+its JSON is still required for the pooled audit.
+
+```powershell
+python -m scripts.run_spectral_observer_validation --packets-by-band 240000 2 180000 --seeds 9012 9319 9141 --chunk-size 256 --max-interactions 32 --output validation_outputs/stage9f_spectrum_supplement.json
+python -m scripts.merge_spectral_observer_validation validation_outputs/stage9f_spectrum_stratified_cap32.json validation_outputs/stage9f_spectrum_supplement.json --output validation_outputs/stage9f_spectrum_pooled.json
+```
+
+The audit checks source configuration, quadrature, material hashes, git head,
+and disjoint seeds. It reconstructs each *scalar* squared photon sum from its
+fluence and effective-history count, rescales the two runs to their combined
+band history count, and recomputes first-order time-bin and order-group errors
+and gates. The middle band is copied from the baseline report. This does not
+recover pixel covariance or create a spatial-image validation.
+
+### First-order absorbed spatial annuli
+
+The next shell check compares production first-scatter scores in three
+nonoverlapping circular sky annuli (0–45, 45–90, and 90–1800 arcsec) over
+0–30 days against an independent radial-shell quadrature. The reference
+splits each shell flight at observed-angle boundaries and the radial integral
+at intersections with both shell surfaces. It applies absorption on the
+incoming and escape legs. Per-photon annular scores, including zero-score
+histories, provide the Monte Carlo error; their sum must match the production
+first-scatter sky image in each chunk.
+
+```powershell
+python -m scripts.run_absorbed_annulus_validation --energy 5.35 --packets 100000 --chunk-size 256 --max-interactions 32 --output validation_outputs/stage9f_absorbed_annuli_5p35.json
+```
+
+The controlled reference is monoenergetic and checks first-scattering spatial
+fluence. It does not establish spatial accuracy for higher scattering orders,
+the continuous-spectrum image, or a heterogeneous cloud.

@@ -57,6 +57,24 @@ def _powerlaw_integral(low, high, gamma):
     return float(low**exponent * np.expm1(exponent * np.log(high / low)) / exponent)
 
 
+def _allocate_band_packets(packets, probabilities, requested=None):
+    """Choose history counts; physical band weights remain the source probabilities."""
+    if requested is not None:
+        if (
+            len(requested) != len(probabilities)
+            or any(type(count) is not int or count < 2 for count in requested)
+            or sum(requested) != packets
+        ):
+            raise ValueError("band counts must be >=2 and sum to total packets")
+        return np.asarray(requested, dtype=np.int64)
+    allocation = np.floor(packets * probabilities).astype(np.int64)
+    residual = packets - int(allocation.sum())
+    allocation[np.argsort(-(packets * probabilities - allocation))[:residual]] += 1
+    if np.any(allocation < 2):
+        raise ValueError("packets must allocate at least two photons per energy band")
+    return allocation
+
+
 def _edge_breaks(physics, low, high):
     """Split short material-grid intervals so absorption edges are resolved."""
     grid = np.asarray(physics.energy_kev, dtype=np.float64)
@@ -152,8 +170,8 @@ def _compare_order_group(
     result["relative_analog_standard_error"] = np.sqrt(va) / a if a > 0 else None
     result["powered"] = min(result["effective_histories"]) >= minimum_histories
     relative = result["relative_analog_standard_error"]
-    result["precise"] = relative is not None and relative <= (
-        0.05 if order == 0 else 0.10
+    result["precise"] = bool(
+        relative is not None and relative <= (0.05 if order == 0 else 0.10)
     )
     result["passed"] = bool(
         result["passed"] and result["powered"] and result["precise"]
@@ -170,6 +188,7 @@ def run_case(
     physics,
     *,
     packets,
+    packets_by_band=None,
     chunk_size,
     seeds,
     max_interactions,
@@ -215,12 +234,7 @@ def run_case(
             for low, high in zip(BANDS[:-1], BANDS[1:], strict=True)
         ]
     )
-    allocation = np.floor(packets * probabilities).astype(int)
-    # Allocate residual photons deterministically to the largest remainders.
-    residual = packets - int(allocation.sum())
-    allocation[np.argsort(-(packets * probabilities - allocation))[:residual]] += 1
-    if np.any(allocation < 2):
-        raise ValueError("packets must allocate at least two photons per energy band")
+    allocation = _allocate_band_packets(packets, probabilities, packets_by_band)
     analog_jit = jax.jit(
         simulate_source_packets_to_observer, static_argnames=("max_interactions",)
     )
@@ -419,6 +433,8 @@ def run_case(
         },
         "pivot_energy_kev": pivot_energy,
         "pivot_tau_scattering": target_tau,
+        "band_packet_allocation_per_seed": allocation.tolist(),
+        "allocation_method": "explicit" if packets_by_band is not None else "powerlaw",
         "column_cm2": column,
         "time_edges_s": TIME_EDGES.tolist(),
         "quadrature": {
@@ -440,8 +456,14 @@ def main():
     parser.add_argument(
         "--packets",
         type=int,
-        default=100_000,
-        help="total photons per seed across all three bands",
+        help="total photons per seed across all three bands (default: 100000)",
+    )
+    parser.add_argument(
+        "--packets-by-band",
+        type=int,
+        nargs=3,
+        metavar=("N2_4", "N4_6", "N6_10"),
+        help="histories per seed in the 2-4, 4-6, and 6-10 keV bands",
     )
     parser.add_argument("--chunk-size", type=int, default=256)
     parser.add_argument("--seeds", type=int, nargs="+", default=[912, 319, 141])
@@ -460,8 +482,18 @@ def main():
         help="coarse nodes per smooth spectral segment; fine uses twice this",
     )
     args = parser.parse_args()
+    if args.packets_by_band is not None:
+        if any(count < 2 for count in args.packets_by_band):
+            parser.error("each band requires at least two photons")
+        if args.packets is not None and args.packets != sum(args.packets_by_band):
+            parser.error("--packets must equal the sum of --packets-by-band")
+    packets = (
+        args.packets
+        if args.packets is not None
+        else sum(args.packets_by_band) if args.packets_by_band is not None else 100_000
+    )
     if (
-        args.packets < 6
+        packets < 6
         or args.chunk_size < 1
         or len(args.seeds) < 3
         or len(set(args.seeds)) != len(args.seeds)
@@ -496,7 +528,8 @@ def main():
             DEFAULT_2_10_ABSORPTION.read_bytes()
         ).hexdigest(),
         "config": {
-            "packets_per_seed": args.packets,
+            "packets_per_seed": packets,
+            "packets_by_band_per_seed": args.packets_by_band,
             "chunk_size": args.chunk_size,
             "seeds": args.seeds,
             "max_interactions": args.max_interactions,
@@ -508,7 +541,8 @@ def main():
         },
         "case": run_case(
             physics,
-            packets=args.packets,
+            packets=packets,
+            packets_by_band=args.packets_by_band,
             chunk_size=args.chunk_size,
             seeds=args.seeds,
             max_interactions=args.max_interactions,

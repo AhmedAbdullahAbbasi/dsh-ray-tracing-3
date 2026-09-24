@@ -173,7 +173,14 @@ def first_order_quadrature(
 
 
 def first_order_radial_quadrature(
-    physics, energy, central_column_cm2, bounds, time_edges_s, n_radius=48, n_depth=32
+    physics,
+    energy,
+    central_column_cm2,
+    bounds,
+    time_edges_s,
+    n_radius=48,
+    n_depth=32,
+    annulus_arcsec=None,
 ):
     """First-order shell fluence, integrating the symmetric launch cone by radius.
 
@@ -193,6 +200,17 @@ def first_order_radial_quadrature(
     edges = np.asarray(time_edges_s, dtype=np.float64)
     if edges.ndim != 1 or edges.size < 2 or not np.all(np.diff(edges) > 0):
         raise ValueError("time edges must increase")
+    if annulus_arcsec is not None:
+        annulus = np.asarray(annulus_arcsec, dtype=np.float64)
+        if (
+            annulus.shape != (2,)
+            or not np.all(np.isfinite(annulus))
+            or annulus[0] < 0
+            or annulus[1] <= annulus[0]
+            or annulus[1] * ARCSEC_TO_RAD >= np.pi / 2
+        ):
+            raise ValueError("annulus must have increasing nonnegative arcseconds")
+        theta_low, theta_high = annulus * ARCSEC_TO_RAD
 
     a, b = float(bounds[0][1]), float(bounds[1][1])
     r_max = math.hypot(a, b)
@@ -232,6 +250,25 @@ def first_order_radial_quadrature(
                 else:
                     high = middle
             radial_breaks.append((low + high) * 0.5)
+        if annulus_arcsec is not None:
+            def sky_angle(slope):
+                vector = direction(slope)
+                path = _entry_distance(vector, shell_radius)
+                point = source + path[..., None] * vector
+                return np.arctan2(point[..., 1], point[..., 0])
+
+            maximum = sky_angle(r_max)
+            for theta in (theta_low, theta_high):
+                if not 0.0 < theta < maximum:
+                    continue
+                low, high = 0.0, r_max
+                for _ in range(52):
+                    middle = (low + high) * 0.5
+                    if sky_angle(middle) < theta:
+                        low = middle
+                    else:
+                        high = middle
+                radial_breaks.append((low + high) * 0.5)
 
     roots, weights = np.polynomial.legendre.leggauss(n_radius)
     segments = np.unique(radial_breaks)
@@ -270,9 +307,21 @@ def first_order_radial_quadrature(
         )
 
     boundaries = [path_at_delay(t) for t in edges]
+    if annulus_arcsec is not None:
+        def path_at_angle(theta):
+            tangent = math.tan(theta)
+            if tangent == 0.0:
+                return np.zeros_like(radius)
+            return source[0] * np.sqrt(1 + radius**2) * tangent / (radius + tangent)
+
+        annulus_start = path_at_angle(theta_low)
+        annulus_end = path_at_angle(theta_high)
     depth_roots, depth_weights = np.polynomial.legendre.leggauss(n_depth)
     totals = []
     for beginning, ending in zip(boundaries[:-1], boundaries[1:], strict=True):
+        if annulus_arcsec is not None:
+            beginning = np.maximum(beginning, annulus_start)
+            ending = np.maximum(beginning, np.minimum(ending, annulus_end))
         length = (ending - beginning)[:, None] / 2
         path = beginning[:, None] + (depth_roots[None, :] + 1) * length
         pos = source + path[..., None] * d[:, None, :]
@@ -351,9 +400,10 @@ def score_scattering_only_histories(
             point = positions[photon, j]
             segment = point - previous
             length = float(np.linalg.norm(segment))
-            incoming_column += analytic_shell_column(
-                previous, segment / length, length, central_column_cm2
-            )
+            if length > 0.0:
+                incoming_column += analytic_shell_column(
+                    previous, segment / length, length, central_column_cm2
+                )
             traveled += length
             radius = float(np.linalg.norm(point))
             obsdir = -point / radius

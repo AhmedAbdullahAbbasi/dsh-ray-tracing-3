@@ -17,8 +17,10 @@ from dsh.validation.absorbed_observer import (
     host_phase,
     score_scattering_only_histories,
 )
+from scripts.run_absorbed_annulus_validation import _annular_photon_weights
 from scripts.run_absorbed_observer_validation import _compare_first_order_time_bins
 from scripts.run_spectral_observer_validation import (
+    _allocate_band_packets,
     _edge_breaks,
     _powerlaw_integral,
     spectral_first_order_quadrature,
@@ -26,6 +28,58 @@ from scripts.run_spectral_observer_validation import (
 
 
 class TestAbsorbedObserverReference(unittest.TestCase):
+    def test_annular_first_order_reference_partitions_the_shell(self):
+        physics = load_2_10_material_tables()[2]
+        energy = 5.35
+        _, _, _, sigma, _ = host_material(physics, energy)
+        args = (
+            physics,
+            energy,
+            1.5 / sigma,
+            ((-0.003, 0.003), (-0.003, 0.003)),
+            [0.0, 30 * DAY_S],
+        )
+        annuli = ((0.0, 45.0), (45.0, 90.0), (90.0, 1800.0))
+        whole = first_order_radial_quadrature(*args, n_radius=64, n_depth=56)
+        pieces = [
+            first_order_radial_quadrature(
+                *args, n_radius=64, n_depth=56, annulus_arcsec=annulus
+            )
+            for annulus in annuli
+        ]
+        self.assertTrue(all(piece[0] > 0 for piece in pieces))
+        np.testing.assert_allclose(sum(pieces), whole, rtol=0.001)
+
+    def test_annular_event_moments_group_by_launched_photon(self):
+        events = SimpleNamespace(
+            valid=np.array([[True, True], [True, False]]),
+            scattering_order=np.array([[1, 2], [1, 0]]),
+            sky_x_arcsec=np.array([[20.0, 80.0], [60.0, 0.0]]),
+            sky_y_arcsec=np.zeros((2, 2)),
+            arrival_time_s=np.array([[DAY_S, DAY_S], [DAY_S, 0.0]]),
+            weight_observer_fluence=np.array([[2.0, 7.0], [3.0, 0.0]]),
+        )
+        weights = _annular_photon_weights(
+            events, (0.0, 45.0, 90.0), (0.0, 2 * DAY_S)
+        )
+        np.testing.assert_array_equal(weights, [[2.0, 0.0], [0.0, 3.0]])
+
+    def test_stratified_spectrum_preserves_band_probabilities(self):
+        probabilities = np.array([0.57, 0.23, 0.20])
+        allocation = _allocate_band_packets(10, probabilities, [2, 3, 5])
+        np.testing.assert_array_equal(allocation, [2, 3, 5])
+        np.testing.assert_allclose(
+            [np.full(n, p / n).sum() for n, p in zip(allocation, probabilities)],
+            probabilities,
+        )
+        np.testing.assert_array_equal(
+            _allocate_band_packets(10, probabilities), [6, 2, 2]
+        )
+        for requested in ([2, 3], [1, 4, 5], [2, 3, 4]):
+            with self.subTest(requested=requested):
+                with self.assertRaises(ValueError):
+                    _allocate_band_packets(10, probabilities, requested)
+
     def test_reference_respects_production_sky_window(self):
         physics = load_2_10_material_tables()[2]
         row = SimpleNamespace(
