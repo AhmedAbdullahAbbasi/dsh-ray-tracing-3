@@ -9,6 +9,22 @@ The output is physical observer fluence, not telescope counts. Effective
 area, PSF, exposure maps, detector redistribution, background, and counting
 noise are intentionally deferred to Version 2.
 
+## File-based source and material inputs
+
+The new input runner accepts a source FITS with continuum photon-flux bins,
+monochromatic lines, or both, plus independently selected scattering and
+absorption NPZ/JSON tables. A TOML file supplies paths and run settings:
+
+```bash
+python -m dsh.command check configs/file_input_smoke.toml
+python -m dsh.command run configs/file_input_smoke.toml
+```
+
+The example uses synthetic source flux and gas. It writes schema-7 NPZ/FITS
+products and a numerical run report. See [the input contracts](docs/input_contracts.md)
+for file layouts, units, provenance and limits. The `dsh-v1` command below
+retains the validated pre-refactor input and schema-6 output path.
+
 ## Package layout
 
 ```text
@@ -16,12 +32,14 @@ dsh/
   geometry/   coordinates, physical cloud cubes, exact ray integrals
   physics/    NewDust scattering, TBabs absorption, JAX physics tables
   sources/    light curves, spectra, packet sampling, source launch
+  materials/  independent material component inputs and provenance
+  config/     TOML run resolution and file-input orchestration
   transport/  direction geometry and repeated-interaction photon kernel
   observer/   peel-off scoring and weighted DSH binning
   io/         cloud FITS input and multi-extension FITS output
   data/       versioned cross-section tables and provenance
   pipeline.py end-to-end source-to-observer orchestration
-  cli.py      local Version-1 runner
+  command.py  file-input runner; cli.py preserves the V1 runner
 ```
 
 The old Cartesian toy transport, temporary one-event/isotropic transport,

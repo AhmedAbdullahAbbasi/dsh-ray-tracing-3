@@ -1,0 +1,30 @@
+format_version = 1
+
+[run]
+name = "file_input_smoke"
+seed = 2026
+packets = 4096
+chunk_size = 256
+max_interactions = 16
+fail_on_cap = true
+
+[scene]
+kind = "example_four_cloud"
+source_distance_kpc = 10.0
+
+[source]
+file = "../dsh/data/examples/one_hour_hard_state_with_line.fits"
+components = "both"
+
+[materials]
+scattering = "../dsh/data/scattering/rg_drude_2_10_v2.npz"
+absorption = "../dsh/data/absorption/tbabs_wilm_vern_2_10_v2.npz"
+grid = "../dsh/data/materials/material_grid_2_10_v2.json"
+
+[observer]
+time_edges_days = [0, 3, 4, 6, 7, 9, 10, 60]
+energy_edges_kev = [2, 4, 6, 10]
+
+[output]
+npz = "../outputs/file_input_smoke.npz"
+fits = "../outputs/file_input_smoke.fits"

@@ -11,6 +11,7 @@ requires-python = ">=3.10"
 dependencies = [
     "jax>=0.4.34",
     "numpy>=2.0",
+    "tomli>=2; python_version < '3.11'",
 ]
 
 [project.optional-dependencies]
@@ -18,13 +19,14 @@ fits = ["astropy>=6"]
 dev = ["astropy>=6", "ruff>=0.16"]
 
 [project.scripts]
+dsh = "dsh.command:main"
 dsh-v1 = "dsh.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["dsh*"]
 
 [tool.setuptools.package-data]
-dsh = ["data/**/*.json", "data/**/*.npz"]
+dsh = ["data/**/*.json", "data/**/*.npz", "data/**/*.fits"]
 
 [tool.ruff]
 target-version = "py310"

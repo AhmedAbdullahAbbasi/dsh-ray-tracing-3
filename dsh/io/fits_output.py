@@ -14,6 +14,7 @@ from ..pipeline import (
     TRANSPORT_STATUS_LABELS,
     IdealObserverSimulationResult,
 )
+from ..sources.cells import SourceCells
 from ..sources.launch import SourceLaunchGeometry
 from ..sources.models import TabulatedBandSource
 
@@ -90,7 +91,46 @@ def _observer_image_hdu(
     return hdu
 
 
-def _source_table_hdu(fits, source: TabulatedBandSource):
+def _source_table_hdu(fits, source: TabulatedBandSource | SourceCells):
+    if isinstance(source, SourceCells):
+        start = np.asarray(source.start_s, dtype=np.float64)
+        stop = np.asarray(source.stop_s, dtype=np.float64)
+        fluence = np.asarray(source.cell_fluence, dtype=np.float64)
+        low = np.asarray(source.energy_low_kev, dtype=np.float64)
+        high = np.asarray(source.energy_high_kev, dtype=np.float64)
+        return fits.BinTableHDU.from_columns(
+            [
+                fits.Column(
+                    name="TIME_INDEX", format="J", array=np.asarray(source.time_index)
+                ),
+                fits.Column(
+                    name="ENERGY_INDEX",
+                    format="J",
+                    array=np.asarray(source.spectral_bin_index),
+                ),
+                fits.Column(name="TIME_LOW", format="D", unit="s", array=start),
+                fits.Column(name="TIME_HIGH", format="D", unit="s", array=stop),
+                fits.Column(name="ENERGY_LOW", format="D", unit="keV", array=low),
+                fits.Column(name="ENERGY_HIGH", format="D", unit="keV", array=high),
+                fits.Column(name="KIND", format="J", array=np.asarray(source.kind)),
+                fits.Column(
+                    name="PHOTON_INDEX",
+                    format="D",
+                    array=np.asarray(source.photon_index),
+                ),
+                fits.Column(
+                    name="PHOTON_FLUX",
+                    format="D",
+                    unit="ph cm-2 s-1",
+                    array=fluence / (stop - start),
+                ),
+                fits.Column(name="FLUENCE", format="D", unit="ph cm-2", array=fluence),
+                fits.Column(
+                    name="SAMPLING_CDF", format="D", array=np.asarray(source.flat_cdf)
+                ),
+            ],
+            name="SOURCE",
+        )
     time_edges = np.asarray(source.time_edges_s, dtype=np.float64)
     energy = np.asarray(source.effective_energy_kev, dtype=np.float64)
     flux = np.asarray(source.band_flux, dtype=np.float64)
@@ -234,7 +274,7 @@ def write_ideal_observer_fits(
     path,
     result: IdealObserverSimulationResult,
     bin_geometry: ObserverBinGeometry,
-    source: TabulatedBandSource,
+    source: TabulatedBandSource | SourceCells,
     cloud: AngularDistanceCloud,
     physics: DustPhysicsTable,
     launch_geometry: SourceLaunchGeometry,
@@ -269,8 +309,17 @@ def write_ideal_observer_fits(
         float(np.asarray(cloud.source_distance_kpc)),
         "source distance [kpc]",
     )
+    if isinstance(source, SourceCells):
+        first_interval = np.asarray(source.time_index) == 0
+        first_fluence = np.asarray(source.cell_fluence)[first_interval]
+        first_flux = float(
+            np.sum(first_fluence)
+            / (np.asarray(source.time_edges_s)[1] - np.asarray(source.time_edges_s)[0])
+        )
+    else:
+        first_flux = float(np.sum(np.asarray(source.band_flux)[0]))
     primary.header["SRCFLUX"] = (
-        float(np.sum(np.asarray(source.band_flux)[0])),
+        first_flux,
         "first source interval total flux [ph cm-2 s-1]",
     )
     primary.header["SRCFLUEN"] = (
@@ -284,6 +333,14 @@ def write_ideal_observer_fits(
     primary.header["PYVER"] = str(metadata.get("simulation_python", "unavailable"))
     primary.header["NPVER"] = str(metadata.get("simulation_numpy", "unavailable"))
     primary.header["JAXVER"] = str(metadata.get("simulation_jax", "unavailable"))
+    if isinstance(source, SourceCells):
+        primary.header["OUTSCHEM"] = 7
+        primary.header["SRCFSHA"] = str(metadata["source_fits_sha256"])
+        primary.header["CFGSHA"] = str(metadata["resolved_config_sha256"])
+        primary.header["SRCCOMP"] = str(metadata["source_components"])
+        if metadata.get("source_mjdref") is not None:
+            primary.header["MJDREF"] = float(metadata["source_mjdref"])
+            primary.header["TIMESYS"] = str(metadata["source_timesys"])
     header_mapping = {
         "packets": "NPACKETS",
         "chunk_size": "CHUNKSZ",
@@ -300,12 +357,17 @@ def write_ideal_observer_fits(
     primary.header["SRCSPEC"] = str(
         metadata.get(
             "source_spectrum",
-            "hard-state-powerlaw"
+            "file-cells"
+            if isinstance(source, SourceCells)
+            else "hard-state-powerlaw"
             if source.photon_index is not None
             else "representative",
         )
     )
-    if source.photon_index is not None:
+    if isinstance(source, SourceCells):
+        primary.header["EMINKEV"] = float(np.min(np.asarray(source.energy_low_kev)))
+        primary.header["EMAXKEV"] = float(np.max(np.asarray(source.energy_high_kev)))
+    elif source.photon_index is not None:
         primary.header["PHINDEX"] = (float(source.photon_index), "source photon index")
         primary.header["EMINKEV"] = float(source.energy_edges_kev[0])
         primary.header["EMAXKEV"] = float(source.energy_edges_kev[-1])

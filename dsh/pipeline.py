@@ -32,6 +32,7 @@ from .observer.binning import (
 )
 from .observer.scoring import score_peeloff_events
 from .physics.dust import DustPhysicsTable
+from .sources.cells import SourceCells, sample_source_cells
 from .sources.launch import SourceLaunchGeometry, sample_source_launches
 from .sources.models import (
     SourcePackets,
@@ -345,6 +346,36 @@ def run_variable_powerlaw_source_to_observer_chunked(
         key,
         source,
         sample_variable_powerlaw_source,
+        launch_geometry,
+        cloud,
+        physics,
+        bin_geometry,
+        total_packets=total_packets,
+        chunk_size=chunk_size,
+        max_interactions=max_interactions,
+        progress_callback=progress_callback,
+    )
+
+
+def run_source_cells_to_observer_chunked(
+    key,
+    source: SourceCells,
+    launch_geometry: SourceLaunchGeometry,
+    cloud: AngularDistanceCloud,
+    physics: DustPhysicsTable,
+    bin_geometry: ObserverBinGeometry,
+    *,
+    total_packets: int,
+    chunk_size: int,
+    max_interactions: int = 64,
+    progress_callback: Callable[[int, int], None] | None = None,
+) -> IdealObserverSimulationResult:
+    """Run externally supplied source cells through the unchanged pipeline."""
+
+    return _run_source_to_observer_chunked(
+        key,
+        source,
+        sample_source_cells,
         launch_geometry,
         cloud,
         physics,

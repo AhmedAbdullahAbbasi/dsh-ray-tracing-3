@@ -18,6 +18,7 @@ dist/
 
 # Large input data not tracked in git -- see README for how to get it
 *.fits
+!dsh/data/examples/one_hour_hard_state_with_line.fits
 
 # Local Monte Carlo products
 outputs/
