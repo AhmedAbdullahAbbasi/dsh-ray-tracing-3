@@ -97,6 +97,8 @@ is unchanged.
 
 The bundled example FITS and TOML are synthetic input/scene smoke data. The
 resulting halo images are not validated observational or science products.
+For the one-hour, 5.35 keV realistic test-cube run and schema-7 snapshot
+extraction, see [`realistic_monochromatic_run.md`](realistic_monochromatic_run.md).
 
 ## Controlled heterogeneous line check
 
