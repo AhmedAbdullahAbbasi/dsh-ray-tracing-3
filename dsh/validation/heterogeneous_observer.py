@@ -52,7 +52,9 @@ def _radial_column(position, columns):
     return np.sum(overlap * columns, axis=-1)
 
 
-def first_order_quadrants(physics, energy, columns, *, n_slope, n_depth):
+def first_order_quadrants(
+    physics, energy, columns, *, n_slope, n_depth, emission_interval_s=None
+):
     """Absolute first-order fluence per (sky_y, sky_x) quadrant.
 
     Independent Gauss--Legendre integration in the two launch slopes and in
@@ -63,6 +65,10 @@ def first_order_quadrants(physics, energy, columns, *, n_slope, n_depth):
 
     if columns.shape != (6, 2, 2) or min(n_slope, n_depth) < 2:
         raise ValueError("invalid scene or quadrature order")
+    if emission_interval_s is not None:
+        start_time, stop_time = emission_interval_s
+        if not np.isfinite([start_time, stop_time]).all() or stop_time <= start_time:
+            raise ValueError("emission interval must be finite and increasing")
     _, _, _, sigma_sca, sigma_abs = host_material(physics, energy)
     roots, weights = np.polynomial.legendre.leggauss(n_slope)
     depth_roots, depth_weights = np.polynomial.legendre.leggauss(n_depth)
@@ -125,11 +131,20 @@ def first_order_quadrants(physics, energy, columns, *, n_slope, n_depth):
                     * phase
                     * np.exp(-(sigma_sca + sigma_abs) * (incoming + outgoing))
                 )
-                result[iy, ix] += float(np.sum(
-                    np.where((delay >= TIME_EDGES_S[0]) &
-                             (delay <= TIME_EDGES_S[-1]), integrand, 0.0),
-                    dtype=np.float64,
-                ))
+                if emission_interval_s is None:
+                    time_fraction = (
+                        (delay >= TIME_EDGES_S[0]) & (delay <= TIME_EDGES_S[-1])
+                    )
+                else:
+                    duration = stop_time - start_time
+                    time_fraction = np.clip(
+                        (TIME_EDGES_S[-1] - delay - start_time) / duration, 0, 1
+                    ) - np.clip(
+                        (TIME_EDGES_S[0] - delay - start_time) / duration, 0, 1
+                    )
+                result[iy, ix] += float(
+                    np.sum(time_fraction * integrand, dtype=np.float64)
+                )
     return result
 
 
@@ -228,6 +243,7 @@ def reference_history_weights(launched, transported, physics, energy, columns):
     start = np.asarray(launched.position_pc, dtype=np.float64)
     pdf = np.asarray(launched.launch_pdf_per_sr, dtype=np.float64)
     weight = np.asarray(launched.weight_observer_fluence, dtype=np.float64)
+    emission_time = np.asarray(launched.emission_time_s, dtype=np.float64)
     out = np.zeros((len(valid), 2, 2, 3), dtype=np.float64)
     for i in range(len(valid)):
         previous = start[i]
@@ -249,7 +265,7 @@ def reference_history_weights(launched, transported, physics, energy, columns):
             observer = -point / radius
             x = math.atan2(point[1], point[0]) / ARCSEC_TO_RAD
             y = math.atan2(point[2], point[0]) / ARCSEC_TO_RAD
-            delay = (path + radius - SOURCE_PC) * PC_LIGHT_S
+            delay = emission_time[i] + (path + radius - SOURCE_PC) * PC_LIGHT_S
             ix = int(np.searchsorted(SKY_EDGES, x, side="right") - 1)
             iy = int(np.searchsorted(SKY_EDGES, y, side="right") - 1)
             if (

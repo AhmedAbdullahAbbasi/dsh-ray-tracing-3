@@ -9,6 +9,8 @@ from dsh.validation.heterogeneous_observer import (
     PC_TO_CM,
     RADIAL_EDGES_KPC,
     SKY_EDGES,
+    TIME_EDGES_S,
+    first_order_quadrants,
     host_ray_column,
     scene_columns,
 )
@@ -50,6 +52,24 @@ class HeterogeneousObserverReferenceTests(unittest.TestCase):
                                          len(SKY_EDGES) - 1, len(SKY_EDGES) - 1))
         self.assertFalse(np.allclose(columns[2, 0, 0], columns[2, 1, 1]))
         self.assertGreater(PC_TO_CM, 3e18)
+
+    def test_finite_source_interval_is_applied_to_reference_time_window(self):
+        from dsh.physics.materials import load_2_10_material_tables
+        from dsh.validation.absorbed_observer import host_material
+
+        energy = 5.35
+        physics = load_2_10_material_tables()[2]
+        columns = scene_columns(1.5 / host_material(physics, energy)[3])
+        prompt = first_order_quadrants(
+            physics, energy, columns, n_slope=6, n_depth=4,
+            emission_interval_s=(0.0, 1.0),
+        )
+        late = first_order_quadrants(
+            physics, energy, columns, n_slope=6, n_depth=4,
+            emission_interval_s=(TIME_EDGES_S[-1] + 1, TIME_EDGES_S[-1] + 2),
+        )
+        self.assertTrue(np.all(prompt > 0))
+        np.testing.assert_array_equal(late, np.zeros_like(late))
 
 
 if __name__ == "__main__":

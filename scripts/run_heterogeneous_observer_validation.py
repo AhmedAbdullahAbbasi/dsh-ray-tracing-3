@@ -28,6 +28,7 @@ from dsh.physics.materials import (
     DEFAULT_2_10_SCATTERING,
     load_2_10_material_tables,
 )
+from dsh.sources.cells import sample_source_cells
 from dsh.sources.launch import build_rectangular_launch_geometry, sample_source_launches
 from dsh.sources.models import SourcePackets
 from dsh.transport.kernel import transport_photon_batch
@@ -116,13 +117,37 @@ def _summed_moment(s, q, mask):
 
 def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
              max_interactions, sigma_limit, minimum_effective_histories,
-             maximum_relative_error):
+             maximum_relative_error, input_cloud=None, source_cells=None):
     _, _, _, sigma_scattering, _ = host_material(physics, energy)
     columns = scene_columns(target_tau / sigma_scattering)
-    cloud = build_angular_distance_cloud(
-        columns, [-900.0, 900.0], [-900.0, 900.0],
-        (RADIAL_EDGES_KPC[:-1] + RADIAL_EDGES_KPC[1:]) / 2, 10.0,
-    )
+    cloud = input_cloud
+    if cloud is None:
+        cloud = build_angular_distance_cloud(
+            columns, [-900.0, 900.0], [-900.0, 900.0],
+            (RADIAL_EDGES_KPC[:-1] + RADIAL_EDGES_KPC[1:]) / 2, 10.0,
+        )
+    else:
+        np.testing.assert_allclose(np.asarray(cloud.delta_nh_cm2), columns, rtol=1e-6)
+        np.testing.assert_allclose(np.asarray(cloud.x_edges_arcsec), SKY_EDGES)
+        np.testing.assert_allclose(np.asarray(cloud.y_edges_arcsec), SKY_EDGES)
+        np.testing.assert_allclose(np.asarray(cloud.z_edges_kpc), RADIAL_EDGES_KPC)
+        if float(cloud.source_distance_kpc) != 10.0:
+            raise ValueError("file cloud source distance differs from Stage 9F")
+    emission_interval = None
+    if source_cells is not None:
+        if (source_cells.cell_fluence.shape != (1,)
+            or not np.all(np.asarray(source_cells.kind) == 0)
+            or not np.allclose(
+                np.asarray(source_cells.energy_low_kev), energy, rtol=1e-7
+            )
+            or not np.allclose(
+                np.asarray(source_cells.energy_high_kev), energy, rtol=1e-7
+            )
+            or not np.isclose(float(source_cells.total_fluence), 1.0, rtol=1e-7)):
+            raise ValueError("Stage 9F file input requires one monochromatic line cell")
+        emission_interval = (
+            float(source_cells.start_s[0]), float(source_cells.stop_s[0])
+        )
     launch = build_rectangular_launch_geometry(10.0, *LAUNCH_BOUNDS)
     bins = build_observer_bin_geometry(
         SKY_EDGES, SKY_EDGES, [energy - 0.1, energy + 0.1], TIME_EDGES_S,
@@ -135,10 +160,12 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
     print("Computing coarse independent quadrant quadrature...", flush=True)
     coarse = first_order_quadrants(
         physics, energy, columns, n_slope=18, n_depth=16,
+        emission_interval_s=emission_interval,
     )
     print("Computing fine independent quadrant quadrature...", flush=True)
     fine = first_order_quadrants(
         physics, energy, columns, n_slope=42, n_depth=36,
+        emission_interval_s=emission_interval,
     )
 
     def analog_batch(key, source):
@@ -175,16 +202,27 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
         seed_b = np.zeros_like(b_sum)
         for index, offset in enumerate(range(0, packets, chunk_size)):
             n = min(chunk_size, packets - offset)
-            source = SourcePackets(
-                energy_kev=jnp.full((n,), energy),
-                emission_time_s=jnp.zeros((n,)),
-                weight_observer_fluence=jnp.full((n,), 1.0 / packets),
-                time_index=jnp.zeros((n,), dtype=jnp.int32),
-                spectral_bin_index=jnp.zeros((n,), dtype=jnp.int32),
-            )
-            analog_key, launch_key, pure_key = random.split(
-                random.fold_in(random.PRNGKey(seed), index), 3
-            )
+            if source_cells is None:
+                source = SourcePackets(
+                    energy_kev=jnp.full((n,), energy),
+                    emission_time_s=jnp.zeros((n,)),
+                    weight_observer_fluence=jnp.full((n,), 1.0 / packets),
+                    time_index=jnp.zeros((n,), dtype=jnp.int32),
+                    spectral_bin_index=jnp.zeros((n,), dtype=jnp.int32),
+                )
+                analog_key, launch_key, pure_key = random.split(
+                    random.fold_in(random.PRNGKey(seed), index), 3
+                )
+            else:
+                sample_key, analog_key, launch_key, pure_key = random.split(
+                    random.fold_in(random.PRNGKey(seed), index), 4
+                )
+                source = sample_source_cells(sample_key, source_cells, n)
+                source = source._replace(
+                    weight_observer_fluence=jnp.full(
+                        (n,), source_cells.total_fluence / packets
+                    )
+                )
             events, status, positions, first, multiple = jax.block_until_ready(
                 analog_jit(analog_key, source)
             )

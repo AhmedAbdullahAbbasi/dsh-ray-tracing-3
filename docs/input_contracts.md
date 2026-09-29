@@ -97,3 +97,40 @@ is unchanged.
 
 The bundled example FITS and TOML are synthetic input/scene smoke data. The
 resulting halo images are not validated observational or science products.
+
+## Controlled heterogeneous line check
+
+`scripts/validate_file_input_heterogeneous.py` constructs a reproducible
+5.35 keV, one-second line-only FITS source and a native FITS version of the
+asymmetric Stage 9F six-shell cloud. It loads the source, cloud and independent
+material components through `build_run`, then runs the configured automatic
+full-cloud pipeline and audits its schema-7 products. The script separately
+uses those **same loaded arrays** with the finite launch cone defined by the
+Stage 9F reference. That comparison checks four absolute first-order sky
+quadrants against double-precision quadrature, repeated scattering against an
+independent explicit-absorption path scorer, escape columns against a host
+voxel integral, and numerical terminal states. The quadrature includes the
+finite source interval in the arrival-window acceptance.
+
+```bash
+python -m scripts.validate_file_input_heterogeneous \
+  --output-dir outputs/controlled_line --packets 30000 \
+  --seeds 912 319 141 --configured-packets 8192
+```
+
+The JSON report labels the two launch cones separately. The configured
+full-cloud run is checked for numerical and product integrity; the finite-cone
+Stage 9F comparison supplies scientific acceptance **only for that controlled
+proposal**. A full-cloud, time-resolved realistic scene requires its own
+precision and convergence assessment. The script returns a nonzero status if
+any of its recorded gates fail.
+
+On 2026-09-29, the command above passed all seven Stage 9F gates with three
+30,000-packet seeds. The four independent first-order quadrants had relative
+photon standard errors of 5.44–6.88% and a maximum quadrature discrepancy of
+2.80 combined standard errors (acceptance: at most 10% and 5 respectively).
+The largest independent escape-column relative error was 9.1e-7 across 120
+sampled events, including 79 repeated-scattering events. The 8,192-packet
+configured full-cloud run passed its numerical status and schema-7 archive
+audit. This evidence is for the synthetic controlled scene and one broad
+arrival window, not for time-resolved production predictions.
