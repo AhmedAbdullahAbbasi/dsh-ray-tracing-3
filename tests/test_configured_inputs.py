@@ -49,9 +49,9 @@ source_distance_kpc = 10.0
 file = "source.fits"
 components = "both"
 [materials]
-scattering = "{scattering}"
-absorption = "{absorption}"
-grid = "{grid}"
+scattering = "{scattering.as_posix()}"
+absorption = "{absorption.as_posix()}"
+grid = "{grid.as_posix()}"
 [observer]
 time_edges_days = [0.0, 60.0]
 energy_edges_kev = [2.0, 4.0, 6.0, 10.0]
@@ -121,9 +121,9 @@ source_distance_kpc = 10.0
 [source]
 file = "source.fits"
 [materials]
-scattering = "{scattering}"
-absorption = "{absorption}"
-grid = "{grid}"
+scattering = "{scattering.as_posix()}"
+absorption = "{absorption.as_posix()}"
+grid = "{grid.as_posix()}"
 [observer]
 time_edges_days = [0.0, 60.0]
 energy_edges_kev = [2.0, 10.0]
@@ -151,9 +151,10 @@ npz = "run.npz"
             path.write_text(
                 original.replace(
                     "../dsh/data/examples/one_hour_hard_state_with_line.fits",
-                    str(source),
+                    source.as_posix(),
                 ).replace(
-                    'fits = "../outputs/file_input_smoke.fits"', f'fits = "{source}"'
+                    'fits = "../outputs/file_input_smoke.fits"',
+                    f'fits = "{source.as_posix()}"',
                 )
             )
             with self.assertRaisesRegex(ValueError, "overwrite input"):

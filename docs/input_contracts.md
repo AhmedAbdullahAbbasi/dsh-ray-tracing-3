@@ -69,6 +69,9 @@ python -m dsh.command run configs/file_input_smoke.toml
 An installed package also provides `dsh check` and `dsh run`. The TOML has
 `format_version = 1` and sections `[run]`, `[scene]`, `[source]`,
 `[materials]`, `[observer]`, `[output]`; paths resolve relative to the TOML.
+For absolute Windows paths, use forward slashes (`C:/data/source.fits`) or
+single-quoted TOML literal strings; backslashes in double-quoted strings are
+interpreted as escapes.
 `scene.kind` is `example_four_cloud` or `fits`. The observer uses explicit
 arrival edges in days and energy edges in keV; spatial bin edges match the
 cloud's native angular edges. `run.max_interactions` is mandatory and a cap
