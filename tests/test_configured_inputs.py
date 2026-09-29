@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,7 +11,12 @@ from pathlib import Path
 import numpy as np
 from astropy.io import fits
 
-from dsh.config import build_run, load_run_config, run_configured_simulation
+from dsh.config import (
+    audit_configured_run,
+    build_run,
+    load_run_config,
+    run_configured_simulation,
+)
 from dsh.materials import packaged_material_paths
 from dsh.sources.source_fits import SourceFluxFile, write_source_fits
 
@@ -133,6 +139,113 @@ npz = "run.npz"
             )
             with self.assertRaisesRegex(ValueError, "material support"):
                 build_run(load_run_config(path))
+
+    def test_monochromatic_flare_through_asymmetric_fits_cube(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            columns = (
+                np.array(
+                    [
+                        [[2, 1, 1], [1, 4, 2], [1, 2, 3]],
+                        [[1, 3, 1], [2, 1, 4], [1, 2, 1]],
+                        [[3, 1, 2], [1, 2, 1], [4, 1, 2]],
+                        [[1, 2, 4], [3, 1, 2], [1, 4, 1]],
+                    ],
+                    dtype=np.float32,
+                )
+                * 1.0e21
+            )
+            cloud_path = base / "asymmetric_cloud.fits"
+            cloud_hdu = fits.PrimaryHDU(columns)
+            cloud_hdu.header["BUNIT"] = "cm-2"
+            for axis, kind, unit, start, step in (
+                (1, "XOFFSET", "arcsec", -40.0, 40.0),
+                (2, "YOFFSET", "arcsec", -40.0, 40.0),
+                (3, "DISTANCE", "kpc", 2.0, 2.0),
+            ):
+                cloud_hdu.header[f"CTYPE{axis}"] = kind
+                cloud_hdu.header[f"CUNIT{axis}"] = unit
+                cloud_hdu.header[f"CRPIX{axis}"] = 1.0
+                cloud_hdu.header[f"CRVAL{axis}"] = start
+                cloud_hdu.header[f"CDELT{axis}"] = step
+            cloud_hdu.writeto(cloud_path, checksum=True)
+            write_source_fits(
+                base / "line.fits",
+                SourceFluxFile(
+                    np.array([0.0, 3600.0]),
+                    np.array([]),
+                    np.empty((1, 0)),
+                    (),
+                    np.empty((1, 0)),
+                    np.array([5.35]),
+                    np.array([[0.038]]),
+                    ("test_line",),
+                ),
+            )
+            scattering, absorption, grid = packaged_material_paths("2-10")
+            config_path = base / "line.toml"
+            config_path.write_text(
+                f"""format_version = 1
+[run]
+name = "asymmetric_line"
+packets = 512
+chunk_size = 128
+max_interactions = 16
+seed = 314
+[scene]
+kind = "fits"
+path = "asymmetric_cloud.fits"
+source_distance_kpc = 10.0
+[source]
+file = "line.fits"
+components = "lines"
+[materials]
+scattering = "{scattering.as_posix()}"
+absorption = "{absorption.as_posix()}"
+grid = "{grid.as_posix()}"
+[observer]
+time_edges_days = [0.0, 1.0, 3.0, 10.0, 60.0]
+energy_edges_kev = [2.0, 5.0, 6.0, 10.0]
+[output]
+npz = "line.npz"
+fits = "line_output.fits"
+"""
+            )
+            config = load_run_config(config_path)
+            _, cells, _, cloud, _, _ = build_run(config)
+            self.assertAlmostEqual(float(cells.total_fluence), 136.8, places=4)
+            np.testing.assert_allclose(np.asarray(cloud.delta_nh_cm2), columns)
+            self.assertFalse(np.allclose(columns[:, 0, 0], columns[:, 1, 1]))
+            report = run_configured_simulation(config)
+            cloud_sha = hashlib.sha256(cloud_path.read_bytes()).hexdigest()
+            self.assertEqual(report["cloud_sha256"], cloud_sha)
+            self.assertTrue(report["numerical_passed"])
+            with np.load(config.output_npz, allow_pickle=False) as archive:
+                self.assertEqual(int(archive["output_schema_version"]), 7)
+                self.assertEqual(str(archive["cloud_fits_sha256"]), cloud_sha)
+                np.testing.assert_array_equal(archive["source_cell_kind"], [0])
+                self.assertEqual(int(archive["history_count"]), 512)
+                self.assertEqual(int(archive["transport_status_count"].sum()), 512)
+                np.testing.assert_allclose(archive["cloud_delta_nh_cm2"], columns)
+                self.assertEqual(archive["total_fluence"].shape, (4, 3, 3, 3))
+            with fits.open(config.output_fits, checksum=True) as hdus:
+                self.assertTrue(all(hdu.verify_checksum() == 1 for hdu in hdus))
+                self.assertEqual(hdus[0].header["CLDFSHA"], cloud_sha)
+                self.assertEqual(hdus["SOURCE"].data["KIND"].tolist(), [0])
+                self.assertAlmostEqual(
+                    float(hdus["SOURCE"].data["ENERGY_LOW"][0]), 5.35, places=5
+                )
+                self.assertEqual(
+                    hdus["SOURCE"].data["ENERGY_LOW"].tolist(),
+                    hdus["SOURCE"].data["ENERGY_HIGH"].tolist(),
+                )
+            audit = audit_configured_run(config)
+            self.assertTrue(audit["all_passed"], audit["checks"])
+            report_path = config.output_npz.with_suffix(".run_report.json")
+            changed_report = json.loads(report_path.read_text())
+            changed_report["cloud_sha256"] = "0" * 64
+            report_path.write_text(json.dumps(changed_report))
+            self.assertFalse(audit_configured_run(config)["checks"]["run_report"])
 
     def test_config_rejects_unknown_keys_and_input_overwrite(self):
         example = Path(__file__).resolve().parents[1] / "configs/file_input_smoke.toml"

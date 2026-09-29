@@ -336,6 +336,8 @@ def write_ideal_observer_fits(
     if isinstance(source, SourceCells):
         primary.header["OUTSCHEM"] = 7
         primary.header["SRCFSHA"] = str(metadata["source_fits_sha256"])
+        if metadata.get("cloud_fits_sha256"):
+            primary.header["CLDFSHA"] = str(metadata["cloud_fits_sha256"])
         primary.header["CFGSHA"] = str(metadata["resolved_config_sha256"])
         primary.header["SRCCOMP"] = str(metadata["source_components"])
         if metadata.get("source_mjdref") is not None:

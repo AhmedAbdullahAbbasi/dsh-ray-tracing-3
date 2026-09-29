@@ -217,7 +217,15 @@ def _git_value(*args) -> str | None:
     return result.stdout.strip() if result.returncode == 0 else None
 
 
-def _resolved_manifest(config: ResolvedRun) -> str:
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _resolved_manifest(config: ResolvedRun, cloud_sha256: str | None) -> str:
     """Make input paths and all numerical settings explicit in the archive."""
 
     values = {
@@ -233,6 +241,7 @@ def _resolved_manifest(config: ResolvedRun) -> str:
         "scene": {
             "kind": config.scene_kind,
             "path": str(config.cloud_fits) if config.cloud_fits else None,
+            "cloud_fits_sha256": cloud_sha256,
             "source_distance_kpc": config.source_distance_kpc,
         },
         "source": {"file": str(config.source_fits), "components": config.components},
@@ -256,7 +265,10 @@ def _resolved_manifest(config: ResolvedRun) -> str:
 def run_configured_simulation(config: ResolvedRun, *, progress_callback=None):
     """Execute and write schema-7 outputs plus a numerical run report."""
 
+    cloud_sha256 = _file_sha256(config.cloud_fits) if config.cloud_fits else None
     source_file, cells, material, cloud, launch, bins = build_run(config)
+    if config.cloud_fits and _file_sha256(config.cloud_fits) != cloud_sha256:
+        raise ValueError("cloud FITS changed while the input scene was being loaded")
     result = run_source_cells_to_observer_chunked(
         random.PRNGKey(config.seed),
         cells,
@@ -270,7 +282,7 @@ def run_configured_simulation(config: ResolvedRun, *, progress_callback=None):
         progress_callback=progress_callback,
     )
     status = np.asarray(result.diagnostics.transport_status_count, dtype=np.int64)
-    resolved_text = _resolved_manifest(config)
+    resolved_text = _resolved_manifest(config, cloud_sha256)
     resolved_sha256 = hashlib.sha256(resolved_text.encode("utf-8")).hexdigest()
     metadata = {
         "simulation_git_head": _git_value("rev-parse", "HEAD") or "unavailable",
@@ -285,6 +297,7 @@ def run_configured_simulation(config: ResolvedRun, *, progress_callback=None):
         "source_fits_sha256": source_file.file_sha256,
         "source_mjdref": source_file.mjdref,
         "source_timesys": source_file.timesys,
+        "cloud_fits_sha256": cloud_sha256,
         "scattering_table_sha256": material.scattering_sha256,
         "absorption_table_sha256": material.absorption_sha256,
         "packets": config.packets,
@@ -326,6 +339,7 @@ def run_configured_simulation(config: ResolvedRun, *, progress_callback=None):
     report = {
         "name": config.name,
         "source_sha256": source_file.file_sha256,
+        "cloud_sha256": cloud_sha256,
         "scattering_sha256": material.scattering_sha256,
         "absorption_sha256": material.absorption_sha256,
         "config_sha256": resolved_sha256,

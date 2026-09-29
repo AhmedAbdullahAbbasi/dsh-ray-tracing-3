@@ -18,10 +18,12 @@ absorption NPZ/JSON tables. A TOML file supplies paths and run settings:
 ```bash
 python -m dsh.command check configs/file_input_smoke.toml
 python -m dsh.command run configs/file_input_smoke.toml
+python -m dsh.command audit configs/file_input_smoke.toml
 ```
 
 The example uses synthetic source flux and gas. It writes schema-7 NPZ/FITS
-products and a numerical run report. See [the input contracts](docs/input_contracts.md)
+products and a numerical run report; `audit` checks their integrity and input
+hashes. See [the input contracts](docs/input_contracts.md)
 for file layouts, units, provenance and limits. The `dsh-v1` command below
 retains the validated pre-refactor input and schema-6 output path.
 

@@ -149,6 +149,7 @@ def write_ideal_observer_npz(
     if isinstance(source, SourceCells):
         payload.update(
             source_fits_sha256=np.asarray(metadata["source_fits_sha256"]),
+            cloud_fits_sha256=np.asarray(metadata.get("cloud_fits_sha256") or ""),
             source_components=np.asarray(metadata["source_components"]),
             source_mjdref=_optional_float(metadata, "source_mjdref"),
             source_timesys=np.asarray(metadata.get("source_timesys") or "RELATIVE"),

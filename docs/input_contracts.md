@@ -64,6 +64,7 @@ Run from the repository root with Astropy and JAX installed:
 ```bash
 python -m dsh.command check configs/file_input_smoke.toml
 python -m dsh.command run configs/file_input_smoke.toml
+python -m dsh.command audit configs/file_input_smoke.toml
 ```
 
 An installed package also provides `dsh check` and `dsh run`. The TOML has
@@ -76,7 +77,10 @@ interpreted as escapes.
 arrival edges in days and energy edges in keV; spatial bin edges match the
 cloud's native angular edges. `run.max_interactions` is mandatory and a cap
 is always recorded as a numerical failure. `dsh check` validates inputs
-without launching photons.
+without launching photons. `dsh audit` checks saved schema-7 files, numerical
+accounting, FITS agreement, current input file digests and the run report,
+writing an `audit_report.json`. It does not establish Monte Carlo convergence
+or scientific agreement with an independent reference.
 
 File-input outputs use schema 7: they retain the schema-6 observer cube,
 history moments, transport statuses and material arrays, and add numerical
@@ -86,7 +90,9 @@ bounds, photon index, flux, fluence and sampling CDF. NPZ stores source-file
 and component hashes, selected components, source epoch and the original and
 resolved configurations. FITS records the source/configuration and material
 hashes; a JSON run report records numerical terminal status. The separate
-`resolved_config.json` uses absolute paths. Schema-6 output from `dsh-v1`
+`resolved_config.json` uses absolute paths. External cloud FITS bytes are
+hashed before and after loading, and the digest is recorded in NPZ/FITS and
+the run report. Schema-6 output from `dsh-v1`
 is unchanged.
 
 The bundled example FITS and TOML are synthetic input/scene smoke data. The

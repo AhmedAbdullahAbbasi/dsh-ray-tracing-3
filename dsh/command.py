@@ -3,17 +3,31 @@
 from __future__ import annotations
 
 import argparse
+import json
 
-from .config import build_run, load_run_config, run_configured_simulation
+from .config import (
+    audit_configured_run,
+    build_run,
+    load_run_config,
+    run_configured_simulation,
+)
 
 
 def main():
     parser = argparse.ArgumentParser(description="DSH ideal-observer file-input runner")
     commands = parser.add_subparsers(dest="command", required=True)
-    for name in ("check", "run"):
+    for name in ("check", "run", "audit"):
         commands.add_parser(name).add_argument("config")
     args = parser.parse_args()
     config = load_run_config(args.config)
+    if args.command == "audit":
+        report = audit_configured_run(config)
+        destination = config.output_npz.with_suffix(".audit_report.json")
+        destination.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
+        print(f"Saved: {destination}; product integrity passed: {report['all_passed']}")
+        if not report["all_passed"]:
+            raise SystemExit(1)
+        return
     source, cells, material, cloud, launch, bins = build_run(config)
     print(f"Run: {config.name}; source: {config.source_fits}")
     print(f"Selected source fluence: {float(cells.total_fluence):.8g} ph cm^-2")
