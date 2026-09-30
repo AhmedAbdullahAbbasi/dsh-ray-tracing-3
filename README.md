@@ -29,20 +29,25 @@ retains the validated pre-refactor input and schema-6 output path.
 
 ## Package layout
 
-```text
-dsh/
-  geometry/   coordinates, physical cloud cubes, exact ray integrals
-  physics/    NewDust scattering, TBabs absorption, JAX physics tables
-  sources/    light curves, spectra, packet sampling, source launch
-  materials/  independent material component inputs and provenance
-  config/     TOML run resolution and file-input orchestration
-  transport/  direction geometry and repeated-interaction photon kernel
-  observer/   peel-off scoring and weighted DSH binning
-  io/         cloud FITS input and multi-extension FITS output
-  data/       versioned cross-section tables and provenance
-  pipeline.py end-to-end source-to-observer orchestration
-  command.py  file-input runner; cli.py preserves the V1 runner
-```
+| Location | Responsibility |
+| --- | --- |
+| `contracts.py` | Shared numerical types, axis orders, status codes, `RunPlan` |
+| `core/` | Geometry, exact ray integration, interpolation, sampling, transport, scoring, binning, chunked pipeline |
+| `sources/` | Source FITS format, validation, numerical-cell builders, legacy light-curve builders |
+| `materials/` | Scattering and absorption files, validation, presets, offline dust recipes |
+| `config/` | Immutable configuration schema, TOML parsing and path resolution |
+| `scenes/` | Synthetic scene builders |
+| `build.py`, `run.py` | Compile validated inputs into a numerical plan; execute and write products |
+| `io/`, `products/` | Cloud/product I/O and provenance; product audits and snapshots |
+| `command.py`, `cli.py` | `dsh check/run/audit/snapshot`; legacy `dsh-v1` compatibility runner |
+| `data/`, `validation/` | Pinned input bytes/provenance; independent references and validation harnesses |
+
+`core` consumes arrays and numerical contracts; it does not import source
+formats, material recipes, configuration, file I/O, or validation. Old paths
+such as `dsh.physics.newdust`, `dsh.geometry.rays`, and `dsh.pipeline` remain
+compatibility imports. New code should use the locations above. See
+[the structural refactor guide](docs/refactoring.md) for extension points,
+the run-plan API, and regression evidence.
 
 The old Cartesian toy transport, temporary one-event/isotropic transport,
 legacy thin-screen adapters, Henyey--Greenstein placeholder, and notebook-only
@@ -279,12 +284,12 @@ validated against the three frozen NewDust rows and independent 2 and 10 keV
 xdust evaluations. The matching NPZ and JSON files can be loaded explicitly:
 
 ```python
-from dsh.physics.absorption import load_photoelectric_absorption_table
-from dsh.physics.newdust import build_dust_physics_from_tables, load_newdust_scattering_table
+from dsh.materials import build_material_from_tables, load_scattering_table
+from dsh.materials.absorption import load_photoelectric_absorption_table
 
-scattering = load_newdust_scattering_table("validation_outputs/rg_drude_2_10.npz")
+scattering = load_scattering_table("validation_outputs/rg_drude_2_10.npz")
 absorption = load_photoelectric_absorption_table("validation_outputs/tbabs_2_10.npz")
-physics = build_dust_physics_from_tables(scattering, absorption)
+physics = build_material_from_tables(scattering, absorption)
 ```
 
 The simulation defaults to the frozen three-energy material tables. To use the

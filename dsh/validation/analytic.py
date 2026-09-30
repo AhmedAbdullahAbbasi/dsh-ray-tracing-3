@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..geometry.coordinates import ARCSEC_TO_RAD, PC_PER_KPC
-from ..observer.scoring import PC_LIGHT_TRAVEL_TIME_S
+from dsh.core.geometry.coordinates import ARCSEC_TO_RAD, PC_PER_KPC
+from dsh.core.observer.scoring import PC_LIGHT_TRAVEL_TIME_S
 
 
 def _validated_geometry(source_distance_kpc, fractional_distance, angle_rad=None):

@@ -29,8 +29,10 @@ def pool_scalar(rows, histories, values, effective):
     variance = total / (total - 1) * (squared - measured**2 / total)
     if variance < -1e-12 * max(squared, 1e-100):
         raise ValueError("pooled photon variance is negative")
-    return measured, math.sqrt(max(variance, 0.0)), (
-        measured**2 / squared if squared else 0.0
+    return (
+        measured,
+        math.sqrt(max(variance, 0.0)),
+        (measured**2 / squared if squared else 0.0),
     )
 
 
@@ -53,7 +55,8 @@ def _matching_inputs(baseline, supplement):
         raise ValueError("reports describe different validation stages")
     for report in (baseline, supplement):
         if not all(
-            value for key, value in report["case"]["checks"].items()
+            value
+            for key, value in report["case"]["checks"].items()
             if key != "all_band_checks"
         ):
             raise ValueError("input report failed a global validity check")
@@ -90,7 +93,10 @@ def _matching_inputs(baseline, supplement):
         baseline["case"]["bands"], supplement["case"]["bands"], strict=True
     ):
         for key in (
-            "band_kev", "source_probability", "quadrature_coarse", "quadrature_fine"
+            "band_kev",
+            "source_probability",
+            "quadrature_coarse",
+            "quadrature_fine",
         ):
             if a[key] != b[key]:
                 raise ValueError(f"reports have different {key}")
@@ -105,8 +111,12 @@ def _matching_inputs(baseline, supplement):
 def merge_reports(baseline, supplement, merge_bands=(0, 2)):
     """Recompute acceptance gates after pooling selected independent bands."""
     _matching_inputs(baseline, supplement)
-    if not merge_bands or len(set(merge_bands)) != len(merge_bands) or any(
-        band not in range(len(baseline["case"]["bands"])) for band in merge_bands
+    if (
+        not merge_bands
+        or len(set(merge_bands)) != len(merge_bands)
+        or any(
+            band not in range(len(baseline["case"]["bands"])) for band in merge_bands
+        )
     ):
         raise ValueError("invalid band selection")
     config = baseline["config"]
@@ -258,7 +268,7 @@ def main():
     report["inputs"] = [str(args.baseline), str(args.supplement)]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
-    print(f'Saved {args.output}; all_passed={report["all_passed"]}')
+    print(f"Saved {args.output}; all_passed={report['all_passed']}")
     return 0 if report["all_passed"] else 1
 
 

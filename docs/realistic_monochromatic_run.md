@@ -42,8 +42,7 @@ Once the pilot passes:
 ```powershell
 python -m dsh.command run 'outputs\realistic_line_5p35\full.toml'
 python -m dsh.command audit 'outputs\realistic_line_5p35\full.toml'
-python -m scripts.extract_configured_line_snapshots `
-  --config 'outputs\realistic_line_5p35\full.toml'
+python -m dsh.command snapshot 'outputs\realistic_line_5p35\full.toml'
 ```
 
 The extractor audits the full source, cloud, materials, NPZ and FITS again
@@ -55,6 +54,9 @@ photon-history standard error. `COARSEFL` and `COARSEEV` sum 20×20 native
 pixels for the 500×500 cube; no coarse uncertainty is inferred without the
 spatial history covariance. An empty snapshot is written as an empty image
 and reported with zero events. It is not a science detection.
+
+The earlier `python -m scripts.extract_configured_line_snapshots --config ...`
+command remains a compatibility entry point to the same extractor.
 
 The file-input audit verifies product integrity and numerical terminal
 states. The independent Stage 9F comparison establishes the controlled

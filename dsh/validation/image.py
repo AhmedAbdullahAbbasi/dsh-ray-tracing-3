@@ -8,8 +8,9 @@ from pathlib import Path
 import jax.numpy as jnp
 import numpy as np
 
-from ..observer.binning import bin_observer_events, build_observer_bin_geometry
-from ..observer.scoring import ObserverEventResult
+from dsh.contracts import ObserverEventResult
+from dsh.core.observer.binning import bin_observer_events, build_observer_bin_geometry
+
 from .analytic import small_angle_ring_radius_arcsec
 
 

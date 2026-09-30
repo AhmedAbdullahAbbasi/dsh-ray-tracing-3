@@ -48,8 +48,10 @@ class HeterogeneousObserverReferenceTests(unittest.TestCase):
 
     def test_scene_asymmetry_and_units_are_explicit(self):
         columns = scene_columns(1e22)
-        self.assertEqual(columns.shape, (len(RADIAL_EDGES_KPC) - 1,
-                                         len(SKY_EDGES) - 1, len(SKY_EDGES) - 1))
+        self.assertEqual(
+            columns.shape,
+            (len(RADIAL_EDGES_KPC) - 1, len(SKY_EDGES) - 1, len(SKY_EDGES) - 1),
+        )
         self.assertFalse(np.allclose(columns[2, 0, 0], columns[2, 1, 1]))
         self.assertGreater(PC_TO_CM, 3e18)
 
@@ -61,11 +63,19 @@ class HeterogeneousObserverReferenceTests(unittest.TestCase):
         physics = load_2_10_material_tables()[2]
         columns = scene_columns(1.5 / host_material(physics, energy)[3])
         prompt = first_order_quadrants(
-            physics, energy, columns, n_slope=6, n_depth=4,
+            physics,
+            energy,
+            columns,
+            n_slope=6,
+            n_depth=4,
             emission_interval_s=(0.0, 1.0),
         )
         late = first_order_quadrants(
-            physics, energy, columns, n_slope=6, n_depth=4,
+            physics,
+            energy,
+            columns,
+            n_slope=6,
+            n_depth=4,
             emission_interval_s=(TIME_EDGES_S[-1] + 1, TIME_EDGES_S[-1] + 2),
         )
         self.assertTrue(np.all(prompt > 0))

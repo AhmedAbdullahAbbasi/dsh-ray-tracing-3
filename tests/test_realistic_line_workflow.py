@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -10,6 +12,7 @@ from pathlib import Path
 import numpy as np
 from astropy.io import fits
 
+from dsh.build import build_run_plan
 from dsh.config import build_run, load_run_config, run_configured_simulation
 from scripts.extract_configured_line_snapshots import extract_snapshots
 from scripts.prepare_realistic_line_run import prepare_run
@@ -44,6 +47,12 @@ class RealisticLineWorkflowTests(unittest.TestCase):
             np.testing.assert_array_equal(np.asarray(cells.kind), [0])
             self.assertAlmostEqual(float(scene.source_distance_kpc), 10.5)
             self.assertEqual(len(bins.arrival_time_edges_s), 8)
+            plan = build_run_plan(config)
+            self.assertEqual(plan.packets, config.packets)
+            np.testing.assert_array_equal(
+                plan.source.total_fluence, cells.total_fluence
+            )
+            np.testing.assert_array_equal(plan.cloud.delta_nh_cm2, scene.delta_nh_cm2)
             self.assertTrue(run_configured_simulation(config)["numerical_passed"])
             report = extract_snapshots(
                 pilot_path, days=(3, 6, 9), output_dir=root / "snapshots"
@@ -78,6 +87,49 @@ class RealisticLineWorkflowTests(unittest.TestCase):
                         np.testing.assert_allclose(
                             hdus["STDIMG"].data, expected_error, rtol=2e-6, atol=1e-12
                         )
+            command_output = root / "command_snapshots"
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "dsh.command",
+                    "snapshot",
+                    str(pilot_path),
+                    "--output-dir",
+                    str(command_output),
+                    "--days",
+                    "3",
+                    "6",
+                    "9",
+                ],
+                check=True,
+                text=True,
+                capture_output=True,
+            )
+            self.assertIn("line_day_003_to_004.fits", completed.stdout)
+            command_manifest = json.loads(
+                (command_output / "line_snapshots_manifest.json").read_text()
+            )
+            self.assertEqual(command_manifest, manifest)
+            # Invalid windows exit before producing a misleading snapshot.
+            rejected = subprocess.run(
+                [
+                    sys.executable,
+                    "-m",
+                    "dsh.command",
+                    "snapshot",
+                    str(pilot_path),
+                    "--output-dir",
+                    str(root / "invalid_snapshots"),
+                    "--days",
+                    "2",
+                ],
+                text=True,
+                capture_output=True,
+            )
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertIn("must match one arrival bin", rejected.stderr)
+            self.assertFalse((root / "invalid_snapshots").exists())
             with self.assertRaisesRegex(FileExistsError, "already exist"):
                 prepare_run(cube_path, root / "generated")
 

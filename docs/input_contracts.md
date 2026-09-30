@@ -82,6 +82,20 @@ accounting, FITS agreement, current input file digests and the run report,
 writing an `audit_report.json`. It does not establish Monte Carlo convergence
 or scientific agreement with an independent reference.
 
+For the supported monochromatic FITS-cloud workflow, `dsh snapshot CONFIG`
+audits saved products and extracts the aligned one-day bins at days 3, 6,
+and 9. Use `--days`, `--exposure-days`, and `--output-dir` to choose aligned
+windows and the destination. The current extractor requires one line source
+cell and one observer energy bin; broader spectral snapshot extraction is
+separate work. Its per-pixel uncertainty uses the saved photon-history moments.
+
+The source reader lives in `dsh.sources.format`; `dsh.sources.cells` compiles
+the selected flux into `SourceCells`. Material input validation lives in
+`dsh.materials`, with model-neutral `load_scattering_table` and
+`build_material_from_tables` entry points. `dsh.build` creates the numerical
+run plan; `dsh.run` executes it. File formats and model generation never enter
+the core numerical kernels. See [refactoring.md](refactoring.md).
+
 File-input outputs use schema 7: they retain the schema-6 observer cube,
 history moments, transport statuses and material arrays, and add numerical
 `source_cell_*` fields for each positive-fluence cell. `SOURCE` in FITS

@@ -18,66 +18,17 @@ weights while preserving the total input fluence.
 
 from __future__ import annotations
 
-from typing import NamedTuple
-
 import jax.numpy as jnp
 import numpy as np
-from jax import random
 
+from dsh.contracts import ObservationWindow, TabulatedBandSource, VariablePowerLawSource
+from dsh.contracts import SourcePackets as SourcePackets
 
-class TabulatedBandSource(NamedTuple):
-    """JAX-ready piecewise-constant, band-integrated source table.
-
-    Strings such as the time scale, reference epoch, and absorbed/unabsorbed
-    convention are metadata and should remain outside JIT-compiled data. They
-    will be added by the file-format adapter once the real MAXI schema is
-    fixed.
-    """
-
-    time_edges_s: jnp.ndarray
-    effective_energy_kev: jnp.ndarray
-    band_flux: jnp.ndarray
-    cell_fluence: jnp.ndarray
-    flat_cdf: jnp.ndarray
-    total_fluence: jnp.ndarray
-    energy_edges_kev: jnp.ndarray | None = None
-    photon_index: jnp.ndarray | None = None
-
-
-class SourcePackets(NamedTuple):
-    """Spectral-temporal properties sampled for a batch of photon packets."""
-
-    energy_kev: jnp.ndarray
-    emission_time_s: jnp.ndarray
-    weight_observer_fluence: jnp.ndarray
-    time_index: jnp.ndarray
-    spectral_bin_index: jnp.ndarray
-
-
-class VariablePowerLawSource(NamedTuple):
-    """JAX-ready time-variable source with a fixed power-law spectrum.
-
-    ``photon_flux`` is the photon flux integrated from ``energy_min_kev`` to
-    ``energy_max_kev`` in each time interval. The spectrum inside that band is
-    proportional to ``E**(-photon_index)`` and is sampled analytically rather
-    than approximated with energy bins.
-    """
-
-    time_edges_s: jnp.ndarray
-    photon_flux: jnp.ndarray
-    time_bin_fluence: jnp.ndarray
-    time_cdf: jnp.ndarray
-    total_fluence: jnp.ndarray
-    energy_min_kev: jnp.ndarray
-    energy_max_kev: jnp.ndarray
-    photon_index: jnp.ndarray
-
-
-class ObservationWindow(NamedTuple):
-    """Observer time interval, in seconds relative to the source epoch."""
-
-    start_s: jnp.ndarray
-    stop_s: jnp.ndarray
+from ..core.sampling import _sample_powerlaw_energy as _sample_powerlaw_energy
+from ..core.sampling import sample_tabulated_band_source as sample_tabulated_band_source
+from ..core.sampling import (
+    sample_variable_powerlaw_source as sample_variable_powerlaw_source,
+)
 
 
 def build_tabulated_band_source(
@@ -271,67 +222,6 @@ def build_post_peak_exponential_band_source(
     return build_tabulated_band_source(edges, band_flux, energy)
 
 
-def sample_tabulated_band_source(
-    key,
-    source: TabulatedBandSource,
-    n_packets: int,
-) -> SourcePackets:
-    """Draw a packet batch from a tabulated band light curve.
-
-    A time-band cell is selected in proportion to its integrated fluence, and
-    emission time is uniform inside that cell because its flux is defined to
-    be piecewise constant. The equal packet weights sum to the table's total
-    observer fluence.
-
-    ``n_packets`` determines output shapes and must be static under
-    :func:`jax.jit`.
-    """
-
-    if n_packets <= 0:
-        raise ValueError("n_packets must be positive")
-
-    if source.energy_edges_kev is None:
-        key_cell, key_time = random.split(key)
-    else:
-        key_cell, key_time, key_energy = random.split(key, 3)
-    u_cell = random.uniform(key_cell, shape=(n_packets,))
-    u_time = random.uniform(key_time, shape=(n_packets,))
-
-    flat_index = jnp.searchsorted(source.flat_cdf, u_cell, side="right")
-    flat_index = jnp.minimum(flat_index, source.flat_cdf.size - 1)
-
-    n_band = source.effective_energy_kev.size
-    time_index = flat_index // n_band
-    band_index = flat_index % n_band
-
-    t0 = source.time_edges_s[time_index]
-    t1 = source.time_edges_s[time_index + 1]
-    emission_time_s = t0 + (t1 - t0) * u_time
-    if source.energy_edges_kev is None:
-        energy_kev = source.effective_energy_kev[band_index]
-    else:
-        energy_kev = _sample_powerlaw_energy(
-            key_energy,
-            source.energy_edges_kev[band_index],
-            source.energy_edges_kev[band_index + 1],
-            source.photon_index,
-            n_packets,
-        )
-    weight = jnp.full(
-        (n_packets,),
-        source.total_fluence / n_packets,
-        dtype=source.total_fluence.dtype,
-    )
-
-    return SourcePackets(
-        energy_kev=energy_kev,
-        emission_time_s=emission_time_s,
-        weight_observer_fluence=weight,
-        time_index=time_index.astype(jnp.int32),
-        spectral_bin_index=band_index.astype(jnp.int32),
-    )
-
-
 def build_variable_powerlaw_source(
     time_edges_s,
     photon_flux,
@@ -404,68 +294,6 @@ def build_variable_powerlaw_source(
         energy_min_kev=jnp.asarray(energy_min_kev, dtype=jnp.asarray(edges).dtype),
         energy_max_kev=jnp.asarray(energy_max_kev, dtype=jnp.asarray(edges).dtype),
         photon_index=jnp.asarray(photon_index, dtype=jnp.asarray(edges).dtype),
-    )
-
-
-def _sample_powerlaw_energy(
-    key, energy_min_kev, energy_max_kev, photon_index, n_packets
-):
-    """Sample exactly from ``p(E) proportional to E**(-photon_index)``."""
-
-    u = random.uniform(key, shape=(n_packets,))
-    alpha = 1.0 - photon_index
-    use_log_limit = jnp.abs(alpha) < 1.0e-6
-
-    log_ratio = jnp.log(energy_max_kev / energy_min_kev)
-    alpha_safe = jnp.where(use_log_limit, 1.0, alpha)
-    log_scaled = jnp.log1p(u * jnp.expm1(alpha_safe * log_ratio)) / alpha_safe
-    energy = energy_min_kev * jnp.exp(
-        jnp.where(use_log_limit, u * log_ratio, log_scaled)
-    )
-    # Float32 inverse-CDF evaluation can round one ULP below the lower bound
-    # (observed at 2 keV in a 2.5M-packet run). Preserve the requested support.
-    return jnp.clip(energy, energy_min_kev, energy_max_kev)
-
-
-def sample_variable_powerlaw_source(
-    key,
-    source: VariablePowerLawSource,
-    n_packets: int,
-) -> SourcePackets:
-    """Draw energies and emission times from a variable power-law source."""
-
-    if n_packets <= 0:
-        raise ValueError("n_packets must be positive")
-
-    key_interval, key_time, key_energy = random.split(key, 3)
-    u_interval = random.uniform(key_interval, shape=(n_packets,))
-    u_time = random.uniform(key_time, shape=(n_packets,))
-
-    time_index = jnp.searchsorted(source.time_cdf, u_interval, side="right")
-    time_index = jnp.minimum(time_index, source.time_cdf.size - 1)
-    t0 = source.time_edges_s[time_index]
-    t1 = source.time_edges_s[time_index + 1]
-    emission_time_s = t0 + (t1 - t0) * u_time
-
-    energy_kev = _sample_powerlaw_energy(
-        key_energy,
-        source.energy_min_kev,
-        source.energy_max_kev,
-        source.photon_index,
-        n_packets,
-    )
-    weight = jnp.full(
-        (n_packets,),
-        source.total_fluence / n_packets,
-        dtype=source.total_fluence.dtype,
-    )
-
-    return SourcePackets(
-        energy_kev=energy_kev,
-        emission_time_s=emission_time_s,
-        weight_observer_fluence=weight,
-        time_index=time_index.astype(jnp.int32),
-        spectral_bin_index=jnp.full((n_packets,), -1, dtype=jnp.int32),
     )
 
 

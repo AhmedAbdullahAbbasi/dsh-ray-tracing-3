@@ -14,23 +14,24 @@ from pathlib import Path
 
 import numpy as np
 
-from ..physics.absorption import (
+from dsh.contracts import Material
+
+from .absorption import (
     DEFAULT_TBABS_TABLE,
     PhotoelectricAbsorptionTable,
     load_photoelectric_absorption_table,
 )
-from ..physics.dust import DustPhysicsTable
-from ..physics.material_grid import load_material_grid
-from ..physics.materials import (
+from .grids import load_material_grid
+from .registry import (
     DEFAULT_2_10_ABSORPTION,
     DEFAULT_2_10_GRID,
     DEFAULT_2_10_SCATTERING,
 )
-from ..physics.newdust import (
+from .scattering import (
     DEFAULT_NEWDUST_TABLE,
-    NewDustScatteringTable,
-    build_dust_physics_from_tables,
-    load_newdust_scattering_table,
+    ScatteringTable,
+    build_material_from_tables,
+    load_scattering_table,
 )
 
 
@@ -38,9 +39,9 @@ from ..physics.newdust import (
 class MaterialInputs:
     """Host-side provenance and the numerical table consumed by transport."""
 
-    scattering: NewDustScatteringTable
+    scattering: ScatteringTable
     absorption: PhotoelectricAbsorptionTable
-    physics: DustPhysicsTable
+    physics: Material
     scattering_path: Path
     absorption_path: Path
     grid_path: Path | None
@@ -80,9 +81,9 @@ def load_material_inputs(
 
     scattering_file = Path(scattering_path)
     absorption_file = Path(absorption_path)
-    scattering = load_newdust_scattering_table(scattering_file)
+    scattering = load_scattering_table(scattering_file)
     absorption = load_photoelectric_absorption_table(absorption_file)
-    physics = build_dust_physics_from_tables(scattering, absorption)
+    physics = build_material_from_tables(scattering, absorption)
 
     grid_file = None if grid_path is None else Path(grid_path)
     if grid_file is not None:

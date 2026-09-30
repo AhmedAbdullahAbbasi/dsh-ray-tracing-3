@@ -14,16 +14,17 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 
-from ..geometry.clouds import build_angular_distance_cloud
-from ..geometry.coordinates import ARCSEC_TO_RAD, PC_PER_KPC
-from ..observer.scoring import score_peeloff_events
-from ..physics.newdust import (
+from dsh.contracts import SourcePackets
+from dsh.core.geometry.clouds import build_angular_distance_cloud
+from dsh.core.geometry.coordinates import ARCSEC_TO_RAD, PC_PER_KPC
+from dsh.core.launch import build_cloud_launch_geometry
+from dsh.core.observer.scoring import score_peeloff_events
+from dsh.core.transport.kernel import transport_photon_batch
+from dsh.materials.scattering import (
     NewDustScatteringTable,
     build_dust_physics_from_newdust,
 )
-from ..sources.launch import build_cloud_launch_geometry
-from ..sources.models import SourcePackets
-from ..transport.kernel import transport_photon_batch
+
 from .analytic import (
     azimuthal_harmonic_amplitudes,
     exact_single_scatter_delay_s,

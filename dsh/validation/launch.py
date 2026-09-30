@@ -12,12 +12,8 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 
-from ..sources.launch import (
-    SourceLaunchGeometry,
-    build_rectangular_launch_geometry,
-    sample_source_launches,
-)
-from ..sources.models import SourcePackets
+from dsh.contracts import SourceLaunchGeometry, SourcePackets
+from dsh.core.launch import build_rectangular_launch_geometry, sample_source_launches
 
 MIXTURE_PROBABILITIES = (0.80, 0.15, 0.05)
 

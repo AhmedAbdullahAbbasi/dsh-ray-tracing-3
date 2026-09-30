@@ -55,16 +55,22 @@ def _annular_photon_weights(events, annulus_edges, time_edges):
     y = np.asarray(events.sky_y_arcsec, dtype=np.float64)
     arrival = np.asarray(events.arrival_time_s, dtype=np.float64)
     weight = np.asarray(events.weight_observer_fluence, dtype=np.float64)
-    selected = valid & (order == 1) & (arrival >= time_edges[0]) & (
-        arrival <= time_edges[-1]
+    selected = (
+        valid & (order == 1) & (arrival >= time_edges[0]) & (arrival <= time_edges[-1])
     )
     radius = np.hypot(x, y)
     per_history = np.zeros((len(valid), len(annulus_edges) - 1), np.float64)
     for annulus, (low, high) in enumerate(
         zip(annulus_edges[:-1], annulus_edges[1:], strict=True)
     ):
-        inside = selected & (radius >= low) & (
-            (radius < high) if annulus < len(annulus_edges) - 2 else (radius <= high)
+        inside = (
+            selected
+            & (radius >= low)
+            & (
+                (radius < high)
+                if annulus < len(annulus_edges) - 2
+                else (radius <= high)
+            )
         )
         per_history[:, annulus] = np.where(inside, weight, 0.0).sum(axis=1)
     return per_history
@@ -95,8 +101,10 @@ def run_case(
     )
     launch = build_rectangular_launch_geometry(10.0, *LAUNCH_BOUNDS)
     bins = build_observer_bin_geometry(
-        [-1800.0, 1800.0], [-1800.0, 1800.0],
-        [energy - 0.1, energy + 0.1], TIME_EDGES_S,
+        [-1800.0, 1800.0],
+        [-1800.0, 1800.0],
+        [energy - 0.1, energy + 0.1],
+        TIME_EDGES_S,
     )
     references = []
     for n_radius, n_depth in ((24, 24), (64, 56)):
@@ -105,12 +113,18 @@ def run_case(
             np.asarray(
                 [
                     first_order_radial_quadrature(
-                        physics, energy, column, LAUNCH_BOUNDS, TIME_EDGES_S,
-                        n_radius=n_radius, n_depth=n_depth,
+                        physics,
+                        energy,
+                        column,
+                        LAUNCH_BOUNDS,
+                        TIME_EDGES_S,
+                        n_radius=n_radius,
+                        n_depth=n_depth,
                         annulus_arcsec=(low, high),
                     ).sum()
                     for low, high in zip(
-                        ANNULUS_EDGES_ARCSEC[:-1], ANNULUS_EDGES_ARCSEC[1:],
+                        ANNULUS_EDGES_ARCSEC[:-1],
+                        ANNULUS_EDGES_ARCSEC[1:],
                         strict=True,
                     )
                 ],
@@ -118,17 +132,28 @@ def run_case(
             )
         )
     coarse, fine = references
-    full = float(first_order_radial_quadrature(
-        physics, energy, column, LAUNCH_BOUNDS, TIME_EDGES_S,
-        n_radius=64, n_depth=56,
-    ).sum())
+    full = float(
+        first_order_radial_quadrature(
+            physics,
+            energy,
+            column,
+            LAUNCH_BOUNDS,
+            TIME_EDGES_S,
+            n_radius=64,
+            n_depth=56,
+        ).sum()
+    )
 
     def batch(key, packets_chunk):
         key_launch, key_transport = random.split(key)
         launched = sample_source_launches(key_launch, packets_chunk, launch)
         transported = transport_photon_batch(
-            key_transport, launched.position_pc, launched.momentum_kev,
-            cloud, physics, max_interactions=max_interactions,
+            key_transport,
+            launched.position_pc,
+            launched.momentum_kev,
+            cloud,
+            physics,
+            max_interactions=max_interactions,
         )
         events = score_peeloff_events(launched, transported, cloud, physics)
         products = bin_observer_events(events, bins)
@@ -158,8 +183,10 @@ def run_case(
             )
             chunk_sum = history.sum(axis=0)
             if not np.isclose(
-                chunk_sum.sum(), float(np.asarray(first_image).sum()),
-                rtol=3e-4, atol=1e-10,
+                chunk_sum.sum(),
+                float(np.asarray(first_image).sum()),
+                rtol=3e-4,
+                atol=1e-10,
             ):
                 raise RuntimeError("annular scores do not close to production image")
             total_sum += chunk_sum
@@ -174,8 +201,8 @@ def run_case(
     n_total = packets * len(seeds)
     total_sum /= len(seeds)
     total_cross /= len(seeds) ** 2
-    variance = n_total / (n_total - 1) * np.maximum(
-        total_cross - total_sum**2 / n_total, 0.0
+    variance = (
+        n_total / (n_total - 1) * np.maximum(total_cross - total_sum**2 / n_total, 0.0)
     )
     rows = []
     for index, (low, high) in enumerate(
@@ -199,9 +226,11 @@ def run_case(
             "quadrature_relative_change": relative_quad,
             "z": float(z) if z is not None else None,
             "passed": bool(
-                z is not None and abs(z) <= sigma_limit
+                z is not None
+                and abs(z) <= sigma_limit
                 and effective >= minimum_effective_histories
-                and relative is not None and relative <= maximum_relative_error
+                and relative is not None
+                and relative <= maximum_relative_error
                 and relative_quad <= quadrature_rtol
             ),
         }
@@ -246,11 +275,16 @@ def main():
     parser.add_argument("--quadrature-rtol", type=float, default=0.02)
     args = parser.parse_args()
     if (
-        args.packets < 2 or args.chunk_size < 1 or len(args.seeds) < 3
+        args.packets < 2
+        or args.chunk_size < 1
+        or len(args.seeds) < 3
         or len(set(args.seeds)) != len(args.seeds)
-        or not 2.0 <= args.energy <= 10.0 or args.max_interactions < 4
-        or not np.isfinite(args.tau_scattering) or args.tau_scattering <= 0
-        or not np.isfinite(args.sigma_limit) or args.sigma_limit <= 0
+        or not 2.0 <= args.energy <= 10.0
+        or args.max_interactions < 4
+        or not np.isfinite(args.tau_scattering)
+        or args.tau_scattering <= 0
+        or not np.isfinite(args.sigma_limit)
+        or args.sigma_limit <= 0
         or not 0 < args.maximum_relative_error < 1
         or args.minimum_effective_histories < 1
         or not 0 < args.quadrature_rtol < 1
@@ -282,10 +316,14 @@ def main():
             "quadrature_rtol": args.quadrature_rtol,
         },
         "case": run_case(
-            physics, energy=args.energy, packets=args.packets,
-            chunk_size=args.chunk_size, seeds=args.seeds,
+            physics,
+            energy=args.energy,
+            packets=args.packets,
+            chunk_size=args.chunk_size,
+            seeds=args.seeds,
             max_interactions=args.max_interactions,
-            tau_scattering=args.tau_scattering, sigma_limit=args.sigma_limit,
+            tau_scattering=args.tau_scattering,
+            sigma_limit=args.sigma_limit,
             maximum_relative_error=args.maximum_relative_error,
             minimum_effective_histories=args.minimum_effective_histories,
             quadrature_rtol=args.quadrature_rtol,
@@ -294,7 +332,7 @@ def main():
     report["all_passed"] = report["case"]["all_passed"]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
-    print(f'Saved {args.output}; all_passed={report["all_passed"]}')
+    print(f"Saved {args.output}; all_passed={report['all_passed']}")
     return 0 if report["all_passed"] else 1
 
 

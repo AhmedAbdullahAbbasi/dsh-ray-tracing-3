@@ -46,9 +46,9 @@ def _radial_column(position, columns):
     """Observer column on a fixed sky sightline by shell overlap."""
     radius_kpc = np.linalg.norm(position, axis=-1) / 1000.0
     widths = np.diff(RADIAL_EDGES_KPC)
-    overlap = np.clip(
-        radius_kpc[..., None] - RADIAL_EDGES_KPC[:-1], 0.0, widths
-    ) / widths
+    overlap = (
+        np.clip(radius_kpc[..., None] - RADIAL_EDGES_KPC[:-1], 0.0, widths) / widths
+    )
     return np.sum(overlap * columns, axis=-1)
 
 
@@ -93,16 +93,18 @@ def first_order_quadrants(
             density = columns[:, iy, ix] / (
                 np.diff(RADIAL_EDGES_KPC) * 1000.0 * PC_TO_CM
             )
-            slope_weight = weights[None, :] * weights[:, None] * (
-                (u1 - u0) * (v1 - v0) / 4
+            slope_weight = (
+                weights[None, :] * weights[:, None] * ((u1 - u0) * (v1 - v0) / 4)
             )
             for shell in np.flatnonzero(density):
                 start = path_edges[shell + 1]
                 stop = path_edges[shell]
                 length = (stop - start) / 2
                 path = start[..., None] + (depth_roots + 1) * length[..., None]
-                point = (np.array([SOURCE_PC, 0.0, 0.0])
-                         + path[..., None] * direction[..., None, :])
+                point = (
+                    np.array([SOURCE_PC, 0.0, 0.0])
+                    + path[..., None] * direction[..., None, :]
+                )
                 radius = np.linalg.norm(point, axis=-1)
                 observer = -point / radius[..., None]
                 incoming_direction = direction[..., None, :]
@@ -126,22 +128,22 @@ def first_order_quadrants(
                     * jacobian[..., None]
                     * length[..., None]
                     * depth_weights
-                    * density[shell] * PC_TO_CM * sigma_sca
+                    * density[shell]
+                    * PC_TO_CM
+                    * sigma_sca
                     * (SOURCE_PC / radius) ** 2
                     * phase
                     * np.exp(-(sigma_sca + sigma_abs) * (incoming + outgoing))
                 )
                 if emission_interval_s is None:
-                    time_fraction = (
-                        (delay >= TIME_EDGES_S[0]) & (delay <= TIME_EDGES_S[-1])
+                    time_fraction = (delay >= TIME_EDGES_S[0]) & (
+                        delay <= TIME_EDGES_S[-1]
                     )
                 else:
                     duration = stop_time - start_time
                     time_fraction = np.clip(
                         (TIME_EDGES_S[-1] - delay - start_time) / duration, 0, 1
-                    ) - np.clip(
-                        (TIME_EDGES_S[0] - delay - start_time) / duration, 0, 1
-                    )
+                    ) - np.clip((TIME_EDGES_S[0] - delay - start_time) / duration, 0, 1)
                 result[iy, ix] += float(
                     np.sum(time_fraction * integrand, dtype=np.float64)
                 )
@@ -158,9 +160,15 @@ def host_ray_column(origin_pc, direction, distance_pc, columns):
     origin = np.asarray(origin_pc, dtype=np.float64)
     ray = np.array(direction, dtype=np.float64, copy=True)
     columns = np.asarray(columns, dtype=np.float64)
-    if (origin.shape != (3,) or ray.shape != (3,) or columns.shape != (6, 2, 2)
-            or not np.all(np.isfinite(origin)) or not np.all(np.isfinite(ray))
-            or not math.isfinite(distance_pc) or distance_pc < 0):
+    if (
+        origin.shape != (3,)
+        or ray.shape != (3,)
+        or columns.shape != (6, 2, 2)
+        or not np.all(np.isfinite(origin))
+        or not np.all(np.isfinite(ray))
+        or not math.isfinite(distance_pc)
+        or distance_pc < 0
+    ):
         raise ValueError("invalid ray or column cube")
     norm = float(np.linalg.norm(ray))
     if norm == 0:
@@ -195,8 +203,10 @@ def host_ray_column(origin_pc, direction, distance_pc, columns):
         ix = int(np.searchsorted(SKY_EDGES, x, side="right") - 1)
         iy = int(np.searchsorted(SKY_EDGES, y, side="right") - 1)
         if 0 <= iz < 6 and 0 <= iy < 2 and 0 <= ix < 2:
-            total += columns[iz, iy, ix] * (b - a) / (
-                1000.0 * (RADIAL_EDGES_KPC[iz + 1] - RADIAL_EDGES_KPC[iz])
+            total += (
+                columns[iz, iy, ix]
+                * (b - a)
+                / (1000.0 * (RADIAL_EDGES_KPC[iz + 1] - RADIAL_EDGES_KPC[iz]))
             )
     return total
 
@@ -210,29 +220,38 @@ def reference_history_weights(launched, transported, physics, energy, columns):
 
     low, high, fraction, sigma_sca, sigma_abs = host_material(physics, energy)
     angle_grid = np.asarray(physics.scattering_angle_rad, dtype=np.float64)
-    phase_rows = np.asarray(
-        physics.differential_cross_section_cm2_per_sr_per_h
-    )[[low, high]].astype(np.float64)
-    scattering_rows = np.asarray(
-        physics.scattering_cross_section_cm2_per_h
-    )[[low, high]].astype(np.float64)
+    phase_rows = np.asarray(physics.differential_cross_section_cm2_per_sr_per_h)[
+        [low, high]
+    ].astype(np.float64)
+    scattering_rows = np.asarray(physics.scattering_cross_section_cm2_per_h)[
+        [low, high]
+    ].astype(np.float64)
 
     def phase_at(angle):
         alpha = np.clip(angle, angle_grid[0], angle_grid[-1])
-        index = int(np.clip(np.searchsorted(angle_grid, alpha, side="right") - 1,
-                            0, len(angle_grid) - 2))
-        x0, x1 = angle_grid[index:index + 2]
+        index = int(
+            np.clip(
+                np.searchsorted(angle_grid, alpha, side="right") - 1,
+                0,
+                len(angle_grid) - 2,
+            )
+        )
+        x0, x1 = angle_grid[index : index + 2]
         if x0 > 0:
             t = math.log(max(alpha, np.finfo(float).tiny) / x0) / math.log(x1 / x0)
         else:
             t = (alpha - x0) / (x1 - x0)
         terms = []
         for row, sigma in zip(phase_rows, scattering_rows, strict=True):
-            p0, p1 = row[index:index + 2]
-            value = (math.exp(math.log(p0) + t * math.log(p1 / p0))
-                     if p0 > 0 and p1 > 0 else p0 + t * (p1 - p0))
+            p0, p1 = row[index : index + 2]
+            value = (
+                math.exp(math.log(p0) + t * math.log(p1 / p0))
+                if p0 > 0 and p1 > 0
+                else p0 + t * (p1 - p0)
+            )
             terms.append(value / sigma)
         return (1 - fraction) * terms[0] + fraction * terms[1]
+
     positions = np.asarray(transported.interactions.position_pc, dtype=np.float64)
     valid = np.asarray(transported.interactions.valid)
     kinds = np.asarray(transported.interactions.interaction_type)
@@ -282,7 +301,10 @@ def reference_history_weights(launched, transported, physics, energy, columns):
                 phase = phase_at(angle)
                 escape = host_ray_column(point, observer, radius, columns)
                 out[i, iy, ix, min(int(orders[i, j]) - 1, 2)] += (
-                    weight[i] * (SOURCE_PC / radius) ** 2 * phase / pdf[i]
+                    weight[i]
+                    * (SOURCE_PC / radius) ** 2
+                    * phase
+                    / pdf[i]
                     * math.exp(-sigma_sca * escape)
                     * math.exp(-sigma_abs * (incoming_column + escape))
                 )

@@ -15,16 +15,16 @@ import jax
 import jax.numpy as jnp
 import numpy as np
 
-from ..geometry.clouds import build_angular_distance_cloud
-from ..observer.scoring import score_peeloff_events
-from ..sources.launch import LaunchedSourcePackets
-from ..transport.kernel import (
+from dsh.contracts import (
     ABSORBED,
     DUST_SCATTERING,
     PHOTOELECTRIC_ABSORPTION,
+    LaunchedSourcePackets,
     PhotonInteractionRecord,
     PhotonTransportResult,
 )
+from dsh.core.geometry.clouds import build_angular_distance_cloud
+from dsh.core.observer.scoring import score_peeloff_events
 
 ARCSEC_TO_RAD = np.pi / (180.0 * 3600.0)
 SOURCE_DISTANCE_PC = 10_000.0

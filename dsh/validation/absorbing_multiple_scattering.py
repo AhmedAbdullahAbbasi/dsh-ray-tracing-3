@@ -9,17 +9,18 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 
-from ..geometry.clouds import build_angular_distance_cloud
-from ..physics.newdust import build_dust_physics_from_tables
-from ..transport.kernel import (
+from dsh.contracts import (
     ABSORBED,
     DUST_SCATTERING,
     INVALID_ENERGY,
     INVALID_STATE,
     MAX_INTERACTIONS,
     PHOTOELECTRIC_ABSORPTION,
-    transport_photon_batch,
 )
+from dsh.core.geometry.clouds import build_angular_distance_cloud
+from dsh.core.transport.kernel import transport_photon_batch
+from dsh.materials.scattering import build_dust_physics_from_tables
+
 from .multiple_scattering import (
     LOCATION_QUANTILES,
     PHASE_QUANTILES,

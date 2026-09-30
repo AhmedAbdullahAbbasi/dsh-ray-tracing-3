@@ -2,35 +2,15 @@
 
 from __future__ import annotations
 
-from typing import NamedTuple
-
 import jax.numpy as jnp
 import numpy as np
-from jax import random
 
-from .models import SourcePackets, _sample_powerlaw_energy
-from .source_fits import SourceFluxFile
+from dsh.contracts import FLAT, LINE, POWERLAW, SourceCells
+from dsh.contracts import SourcePackets as SourcePackets
+from dsh.sources.format import SourceFluxFile
 
-LINE = 0
-FLAT = 1
-POWERLAW = 2
-
-
-class SourceCells(NamedTuple):
-    """Positive-fluence cells; all fields are numerical JAX pytrees."""
-
-    time_edges_s: jnp.ndarray
-    start_s: jnp.ndarray
-    stop_s: jnp.ndarray
-    energy_low_kev: jnp.ndarray
-    energy_high_kev: jnp.ndarray
-    photon_index: jnp.ndarray
-    kind: jnp.ndarray
-    time_index: jnp.ndarray
-    spectral_bin_index: jnp.ndarray
-    cell_fluence: jnp.ndarray
-    flat_cdf: jnp.ndarray
-    total_fluence: jnp.ndarray
+from ..core.sampling import sample_source_cells as sample_source_cells
+from .models import _sample_powerlaw_energy as _sample_powerlaw_energy
 
 
 def build_source_cells(
@@ -91,47 +71,4 @@ def build_source_cells(
         cell_fluence=jnp.asarray(fluence),
         flat_cdf=jnp.asarray(cdf),
         total_fluence=jnp.asarray(total),
-    )
-
-
-def sample_source_cells(key, source: SourceCells, n_packets: int) -> SourcePackets:
-    """Draw line, uniform-continuum and per-cell power-law photons."""
-
-    if n_packets <= 0:
-        raise ValueError("n_packets must be positive")
-    key_cell, key_time, key_energy = random.split(key, 3)
-    u_cell = random.uniform(key_cell, shape=(n_packets,))
-    u_time = random.uniform(key_time, shape=(n_packets,))
-    u_energy = random.uniform(key_energy, shape=(n_packets,))
-    cell = jnp.searchsorted(source.flat_cdf, u_cell, side="right")
-    cell = jnp.minimum(cell, source.flat_cdf.size - 1)
-    start = source.start_s[cell]
-    stop = source.stop_s[cell]
-    low = source.energy_low_kev[cell]
-    high = source.energy_high_kev[cell]
-    kind = source.kind[cell]
-    flat_energy = jnp.clip(low + u_energy * (high - low), low, high)
-    # Reuse the validated stable inverse CDF. Its independent random stream
-    # does not alter the cell and time proposals; a future sampler can accept
-    # pre-drawn uniforms without changing the physical distribution.
-    power_energy = _sample_powerlaw_energy(
-        random.fold_in(key_energy, 1),
-        low,
-        jnp.where(kind == LINE, low * 2.0, high),
-        source.photon_index[cell],
-        n_packets,
-    )
-    energy = jnp.where(
-        kind == LINE, low, jnp.where(kind == FLAT, flat_energy, power_energy)
-    )
-    return SourcePackets(
-        energy_kev=energy,
-        emission_time_s=start + (stop - start) * u_time,
-        weight_observer_fluence=jnp.full(
-            (n_packets,),
-            source.total_fluence / n_packets,
-            dtype=source.total_fluence.dtype,
-        ),
-        time_index=source.time_index[cell],
-        spectral_bin_index=source.spectral_bin_index[cell],
     )

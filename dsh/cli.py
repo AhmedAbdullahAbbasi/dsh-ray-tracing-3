@@ -16,27 +16,28 @@ import jax
 import numpy as np
 from jax import random
 
-from .examples import (
+from dsh.core.geometry.clouds import centers_to_edges, cloud_from_loaded_fits
+from dsh.core.launch import build_cloud_launch_geometry
+from dsh.core.observer.binning import build_observer_bin_geometry
+from dsh.core.pipeline import (
+    TRANSPORT_STATUS_LABELS,
+    run_tabulated_source_to_observer_chunked,
+)
+from dsh.materials.absorption import load_photoelectric_absorption_table
+from dsh.materials.registry import load_2_10_material_tables
+from dsh.materials.scattering import (
+    build_dust_physics_from_tables,
+    load_newdust_scattering_table,
+)
+from dsh.scenes.examples import (
     DAY_S,
     build_synthetic_four_cloud_scene,
     build_v1_decay_source,
     build_v1_test_source,
 )
-from .geometry.clouds import centers_to_edges, cloud_from_loaded_fits
+
 from .io.fits_output import write_ideal_observer_fits
 from .io.npz_output import write_ideal_observer_npz
-from .observer.binning import build_observer_bin_geometry
-from .physics.absorption import load_photoelectric_absorption_table
-from .physics.materials import load_2_10_material_tables
-from .physics.newdust import (
-    build_dust_physics_from_tables,
-    load_newdust_scattering_table,
-)
-from .pipeline import (
-    TRANSPORT_STATUS_LABELS,
-    run_tabulated_source_to_observer_chunked,
-)
-from .sources.launch import build_cloud_launch_geometry
 from .sources.models import build_powerlaw_band_source
 
 

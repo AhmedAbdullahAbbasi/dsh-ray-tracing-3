@@ -16,17 +16,17 @@ import jax.numpy as jnp
 import numpy as np
 from jax import random
 
-from ..geometry.clouds import build_angular_distance_cloud
-from ..geometry.rays import integrate_ray_column_cm2
-from ..physics.dust import build_dust_physics_table
-from ..transport.kernel import (
+from dsh.contracts import (
     ABSORBED,
     DUST_SCATTERING,
     MAX_INTERACTIONS,
     PHOTOELECTRIC_ABSORPTION,
     REACHED_OBSERVER_PLANE,
-    transport_photon_batch,
 )
+from dsh.core.geometry.clouds import build_angular_distance_cloud
+from dsh.core.geometry.rays import integrate_ray_column_cm2
+from dsh.core.transport.kernel import transport_photon_batch
+from dsh.materials.table import build_dust_physics_table
 
 SOURCE_KPC = 10.0
 INNER_KPC = 4.0

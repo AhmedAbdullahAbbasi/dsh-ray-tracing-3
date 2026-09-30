@@ -68,14 +68,23 @@ def _history_weights(events):
             for group in range(3):
                 history[:, iy, ix, group] = np.where(
                     spatial & ((order == group + 1) if group < 2 else (order >= 3)),
-                    w, 0.0,
+                    w,
+                    0.0,
                 ).sum(axis=1)
     return history
 
 
 def _moment_row(
-    analog, reference, a_q, b_q, n, *, sigma_limit,
-    minimum_effective_histories, maximum_relative_error, quadrature_error=0.0,
+    analog,
+    reference,
+    a_q,
+    b_q,
+    n,
+    *,
+    sigma_limit,
+    minimum_effective_histories,
+    maximum_relative_error,
+    quadrature_error=0.0,
 ):
     a_var = n / (n - 1) * max(a_q - analog**2 / n, 0.0)
     b_var = n / (n - 1) * max(b_q - reference**2 / n, 0.0)
@@ -88,16 +97,22 @@ def _moment_row(
     relative_b = se_b / reference if b_q > 0 and reference > 0 else None
     quadrature_relative = quadrature_error / max(reference, 1e-100)
     passed = bool(
-        z is not None and abs(z) <= sigma_limit
+        z is not None
+        and abs(z) <= sigma_limit
         and effective_a >= minimum_effective_histories
         and (effective_b >= minimum_effective_histories if b_q > 0 else True)
-        and relative_a is not None and relative_a <= maximum_relative_error
-        and (relative_b is not None and relative_b <= maximum_relative_error
-             if b_q > 0 else True)
+        and relative_a is not None
+        and relative_a <= maximum_relative_error
+        and (
+            relative_b is not None and relative_b <= maximum_relative_error
+            if b_q > 0
+            else True
+        )
         and quadrature_relative <= 0.02
     )
     return {
-        "analog": float(analog), "reference": float(reference),
+        "analog": float(analog),
+        "reference": float(reference),
         "analog_photon_standard_error": se_a,
         "reference_photon_standard_error": se_b if b_q > 0 else None,
         "analog_effective_histories": float(effective_a),
@@ -105,7 +120,8 @@ def _moment_row(
         "analog_relative_standard_error": relative_a,
         "reference_relative_standard_error": relative_b,
         "quadrature_relative_change": quadrature_relative,
-        "z": float(z) if z is not None else None, "passed": passed,
+        "z": float(z) if z is not None else None,
+        "passed": passed,
     }
 
 
@@ -115,16 +131,31 @@ def _summed_moment(s, q, mask):
     return float(flat[idx].sum()), float(q[np.ix_(idx, idx)].sum())
 
 
-def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
-             max_interactions, sigma_limit, minimum_effective_histories,
-             maximum_relative_error, input_cloud=None, source_cells=None):
+def run_case(
+    physics,
+    *,
+    energy,
+    target_tau,
+    packets,
+    chunk_size,
+    seeds,
+    max_interactions,
+    sigma_limit,
+    minimum_effective_histories,
+    maximum_relative_error,
+    input_cloud=None,
+    source_cells=None,
+):
     _, _, _, sigma_scattering, _ = host_material(physics, energy)
     columns = scene_columns(target_tau / sigma_scattering)
     cloud = input_cloud
     if cloud is None:
         cloud = build_angular_distance_cloud(
-            columns, [-900.0, 900.0], [-900.0, 900.0],
-            (RADIAL_EDGES_KPC[:-1] + RADIAL_EDGES_KPC[1:]) / 2, 10.0,
+            columns,
+            [-900.0, 900.0],
+            [-900.0, 900.0],
+            (RADIAL_EDGES_KPC[:-1] + RADIAL_EDGES_KPC[1:]) / 2,
+            10.0,
         )
     else:
         np.testing.assert_allclose(np.asarray(cloud.delta_nh_cm2), columns, rtol=1e-6)
@@ -135,7 +166,8 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
             raise ValueError("file cloud source distance differs from Stage 9F")
     emission_interval = None
     if source_cells is not None:
-        if (source_cells.cell_fluence.shape != (1,)
+        if (
+            source_cells.cell_fluence.shape != (1,)
             or not np.all(np.asarray(source_cells.kind) == 0)
             or not np.allclose(
                 np.asarray(source_cells.energy_low_kev), energy, rtol=1e-7
@@ -143,14 +175,19 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
             or not np.allclose(
                 np.asarray(source_cells.energy_high_kev), energy, rtol=1e-7
             )
-            or not np.isclose(float(source_cells.total_fluence), 1.0, rtol=1e-7)):
+            or not np.isclose(float(source_cells.total_fluence), 1.0, rtol=1e-7)
+        ):
             raise ValueError("Stage 9F file input requires one monochromatic line cell")
         emission_interval = (
-            float(source_cells.start_s[0]), float(source_cells.stop_s[0])
+            float(source_cells.start_s[0]),
+            float(source_cells.stop_s[0]),
         )
     launch = build_rectangular_launch_geometry(10.0, *LAUNCH_BOUNDS)
     bins = build_observer_bin_geometry(
-        SKY_EDGES, SKY_EDGES, [energy - 0.1, energy + 0.1], TIME_EDGES_S,
+        SKY_EDGES,
+        SKY_EDGES,
+        [energy - 0.1, energy + 0.1],
+        TIME_EDGES_S,
     )
     pure = physics._replace(
         absorption_cross_section_cm2_per_h=jnp.zeros_like(
@@ -159,12 +196,20 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
     )
     print("Computing coarse independent quadrant quadrature...", flush=True)
     coarse = first_order_quadrants(
-        physics, energy, columns, n_slope=18, n_depth=16,
+        physics,
+        energy,
+        columns,
+        n_slope=18,
+        n_depth=16,
         emission_interval_s=emission_interval,
     )
     print("Computing fine independent quadrant quadrature...", flush=True)
     fine = first_order_quadrants(
-        physics, energy, columns, n_slope=42, n_depth=36,
+        physics,
+        energy,
+        columns,
+        n_slope=42,
+        n_depth=36,
         emission_interval_s=emission_interval,
     )
 
@@ -172,19 +217,32 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
         launch_key, transport_key = random.split(key)
         launched = sample_source_launches(launch_key, source, launch)
         transported = transport_photon_batch(
-            transport_key, launched.position_pc, launched.momentum_kev,
-            cloud, physics, max_interactions=max_interactions,
+            transport_key,
+            launched.position_pc,
+            launched.momentum_kev,
+            cloud,
+            physics,
+            max_interactions=max_interactions,
         )
         events = score_peeloff_events(launched, transported, cloud, physics)
         product = bin_observer_events(events, bins)
-        return (events, transported.status, transported.interactions.position_pc,
-                product.first_scatter_fluence, product.multiple_scatter_fluence)
+        return (
+            events,
+            transported.status,
+            transported.interactions.position_pc,
+            product.first_scatter_fluence,
+            product.multiple_scatter_fluence,
+        )
 
     analog_jit = jax.jit(analog_batch)
     pure_jit = jax.jit(
         lambda key, launched: transport_photon_batch(
-            key, launched.position_pc, launched.momentum_kev,
-            cloud, pure, max_interactions=max_interactions,
+            key,
+            launched.position_pc,
+            launched.momentum_kev,
+            cloud,
+            pure,
+            max_interactions=max_interactions,
         )
     )
     a_sum = np.zeros((2, 2, 3), dtype=np.float64)
@@ -230,15 +288,19 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
             first_image = np.asarray(first, dtype=np.float64)[0, 0]
             multiple_image = np.asarray(multiple, dtype=np.float64)[0, 0]
             if not np.allclose(
-                a_history[..., 0].sum(axis=0), first_image,
-                rtol=3e-4, atol=1e-10,
+                a_history[..., 0].sum(axis=0),
+                first_image,
+                rtol=3e-4,
+                atol=1e-10,
             ):
                 raise RuntimeError(
                     "first-order quadrant scores do not close to production image"
                 )
             if not np.allclose(
-                a_history[..., 1:].sum(axis=(0, 3)), multiple_image,
-                rtol=3e-4, atol=1e-10,
+                a_history[..., 1:].sum(axis=(0, 3)),
+                multiple_image,
+                rtol=3e-4,
+                atol=1e-10,
             ):
                 raise RuntimeError(
                     "multiple-order quadrant scores do not close to production image"
@@ -249,9 +311,7 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
                 event_valid = np.asarray(events.valid)
                 choice = np.argwhere(event_valid)
                 event_order = np.asarray(events.scattering_order)
-                multiple = np.argwhere(
-                    event_valid & (event_order >= 2)
-                )
+                multiple = np.argwhere(event_valid & (event_order >= 2))
                 positions_host = np.asarray(positions, dtype=np.float64)
                 escape_host = np.asarray(events.escape_column_cm2, dtype=np.float64)
                 for photon, interaction in np.concatenate(
@@ -260,7 +320,10 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
                     point = positions_host[photon, interaction]
                     distance = float(np.linalg.norm(point))
                     reference_column = host_ray_column(
-                        point, -point / distance, distance, columns,
+                        point,
+                        -point / distance,
+                        distance,
+                        columns,
                     )
                     actual_column = escape_host[photon, interaction]
                     error = abs(actual_column - reference_column) / max(
@@ -274,7 +337,11 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
             launched = sample_source_launches(launch_key, source, launch)
             transported = jax.block_until_ready(pure_jit(pure_key, launched))
             b_history = reference_history_weights(
-                launched, transported, physics, energy, columns,
+                launched,
+                transported,
+                physics,
+                energy,
+                columns,
             )
             a_sum += a_history.sum(axis=0)
             b_sum += b_history.sum(axis=0)
@@ -287,16 +354,19 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
             statuses_a += np.bincount(np.asarray(status), minlength=7)
             statuses_b += np.bincount(np.asarray(transported.status), minlength=7)
             if index % 10 == 0:
-                print(f"seed {seed}: {offset+n:,}/{packets:,}", flush=True)
-        per_seed.append({
-            "seed": int(seed), "analog_order_fluence": seed_a.sum(axis=(0, 1)).tolist(),
-            "explicit_absorption_order_fluence": seed_b.sum(axis=(0, 1)).tolist(),
-        })
+                print(f"seed {seed}: {offset + n:,}/{packets:,}", flush=True)
+        per_seed.append(
+            {
+                "seed": int(seed),
+                "analog_order_fluence": seed_a.sum(axis=(0, 1)).tolist(),
+                "explicit_absorption_order_fluence": seed_b.sum(axis=(0, 1)).tolist(),
+            }
+        )
     n_total = packets * len(seeds)
     a_sum /= len(seeds)
     b_sum /= len(seeds)
-    a_q /= len(seeds)**2
-    b_q /= len(seeds)**2
+    a_q /= len(seeds) ** 2
+    b_q /= len(seeds) ** 2
     quadrants = []
     for iy in range(2):
         for ix in range(2):
@@ -304,7 +374,11 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
             mask[iy, ix, 0] = True
             analog, aq = _summed_moment(a_sum, a_q, mask)
             row = _moment_row(
-                analog, float(fine[iy, ix]), aq, 0.0, n_total,
+                analog,
+                float(fine[iy, ix]),
+                aq,
+                0.0,
+                n_total,
                 sigma_limit=sigma_limit,
                 minimum_effective_histories=minimum_effective_histories,
                 maximum_relative_error=maximum_relative_error,
@@ -324,7 +398,11 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
         left, left_q = _summed_moment(a_sum, a_q, mask)
         right, right_q = _summed_moment(b_sum, b_q, mask)
         comparisons[name] = _moment_row(
-            left, right, left_q, right_q, n_total,
+            left,
+            right,
+            left_q,
+            right_q,
+            n_total,
             sigma_limit=sigma_limit,
             minimum_effective_histories=minimum_effective_histories,
             maximum_relative_error=max_error,
@@ -337,7 +415,11 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
             left, left_q = _summed_moment(a_sum, a_q, mask)
             right, right_q = _summed_moment(b_sum, b_q, mask)
             row = _moment_row(
-                left, right, left_q, right_q, n_total,
+                left,
+                right,
+                left_q,
+                right_q,
+                n_total,
                 sigma_limit=sigma_limit,
                 minimum_effective_histories=minimum_effective_histories,
                 maximum_relative_error=0.20,
@@ -362,19 +444,25 @@ def run_case(physics, *, energy, target_tau, packets, chunk_size, seeds,
         "status_count_closure": statuses_a.sum() == statuses_b.sum() == n_total,
     }
     return {
-        "energy_kev": energy, "central_tau_scattering": target_tau,
-        "columns_cm2": columns.tolist(), "radial_edges_kpc": RADIAL_EDGES_KPC.tolist(),
-        "sky_edges_arcsec": SKY_EDGES.tolist(), "launch_slope_bounds": LAUNCH_BOUNDS,
+        "energy_kev": energy,
+        "central_tau_scattering": target_tau,
+        "columns_cm2": columns.tolist(),
+        "radial_edges_kpc": RADIAL_EDGES_KPC.tolist(),
+        "sky_edges_arcsec": SKY_EDGES.tolist(),
+        "launch_slope_bounds": LAUNCH_BOUNDS,
         "time_edges_s": TIME_EDGES_S,
-        "reference_coarse": coarse.tolist(), "reference_fine": fine.tolist(),
-        "first_order_quadrants": quadrants, "order_comparisons": comparisons,
+        "reference_coarse": coarse.tolist(),
+        "reference_fine": fine.tolist(),
+        "first_order_quadrants": quadrants,
+        "order_comparisons": comparisons,
         "multiple_scatter_quadrants": multiple_quadrants,
         "analog_statuses": statuses_a.tolist(),
         "pure_scattering_statuses": statuses_b.tolist(),
         "escape_column_samples": column_samples,
         "multiple_escape_column_samples": multiple_column_samples,
         "escape_column_max_relative_error": column_max_relative_error,
-        "per_seed": per_seed, "checks": {k: bool(v) for k, v in checks.items()},
+        "per_seed": per_seed,
+        "checks": {k: bool(v) for k, v in checks.items()},
         "all_passed": bool(all(checks.values())),
     }
 
@@ -392,27 +480,40 @@ def main():
     parser.add_argument("--minimum-effective-histories", type=int, default=30)
     parser.add_argument("--maximum-relative-error", type=float, default=0.10)
     args = parser.parse_args()
-    if (args.packets < 2 or args.chunk_size < 1 or len(args.seeds) < 3
+    if (
+        args.packets < 2
+        or args.chunk_size < 1
+        or len(args.seeds) < 3
         or len(set(args.seeds)) != len(args.seeds)
         or not 2.0 <= args.energy <= 10.0
-        or not 0 < args.tau_scattering or args.max_interactions < 4
-        or not 0 < args.sigma_limit or args.minimum_effective_histories < 1
-        or not 0 < args.maximum_relative_error < 1):
+        or not args.tau_scattering > 0
+        or args.max_interactions < 4
+        or not args.sigma_limit > 0
+        or args.minimum_effective_histories < 1
+        or not 0 < args.maximum_relative_error < 1
+    ):
         parser.error("invalid validation settings")
     _, _, physics = load_2_10_material_tables()
     case = run_case(
-        physics, energy=args.energy, target_tau=args.tau_scattering,
-        packets=args.packets, chunk_size=args.chunk_size,
-        seeds=args.seeds, max_interactions=args.max_interactions,
+        physics,
+        energy=args.energy,
+        target_tau=args.tau_scattering,
+        packets=args.packets,
+        chunk_size=args.chunk_size,
+        seeds=args.seeds,
+        max_interactions=args.max_interactions,
         sigma_limit=args.sigma_limit,
         minimum_effective_histories=args.minimum_effective_histories,
         maximum_relative_error=args.maximum_relative_error,
     )
     report = {
-        "stage": "9F_heterogeneous_observer", "git_head": _git("rev-parse", "HEAD"),
+        "stage": "9F_heterogeneous_observer",
+        "git_head": _git("rev-parse", "HEAD"),
         "git_status": _git("status", "--short"),
-        "python": platform.python_version(), "numpy": np.__version__,
-        "jax": jax.__version__, "backend": jax.default_backend(),
+        "python": platform.python_version(),
+        "numpy": np.__version__,
+        "jax": jax.__version__,
+        "backend": jax.default_backend(),
         "scattering_table_sha256": hashlib.sha256(
             DEFAULT_2_10_SCATTERING.read_bytes()
         ).hexdigest(),
@@ -420,17 +521,20 @@ def main():
             DEFAULT_2_10_ABSORPTION.read_bytes()
         ).hexdigest(),
         "config": {
-            "packets_per_seed": args.packets, "chunk_size": args.chunk_size,
-            "seeds": args.seeds, "max_interactions": args.max_interactions,
+            "packets_per_seed": args.packets,
+            "chunk_size": args.chunk_size,
+            "seeds": args.seeds,
+            "max_interactions": args.max_interactions,
             "sigma_limit": args.sigma_limit,
             "minimum_effective_histories": args.minimum_effective_histories,
             "maximum_relative_error": args.maximum_relative_error,
         },
-        "case": case, "all_passed": case["all_passed"],
+        "case": case,
+        "all_passed": case["all_passed"],
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
-    print(f'Saved {args.output}; all_passed={report["all_passed"]}', flush=True)
+    print(f"Saved {args.output}; all_passed={report['all_passed']}", flush=True)
     return 0 if report["all_passed"] else 1
 
 

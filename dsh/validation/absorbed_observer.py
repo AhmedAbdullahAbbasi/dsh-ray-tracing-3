@@ -12,7 +12,8 @@ import math
 
 import numpy as np
 
-from ..geometry.coordinates import ARCSEC_TO_RAD
+from dsh.core.geometry.coordinates import ARCSEC_TO_RAD
+
 from .multiple_scattering import (
     INNER_KPC,
     OUTER_KPC,
@@ -251,9 +252,11 @@ def first_order_radial_quadrature(
                     high = middle
             radial_breaks.append((low + high) * 0.5)
         if annulus_arcsec is not None:
+
             def sky_angle(slope):
                 vector = direction(slope)
-                path = _entry_distance(vector, shell_radius)
+                # Evaluated inside this loop iteration; the closure never escapes.
+                path = _entry_distance(vector, shell_radius)  # noqa: B023
                 point = source + path[..., None] * vector
                 return np.arctan2(point[..., 1], point[..., 0])
 
@@ -308,6 +311,7 @@ def first_order_radial_quadrature(
 
     boundaries = [path_at_delay(t) for t in edges]
     if annulus_arcsec is not None:
+
         def path_at_angle(theta):
             tangent = math.tan(theta)
             if tangent == 0.0:

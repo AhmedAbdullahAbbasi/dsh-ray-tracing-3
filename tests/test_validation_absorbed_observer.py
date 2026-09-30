@@ -59,9 +59,7 @@ class TestAbsorbedObserverReference(unittest.TestCase):
             arrival_time_s=np.array([[DAY_S, DAY_S], [DAY_S, 0.0]]),
             weight_observer_fluence=np.array([[2.0, 7.0], [3.0, 0.0]]),
         )
-        weights = _annular_photon_weights(
-            events, (0.0, 45.0, 90.0), (0.0, 2 * DAY_S)
-        )
+        weights = _annular_photon_weights(events, (0.0, 45.0, 90.0), (0.0, 2 * DAY_S))
         np.testing.assert_array_equal(weights, [[2.0, 0.0], [0.0, 3.0]])
 
     def test_stratified_spectrum_preserves_band_probabilities(self):
@@ -69,16 +67,18 @@ class TestAbsorbedObserverReference(unittest.TestCase):
         allocation = _allocate_band_packets(10, probabilities, [2, 3, 5])
         np.testing.assert_array_equal(allocation, [2, 3, 5])
         np.testing.assert_allclose(
-            [np.full(n, p / n).sum() for n, p in zip(allocation, probabilities)],
+            [
+                np.full(n, p / n).sum()
+                for n, p in zip(allocation, probabilities, strict=True)
+            ],
             probabilities,
         )
         np.testing.assert_array_equal(
             _allocate_band_packets(10, probabilities), [6, 2, 2]
         )
         for requested in ([2, 3], [1, 4, 5], [2, 3, 4]):
-            with self.subTest(requested=requested):
-                with self.assertRaises(ValueError):
-                    _allocate_band_packets(10, probabilities, requested)
+            with self.subTest(requested=requested), self.assertRaises(ValueError):
+                _allocate_band_packets(10, probabilities, requested)
 
     def test_reference_respects_production_sky_window(self):
         physics = load_2_10_material_tables()[2]
@@ -157,13 +157,9 @@ class TestAbsorbedObserverReference(unittest.TestCase):
         self.assertAlmostEqual(_powerlaw_integral(2, 10, 0.0), 8.0)
         with patch(
             "scripts.run_spectral_observer_validation.first_order_radial_quadrature",
-            side_effect=lambda _, energy, *__args, **__kwargs: np.full(
-                4, 1.0 + energy
-            ),
+            side_effect=lambda _, energy, *__args, **__kwargs: np.full(4, 1.0 + energy),
         ):
-            result = spectral_first_order_quadrature(
-                physics, 1.0e23, 0.0, n_energy=2
-            )
+            result = spectral_first_order_quadrature(physics, 1.0e23, 0.0, n_energy=2)
         for i, (low, high) in enumerate(((2, 4), (4, 6), (6, 10))):
             np.testing.assert_allclose(
                 result[i], (high - low) / 8 * (1 + (low + high) / 2)

@@ -5,20 +5,42 @@ from __future__ import annotations
 import argparse
 import json
 
-from .config import (
-    audit_configured_run,
-    build_run,
-    load_run_config,
-    run_configured_simulation,
-)
+from .build import build_run
+from .config.load import load_run_config
+from .products.audit import audit_configured_run
+from .run import run_configured_simulation
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser(description="DSH ideal-observer file-input runner")
     commands = parser.add_subparsers(dest="command", required=True)
     for name in ("check", "run", "audit"):
         commands.add_parser(name).add_argument("config")
-    args = parser.parse_args()
+    snapshot = commands.add_parser(
+        "snapshot", help="extract audited line-source snapshots"
+    )
+    snapshot.add_argument("config")
+    snapshot.add_argument("--output-dir", type=str)
+    snapshot.add_argument("--days", type=int, nargs="+", default=[3, 6, 9])
+    snapshot.add_argument("--exposure-days", type=int, default=1)
+    args = parser.parse_args(argv)
+    if args.command == "snapshot":
+        from pathlib import Path
+
+        from .products.snapshots import extract_snapshots
+
+        report = extract_snapshots(
+            Path(args.config),
+            Path(args.output_dir) if args.output_dir else None,
+            days=tuple(args.days),
+            exposure_days=args.exposure_days,
+        )
+        for item in report["snapshots"]:
+            print(
+                f"{item['file']}: {item['scored_event_count']:,} scored events, "
+                f"{item['total_fluence_ph_cm2']:.7g} ph cm^-2"
+            )
+        return
     config = load_run_config(args.config)
     if args.command == "audit":
         report = audit_configured_run(config)

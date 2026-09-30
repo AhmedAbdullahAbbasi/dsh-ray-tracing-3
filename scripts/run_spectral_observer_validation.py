@@ -82,9 +82,7 @@ def _edge_breaks(physics, low, high):
     boundaries = np.concatenate((short, short + 1))
     candidates = grid[boundaries]
     interior = candidates[(candidates > low) & (candidates < high)]
-    return np.unique(
-        np.r_[low, interior, high]
-    )
+    return np.unique(np.r_[low, interior, high])
 
 
 def spectral_first_order_quadrature(
@@ -238,9 +236,7 @@ def run_case(
     analog_jit = jax.jit(
         simulate_source_packets_to_observer, static_argnames=("max_interactions",)
     )
-    scatter_jit = jax.jit(
-        transport_photon_batch, static_argnames=("max_interactions",)
-    )
+    scatter_jit = jax.jit(transport_photon_batch, static_argnames=("max_interactions",))
     reports = []
     total_analog_status = np.zeros(7, np.int64)
     total_pure_status = np.zeros(7, np.int64)
@@ -302,15 +298,12 @@ def run_case(
                 analog_cross += q
                 analog_status += np.asarray(result.diagnostics.transport_status_count)
                 cube = np.asarray(result.products.total_fluence)
-                if (
-                    not np.allclose(
-                        cube[:, band, 0, 0],
-                        values.sum(axis=1),
-                        rtol=1e-4,
-                        atol=1e-9,
-                    )
-                    or np.any(np.delete(cube, band, axis=1))
-                ):
+                if not np.allclose(
+                    cube[:, band, 0, 0],
+                    values.sum(axis=1),
+                    rtol=1e-4,
+                    atol=1e-9,
+                ) or np.any(np.delete(cube, band, axis=1)):
                     raise RuntimeError(
                         "spectral band and time-order observer scores disagree"
                     )
@@ -340,7 +333,7 @@ def run_case(
                 if index % 10 == 0:
                     print(
                         f"band {low:g}-{high:g} keV, seed {seed}: "
-                        f"{offset+size:,}/{n_band:,}",
+                        f"{offset + size:,}/{n_band:,}",
                         flush=True,
                     )
             per_seed.append(
@@ -490,7 +483,9 @@ def main():
     packets = (
         args.packets
         if args.packets is not None
-        else sum(args.packets_by_band) if args.packets_by_band is not None else 100_000
+        else sum(args.packets_by_band)
+        if args.packets_by_band is not None
+        else 100_000
     )
     if (
         packets < 6
@@ -559,7 +554,7 @@ def main():
     report["all_passed"] = report["case"]["all_passed"]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, allow_nan=False) + "\n")
-    print(f'Saved {args.output}; all_passed={report["all_passed"]}')
+    print(f"Saved {args.output}; all_passed={report['all_passed']}")
     return 0 if report["all_passed"] else 1
 
 

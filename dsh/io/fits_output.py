@@ -7,16 +7,16 @@ from pathlib import Path
 
 import numpy as np
 
-from ..geometry.clouds import AngularDistanceCloud
-from ..observer.binning import ObserverBinGeometry
-from ..physics.dust import DustPhysicsTable
-from ..pipeline import (
-    TRANSPORT_STATUS_LABELS,
+from dsh.contracts import (
+    AngularDistanceCloud,
+    DustPhysicsTable,
     IdealObserverSimulationResult,
+    ObserverBinGeometry,
+    SourceCells,
+    SourceLaunchGeometry,
+    TabulatedBandSource,
 )
-from ..sources.cells import SourceCells
-from ..sources.launch import SourceLaunchGeometry
-from ..sources.models import TabulatedBandSource
+from dsh.core.pipeline import TRANSPORT_STATUS_LABELS
 
 
 def _import_fits():
