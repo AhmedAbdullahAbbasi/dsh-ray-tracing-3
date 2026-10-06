@@ -1,0 +1,27 @@
+Job 4016334 on gpu01, started Mon Oct  5 16:27:00 +03 2026, DEVICE=gpu
+JAX device: cuda:0 (Tesla V100-PCIE-32GB)
+Cloud: clouds/4u1630_NH_111111111100001_DSH_11p5kpc.fits
+Cloud shape (z, y, x): (1149, 53, 49)
+Simulated source fluence: 2.154654e+07 ph cm^-2
+Progress log: logs/progress.log
+2026-10-05 16:27:16.384299: W external/xla/xla/hlo/transforms/simplifiers/hlo_rematerialization.cc:3023] Can't reduce memory use below 22.57GiB (24231615644 bytes) by rematerialization; only reduced to 35.90GiB (38549284868 bytes), down from 35.90GiB (38549284880 bytes) originally
+2026-10-05 16:27:30.373680: W external/xla/xla/tsl/framework/bfc_allocator.cc:501] Allocator (GPU_0_bfc) ran out of memory trying to allocate 35.87GiB (rounded to 38515473152)requested by op 
+If the cause is memory fragmentation maybe the environment variable 'TF_GPU_ALLOCATOR=cuda_malloc_async' will improve the situation. 
+Current allocation summary follows.
+Current allocation summary follows.
+2026-10-05 16:27:30.374526: W external/xla/xla/tsl/framework/bfc_allocator.cc:512] *___________________________________________________________________________________________________
+E1005 16:27:30.374905  820863 pjrt_stream_executor_client.cc:2916] Execution of replica 0 failed: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 38515473120 bytes. [tf-allocator-allocation-error='']
+jax.errors.SimplifiedTraceback: For simplicity, JAX has removed its internal frames from the traceback of the following exception. Set JAX_TRACEBACK_FILTERING=off to include these.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/cta/users/atakans/ray-tracing-ahmed/run_simulation.py", line 343, in <module>
+    main()
+  File "/cta/users/atakans/ray-tracing-ahmed/run_simulation.py", line 304, in main
+    result = run_tabulated_source_to_observer_chunked(
+  File "/cta/users/atakans/ray-tracing-ahmed/dsh/pipeline.py", line 314, in run_tabulated_source_to_observer_chunked
+    return _run_source_to_observer_chunked(
+  File "/cta/users/atakans/ray-tracing-ahmed/dsh/pipeline.py", line 266, in _run_source_to_observer_chunked
+    current = pipeline_jit(
+jaxlib._jax.XlaRuntimeError: RESOURCE_EXHAUSTED: Out of memory while trying to allocate 38515473120 bytes.

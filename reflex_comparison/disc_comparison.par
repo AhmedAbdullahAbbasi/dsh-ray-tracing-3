@@ -1,0 +1,93 @@
+# ============================================================
+# RefleX comparison run: dust-scattering halo from a uniform-
+# density tophat disc, matching the custom disc cloud built in
+# notebooks/run_dsh_simulation.ipynb (the DSH ray-tracing code).
+#
+# Geometry mapping (DSH -> RefleX):
+#   DSH observer (origin)      -> RefleX IMAGE detector, placed
+#                                  10 kpc out, aimed at the origin
+#   DSH source (10 kpc, 0, 0)  -> RefleX EMGEOM POINT at (0,0,0)
+#   DSH disc (center_z=5 kpc   -> RefleX OBJECT DISC, 5 kpc from
+#     from the observer)          the source (same point: the disc
+#                                  sits exactly halfway when
+#                                  SOURCE_DISTANCE_KPC = 10.0)
+#
+# Run once per DSH V1 energy band (3.3 / 4.9 / 6.9 keV) by passing
+# %ENERGY (eV) and %ENAME (a short output-filename tag):
+#   reflex %ENERGY=3300 %ENAME=e3p3 disc_comparison.par
+#   reflex %ENERGY=4900 %ENAME=e4p9 disc_comparison.par
+#   reflex %ENERGY=6900 %ENAME=e6p9 disc_comparison.par
+#
+# Caveats: RefleX's dust model (Draine 2003, graphite+olivine Mie
+# theory) is physically different from DSH's MRN Rayleigh-Gans/
+# Drude table, and RefleX's gas absorption cross-sections (vern)
+# differ in detail from DSH's TBabs implementation, so pixel-level
+# fluxes will not match exactly. This setup is meant to produce a
+# comparable halo morphology (ring position/size, radial falloff)
+# for a geometry sanity check, not identical physical units -- the
+# DSH image is calibrated photon fluence [ph cm^-2]; this RefleX
+# image is raw simulated photon counts, scaled by NPHOTS, not by
+# any physical source flux.
+# ============================================================
+
+# --- Control ---
+VERBOSE 0
+PERCENT ON
+RANDOM 2026
+NPHOTS 100000000
+LENGTH Centimeter
+
+# --- Physics: restrict to what DSH V1 actually simulates --------
+# (dust scattering + absorption only; no Compton, Rayleigh, or
+# fluorescence, none of which DSH V1 implements)
+PHYSICS COMPTON OFF
+PHYSICS RAYLEIGH OFF
+PHYSICS FLUOR OFF
+PHYSICS PHOTO ON
+PHYSICS DUST_PHOTO ON
+PHYSICS DUST_SCAT ON
+TEMPERATURE 0
+
+# --- Emission: mono-energetic, matching one DSH energy band -----
+EMSPEC MONO %ENERGY
+# Source at the origin, aimed along +Z (toward the disc and the
+# camera). alpha=0.05 deg is a half-angle cone comfortably larger
+# than the disc's angular radius as seen from the source (~0.022
+# deg) -- narrows emission for efficiency, playing the same role
+# as DSH's rectangular importance-sampled launch cone.
+EMGEOM POINT 0.0 0.0 0.0 0 0 0.05
+ECUT 100.0
+EGEN 100.0 20000.0
+
+# --- Composition: Wilms abundances (same as DSH's TBabs table), -
+# dust fraction maxed out (wilm's ceiling is 0.691) -------------
+MATTER wilm
+METALLICITY 1.0
+H2FRACTION 0.0
+DUST 0.691
+
+# --- The dust disc's density: n_H = 10 cm^-3, matching N_H_CM3 --
+DENSITY 10.0
+
+# --- World and objects -------------------------------------------
+OBJECT WORLD 5.0e22
+# Disc centered 5 kpc from the source along +Z (radius 5.983908e18
+# cm = 80 arcsec at 5 kpc; thickness 9.257033e20 cm = 0.3 kpc).
+# Default orientation (XY-plane) is already face-on to the beam.
+OBJECT DISC dustdisc 0.0 0.0 1.542839e22 5.983908e18 9.257033e20
+
+# --- Imaging detector: 10 kpc from the source (the DSH observer's
+# distance), aimed back at the origin (source, through the disc).
+# FOV = 0.08333 deg = 300 arcsec, matching the notebook's +/-150"
+# grid; N=61 pixels for ~4.9 arcsec/pixel, close to its 5"/pixel.
+# Aperture A is a resolution/photon-count trade-off -- widen it if
+# the image comes out too sparse, narrow it for sharper pixels.
+IMAGE NEW halo_%ENAME.fits 0.0 0.0 3.085678e22 1.0e17 0.0277778 61
+# Keep only photons that actually dust-scattered -- DSH's peel-off
+# estimator never records the direct, unscattered beam either, so
+# this isolates the halo for a fair comparison.
+IMAGE DUSTSCAT > 0
+
+# --- Optional: event list for closer numerical cross-checks -----
+EVENTS halo_events_%ENAME.fits
+EVENTS DUSTSCAT > 0

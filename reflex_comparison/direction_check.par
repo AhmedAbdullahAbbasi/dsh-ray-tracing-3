@@ -1,0 +1,40 @@
+# Measures the actual scattering-angle distribution RefleX's Monte Carlo
+# samples, directly from escaping photon direction vectors -- bypassing
+# the pinhole camera/aperture entirely, and independent of how the DUMP
+# command's THETA column should be interpreted.
+
+VERBOSE 0
+PERCENT ON
+RANDOM 2026
+NPHOTS 2000000
+LENGTH Centimeter
+
+PHYSICS COMPTON OFF
+PHYSICS RAYLEIGH OFF
+PHYSICS FLUOR OFF
+PHYSICS PHOTO ON
+PHYSICS DUST_PHOTO ON
+PHYSICS DUST_SCAT ON
+TEMPERATURE 0
+
+EMSPEC MONO 4900
+EMGEOM POINT 0.0 0.0 0.0 0 0 0.05
+ECUT 100.0
+EGEN 100.0 20000.0
+
+MATTER wilm
+METALLICITY 1.0
+H2FRACTION 0.0
+DUST 0.691
+
+DENSITY 10.0
+
+OBJECT WORLD 5.0e22
+OBJECT DISC dustdisc 0.0 0.0 1.542839e22 5.983908e18 9.257033e20
+
+# bit string, one digit per field, in the order listed in Section 6.2:
+# COMPTON RAYLEIGH FLUOR DUSTSCAT NOBJ TIME ENERGY LENGTH NH DIR_X DIR_Y DIR_Z LOC_X LOC_Y LOC_Z POL_X POL_Y POL_Z
+FIELDS 000100001110000000
+
+EVENTS directions.fits
+EVENTS DUSTSCAT > 0

@@ -1,0 +1,34 @@
+# Minimal run whose only purpose is to DUMP the precomputed cross-section
+# table (including the dust median scattering angle, THETA) for the exact
+# composition/dust setup used in disc_comparison.par -- NPHOTS kept tiny
+# so this finishes almost instantly; the photon count doesn't affect the
+# dumped cross-section table, which is computed once up front.
+
+VERBOSE 0
+NPHOTS 1000
+LENGTH Centimeter
+
+PHYSICS COMPTON OFF
+PHYSICS RAYLEIGH OFF
+PHYSICS FLUOR OFF
+PHYSICS PHOTO ON
+PHYSICS DUST_PHOTO ON
+PHYSICS DUST_SCAT ON
+TEMPERATURE 0
+
+EMSPEC MONO 4900
+EMGEOM POINT 0.0 0.0 0.0 0 0 0.05
+ECUT 100.0
+EGEN 100.0 20000.0
+
+MATTER wilm
+METALLICITY 1.0
+H2FRACTION 0.0
+DUST 0.691
+
+DENSITY 10.0
+
+OBJECT WORLD 5.0e22
+OBJECT DISC dustdisc 0.0 0.0 1.542839e22 5.983908e18 9.257033e20
+
+DUMP crosssections.fits

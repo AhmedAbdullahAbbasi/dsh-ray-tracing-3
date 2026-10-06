@@ -1,0 +1,14 @@
+Job 4016322 on gpu01, started Mon Oct  5 16:00:36 +03 2026, DEVICE=gpu
+JAX device: cuda:0 (Tesla V100-PCIE-32GB)
+Traceback (most recent call last):
+  File "/cta/users/atakans/ray-tracing-ahmed/run_simulation.py", line 287, in <module>
+    main()
+  File "/cta/users/atakans/ray-tracing-ahmed/run_simulation.py", line 226, in main
+    cloud, cloud_description = build_cloud()
+  File "/cta/users/atakans/ray-tracing-ahmed/run_simulation.py", line 79, in build_cloud
+    cloud = cloud_from_loaded_fits(
+  File "/cta/users/atakans/ray-tracing-ahmed/dsh/geometry/clouds.py", line 175, in cloud_from_loaded_fits
+    return build_angular_distance_cloud(
+  File "/cta/users/atakans/ray-tracing-ahmed/dsh/geometry/clouds.py", line 150, in build_angular_distance_cloud
+    raise ValueError("the cloud cube extends beyond the source distance")
+ValueError: the cloud cube extends beyond the source distance

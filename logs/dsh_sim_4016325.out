@@ -1,0 +1,2 @@
+DEVICE=gpu but job 4016325 has no GPU; resubmitting with --gres=gpu:1 --exclude=cn05,cn06
+Submitted batch job 4016326
