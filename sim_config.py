@@ -16,7 +16,9 @@ DISC_THICKNESS_KPC = 0.3  # thickness along the line of sight
 DISC_N_H_CM3 = 10.0  # hydrogen density inside the disc [cm^-3]
 
 # --- source model ---
-SOURCE_MODEL = "flux-file"  # "constant-flare", "exponential-decay", "custom" or "flux-file"
+SOURCE_MODEL = (
+    "flux-file"  # "constant-flare", "exponential-decay", "custom" or "flux-file"
+)
 PEAK_BAND_FLUXES = (0.0, 1.2e-2, 0.0)  # ph cm^-2 s^-1 at 3.3/4.9/6.9 keV
 BASELINE_BAND_FLUXES = (0.0, 0.0, 0.0)  # exponential-decay only
 DECAY_TIME_DAYS = 25.0  # exponential-decay only
@@ -46,6 +48,9 @@ CUSTOM_BAND_FLUXES = (  # ph cm^-2 s^-1 at 3.3/4.9/6.9 keV, one row per time bin
 )
 
 # --- Monte Carlo run ---
+LAUNCH_SAMPLER = (
+    "radial"  # smooth circular proposal; "rectangular" retains the baseline
+)
 PACKETS = 1_000_000_000
 CHUNK_SIZE = 10_000  # GPU memory per packet grows with the cloud's distance slices (~1 MB at 1500)
 MAX_INTERACTIONS = 4
@@ -62,7 +67,9 @@ PROGRESS_EVERY_CHUNKS = 5  # write a progress line every this many chunks
 
 # --- output image ---
 OUTPUT_PNG = "outputs/dsh_image.png"  # saved as dsh_image_log.png, dsh_image_linear.png
-OUTPUT_COUNT_PNG = "outputs/dsh_count_image.png"  # scored events per pixel, same suffixes
+OUTPUT_COUNT_PNG = (
+    "outputs/dsh_count_image.png"  # scored events per pixel, same suffixes
+)
 OUTPUT_COUNT_NPY = "outputs/dsh_count_image.npy"  # the count image as a (y, x) matrix
 # None: fluence summed over all arrival times. (start, stop) in days since the
 # first source time (first FLUX_FILE row): mean intensity I_nu over that epoch.

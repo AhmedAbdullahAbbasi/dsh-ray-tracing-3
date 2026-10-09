@@ -1,5 +1,7 @@
 """Run the DSH simulation described by sim_config.py and save the DSH image as a PNG."""
 
+# Configure the JAX runtime before importing JAX or dependent modules.
+# ruff: noqa: E402
 import os
 import time
 from pathlib import Path
@@ -42,6 +44,7 @@ from dsh.pipeline import (
 )
 from dsh.sources.launch import build_cloud_launch_geometry
 from dsh.sources.models import build_tabulated_band_source
+from dsh.sources.radial_launch import build_radial_cloud_launch_geometry
 
 
 def build_disc_cloud():
@@ -118,7 +121,9 @@ def build_band_source(table_energy_kev):
     def integral(power):
         if abs(power + 1.0) < 1e-10:
             return np.log(edges[1:] / edges[:-1])
-        return (edges[1:] ** (power + 1.0) - edges[:-1] ** (power + 1.0)) / (power + 1.0)
+        return (edges[1:] ** (power + 1.0) - edges[:-1] ** (power + 1.0)) / (
+            power + 1.0
+        )
 
     mean_energy = integral(1.0 - cfg.PHOTON_INDEX) / integral(-cfg.PHOTON_INDEX)
     source = build_tabulated_band_source(
@@ -278,7 +283,9 @@ def project_image(cube, bin_geometry, bands):
         band_label = "all energies"
         width_kev = None if widths_kev is None else float(np.sum(widths_kev))
     else:
-        target = centers_kev[0] if cfg.IMAGE_ENERGY_KEV is None else cfg.IMAGE_ENERGY_KEV
+        target = (
+            centers_kev[0] if cfg.IMAGE_ENERGY_KEV is None else cfg.IMAGE_ENERGY_KEV
+        )
         index = int(np.argmin(np.abs(centers_kev - target)))
         image = cube[:, index, :, :].sum(axis=0)
         band_label = labels[index]
@@ -421,7 +428,9 @@ def main():
             np.asarray(source.effective_energy_kev),
             [
                 f"{low:g}-{high:g} keV"
-                for low, high in zip(energy_edges_kev[:-1], energy_edges_kev[1:])
+                for low, high in zip(
+                    energy_edges_kev[:-1], energy_edges_kev[1:], strict=True
+                )
             ],
             np.diff(energy_edges_kev),
         )
@@ -442,7 +451,15 @@ def main():
             "to leave room for dust-scattering delays"
         )
 
-    launch_geometry = build_cloud_launch_geometry(cloud)
+    launch_sampler = getattr(cfg, "LAUNCH_SAMPLER", "radial")
+    if launch_sampler not in ("radial", "rectangular"):
+        raise ValueError("LAUNCH_SAMPLER must be radial or rectangular")
+    launch_geometry = (
+        build_radial_cloud_launch_geometry(cloud, physics)
+        if launch_sampler == "radial"
+        else build_cloud_launch_geometry(cloud)
+    )
+    print(f"Source launch sampler: {launch_sampler}")
     bin_geometry = build_observer_bin_geometry(
         sky_x_edges_arcsec=np.asarray(cloud.x_edges_arcsec),
         sky_y_edges_arcsec=np.asarray(cloud.y_edges_arcsec),

@@ -38,6 +38,7 @@ from .pipeline import (
 )
 from .sources.launch import build_cloud_launch_geometry
 from .sources.models import build_powerlaw_band_source
+from .sources.radial_launch import build_radial_cloud_launch_geometry
 
 
 def parse_arguments():
@@ -51,6 +52,12 @@ def parse_arguments():
         ),
     )
     parser.add_argument("--source-distance-kpc", type=float, default=10.0)
+    parser.add_argument(
+        "--launch-sampler",
+        choices=("radial", "rectangular"),
+        default="radial",
+        help="smooth circular importance proposal (default) or the uniform rectangular baseline",
+    )
     parser.add_argument(
         "--materials",
         choices=("v1", "2-10"),
@@ -248,7 +255,12 @@ def main():
             "arrival_days must extend beyond the final source-emission time "
             "to leave room for dust-scattering delays"
         )
-    launch_geometry = build_cloud_launch_geometry(cloud)
+    launch_geometry = (
+        build_radial_cloud_launch_geometry(cloud, physics)
+        if args.launch_sampler == "radial"
+        else build_cloud_launch_geometry(cloud)
+    )
+    print(f"Source launch sampler: {args.launch_sampler}")
     bin_geometry = build_observer_bin_geometry(
         sky_x_edges_arcsec=np.asarray(cloud.x_edges_arcsec),
         sky_y_edges_arcsec=np.asarray(cloud.y_edges_arcsec),
@@ -360,6 +372,7 @@ def main():
         "simulation_numpy": np.__version__,
         "simulation_jax": jax.__version__,
         "material_tables": args.materials,
+        "launch_sampler": args.launch_sampler,
         "source_spectrum": args.source_spectrum,
         "source_photon_index": args.photon_index if hard_state else None,
         "scattering_table_sha256": scattering.metadata["table_sha256"],

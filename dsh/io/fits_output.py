@@ -16,6 +16,7 @@ from ..pipeline import (
 )
 from ..sources.launch import SourceLaunchGeometry
 from ..sources.models import TabulatedBandSource
+from ..sources.radial_launch import RadialLaunchGeometry
 
 
 def _import_fits():
@@ -455,5 +456,23 @@ def write_ideal_observer_fits(
         np.asarray(launch_geometry.launch_solid_angle_sr)
     )
 
+    radial = isinstance(launch_geometry, RadialLaunchGeometry)
+    primary.header["LAUNCSMP"] = "radial-t2" if radial else "rectangular"
+    if radial:
+        primary.header["DEFPROB"] = float(launch_geometry.hemisphere_probability)
+        primary.header["HIERARCH LAUNCH BOUNDS ROLE"] = (
+            "coverage metadata; not proposal cutoff"
+        )
+        hdus.extend(
+            [
+                fits.ImageHDU(np.asarray(launch_geometry.energy_kev), name="LNCENER"),
+                fits.ImageHDU(
+                    np.asarray(launch_geometry.component_scale), name="LNCSCALE"
+                ),
+                fits.ImageHDU(
+                    np.asarray(launch_geometry.component_probability), name="LNCPROB"
+                ),
+            ]
+        )
     fits.HDUList(hdus).writeto(output_path, overwrite=overwrite, checksum=True)
     return output_path

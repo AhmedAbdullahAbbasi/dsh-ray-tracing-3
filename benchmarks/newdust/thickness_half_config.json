@@ -1,0 +1,35 @@
+{
+  "source_distance_kpc": 11.5,
+  "source_fluence_ph_cm2": 1.0,
+  "energies_kev": [
+    3.3
+  ],
+  "screens": [
+    {
+      "fraction_from_observer": 0.5,
+      "nh_cm2": 8e+20
+    }
+  ],
+  "thickness_kpc": 0.0005,
+  "half_width_arcsec": 600.0,
+  "pixel_arcsec": 4.0,
+  "annulus_width_arcsec": 20.0,
+  "packets_per_seed": 1000000,
+  "seeds": [
+    2026,
+    2027,
+    2028
+  ],
+  "chunk_size": 8192,
+  "max_interactions": 4,
+  "pixel_quadrature_order": 4,
+  "reference_radial_step_arcsec": 0.05,
+  "maximum_total_tau": 0.02,
+  "maximum_aperture_relative_se": 0.03,
+  "minimum_annulus_neff": 100,
+  "minimum_resolved_annuli": 10,
+  "maximum_numerical_budget_fraction": 0.003,
+  "dsh_revision_reviewed": "a1cb0586bda367deacc89da5ee14ecc0070262c8",
+  "launch_proposal": "radial",
+  "require_azimuth": true
+}

@@ -100,6 +100,31 @@ python -m scripts.run_dsh_v1 `
 The source flux convention is unabsorbed observer-equivalent photon flux in
 `ph cm^-2 s^-1`. Packet weights sum to the time-integrated source fluence.
 
+### Smooth source launch proposal
+
+The CLI defaults to `--launch-sampler radial`, and `run_simulation.py` uses
+`LAUNCH_SAMPLER = "radial"` in `sim_config.py`. This samples circular, smooth,
+energy-dependent directions with broad tails, using column-weighted cloud
+distances and phase-table medians to choose proposal scales. A 5% uniform
+forward-hemisphere component guarantees support and bounds each isotropic
+importance factor by 10. Every packet carries the full exact joint PDF,
+including the solid-angle Jacobian. Sampling changes neither the source
+fluence nor the physical transport, scattering law, or observer scorer.
+
+Set `--launch-sampler rectangular` or `LAUNCH_SAMPLER = "rectangular"` to
+retain the previous uniform rectangular proposal. Existing callers passing
+`SourceLaunchGeometry` keep that behavior; passing `RadialLaunchGeometry`
+selects the circular proposal through the same pipeline API. The old nested
+validation proposal remains available for reproducible comparisons.
+
+The radial proposal's rectangle fields describe cloud coverage, not a sampling
+cutoff. `LAUNCHSR` is 2*pi for its forward hemisphere. FITS records `LAUNCSMP`,
+`DEFPROB`, and proposal arrays in `LNCENER`, `LNCSCALE`, and `LNCPROB`; NPZ
+records the corresponding arrays and sampler label. Passing global or radial
+checks does not by itself establish precision in faint individual image pixels.
+See [the matched NewDust benchmark](benchmarks/newdust/README.md) for radial
+and azimuthal regression tests before extending the physics.
+
 ## Physical cloud input
 
 The native cube order is `(distance, sky_y, sky_x)`. Each voxel contains the
@@ -260,7 +285,10 @@ xdust evaluations. The matching NPZ and JSON files can be loaded explicitly:
 
 ```python
 from dsh.physics.absorption import load_photoelectric_absorption_table
-from dsh.physics.newdust import build_dust_physics_from_tables, load_newdust_scattering_table
+from dsh.physics.newdust import (
+    build_dust_physics_from_tables,
+    load_newdust_scattering_table,
+)
 
 scattering = load_newdust_scattering_table("validation_outputs/rg_drude_2_10.npz")
 absorption = load_photoelectric_absorption_table("validation_outputs/tbabs_2_10.npz")

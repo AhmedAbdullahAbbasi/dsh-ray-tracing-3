@@ -8,6 +8,11 @@ state required by :func:`dsh.transport.kernel.transport_photon_batch`:
 * a null photon four-momentum; and
 * the probability density used to sample the launch direction.
 
+The CLI also accepts the smooth circular proposal in :mod:`radial_launch`.
+Its forward-hemisphere density has no internal rectangular boundaries.
+The sampler below dispatches on the geometry type; existing rectangular
+geometry callers retain their original sampling and random streams.
+
 Version 1 assumes an isotropic point source on the central line of sight.  To
 avoid wasting nearly every packet on the rest of the sphere, directions are
 importance sampled inside a rectangular cone that covers the cloud frustum.
@@ -224,11 +229,17 @@ def sample_source_launches(
 ) -> LaunchedSourcePackets:
     """Sample initial positions and four-momenta for physical source packets.
 
-    The function is JAX-jittable.  Sampling is uniform in ``(u, v)`` inside
+    The function is JAX-jittable. A RadialLaunchGeometry selects the smooth
+    circular sampler. With SourceLaunchGeometry, sampling is uniform in ``(u, v)`` inside
     the geometry's rectangle, while ``launch_pdf_per_sr`` accounts exactly
     for the tangent-plane Jacobian.  The returned momentum convention is
     ``(E, p_los, p_sky_x, p_sky_y)`` and satisfies ``|p| = E``.
     """
+
+    from .radial_launch import RadialLaunchGeometry, sample_radial_source_launches
+
+    if isinstance(geometry, RadialLaunchGeometry):
+        return sample_radial_source_launches(key, packets, geometry)
 
     n_packets = _validate_source_packet_shapes(packets)
     if geometry.source_position_pc.shape != (3,):

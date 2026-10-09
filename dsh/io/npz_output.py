@@ -13,6 +13,7 @@ from ..physics.dust import DustPhysicsTable
 from ..pipeline import TRANSPORT_STATUS_LABELS, IdealObserverSimulationResult
 from ..sources.launch import SourceLaunchGeometry
 from ..sources.models import TabulatedBandSource
+from ..sources.radial_launch import RadialLaunchGeometry
 
 
 def _named_tuple_arrays(value) -> dict[str, np.ndarray]:
@@ -90,6 +91,11 @@ def write_ideal_observer_npz(
         launch_slope_y_bounds=np.asarray(launch_geometry.slope_y_bounds),
         launch_slope_area=np.asarray(launch_geometry.slope_area),
         launch_solid_angle_sr=np.asarray(launch_geometry.launch_solid_angle_sr),
+        launch_sampler=np.asarray(
+            "radial-t2"
+            if isinstance(launch_geometry, RadialLaunchGeometry)
+            else "rectangular"
+        ),
         output_schema_version=np.asarray(6),
         simulation_git_head=np.asarray(
             metadata.get("simulation_git_head", "unavailable")
@@ -123,5 +129,16 @@ def write_ideal_observer_npz(
         chunk_size=np.asarray(metadata["chunk_size"]),
         max_interactions=np.asarray(metadata["max_interactions"]),
     )
+    if isinstance(launch_geometry, RadialLaunchGeometry):
+        payload.update(
+            launch_proposal_energy_kev=np.asarray(launch_geometry.energy_kev),
+            launch_component_scale=np.asarray(launch_geometry.component_scale),
+            launch_component_probability=np.asarray(
+                launch_geometry.component_probability
+            ),
+            launch_hemisphere_probability=np.asarray(
+                launch_geometry.hemisphere_probability
+            ),
+        )
     np.savez_compressed(output_path, **payload)
     return output_path
