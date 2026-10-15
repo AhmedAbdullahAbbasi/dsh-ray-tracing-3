@@ -1,0 +1,42 @@
+{
+  "milestone": "Material definitions and abundance accounting",
+  "branch": "development/post-reflex-improvements",
+  "base_commit": "8a5073cab8020f924ca6f4d30548413ffe3bee5f",
+  "full_suite": {
+    "passed": true,
+    "tests": 173,
+    "seconds": 121.173,
+    "command": "python -m unittest discover -v"
+  },
+  "new_material_tests": 18,
+  "reflex_regression": {
+    "passed": true,
+    "method": "Reanalyze unchanged accepted seed moments after production/input fingerprint verification; no new photon histories collected",
+    "accepted_statistics_identical": true,
+    "accepted_package_checksums_match": 63,
+    "histories": 6000000,
+    "global_radial_chi2": 4.043838868040068,
+    "global_radial_pvalue": 0.9085035154822461,
+    "all_gates_passed": true
+  },
+  "lint": {
+    "tool": "ruff",
+    "version": "0.17.1",
+    "check_passed": true,
+    "formatted_files": [
+      "dsh/physics/material_definitions.py",
+      "dsh/physics/materials.py",
+      "scripts/audit_material_definition.py",
+      "tests/test_material_definitions.py"
+    ]
+  },
+  "audit_cli_passed": true,
+  "sha256_lf_normalized": {
+    "dsh/physics/material_definitions.py": "0af851ad8c4ea06b4bb3b425b16840a466dd344efb0cc116411ade7291b1bf92",
+    "dsh/physics/materials.py": "084c939b70b549f2c943781a6a33597bba0b3ca65c3d1d91eb26bd8633be3334",
+    "dsh/data/materials/wilm_abundances_v1.json": "cd15796730401b5d93e504647a625d68fcdde141f4c60ff0625e881ba468a1dc",
+    "scripts/audit_material_definition.py": "5da702ec9c63bdd316225f2a2abf7801966b1ec283f2b9cb52316ea2019ae810",
+    "tests/test_material_definitions.py": "a197fc753dd11952f2d9bb5af51e012c69bda185701e7f95f1dbe8ad50cb9aa4"
+  },
+  "scope": "Opt-in input definitions and declared table assembly only. No WD01/Mie/ADT/TBnew producer or new opacity data implemented in this milestone."
+}

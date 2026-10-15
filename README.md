@@ -5,6 +5,11 @@ models a physical point source, an angular--distance hydrogen-column cube,
 energy-dependent dust scattering and photoelectric absorption, repeated
 interactions, exact geometric delays, and ideal-observer halo products.
 
+The post-RefleX physics work now includes an opt-in chemical material definition,
+elemental abundance audit, and absorption-component composition checks. See
+[material definitions and accounting](benchmarks/materials/README.md) for the
+contract, audit command, validation evidence, and following milestones.
+
 The output is physical observer fluence, not telescope counts. Effective
 area, PSF, exposure maps, detector redistribution, background, and counting
 noise are intentionally deferred to Version 2.
