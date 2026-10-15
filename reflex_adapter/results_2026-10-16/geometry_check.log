@@ -1,0 +1,19 @@
+geometry pairs: 4,096/262,144, 7.7s
+geometry pairs: 69,632/262,144, 18.9s
+geometry pairs: 135,168/262,144, 28.0s
+geometry pairs: 200,704/262,144, 39.5s
+{
+  "passed": true,
+  "paired_histories": 262144,
+  "coarse_cells": 16,
+  "fine_cells": 32,
+  "coarse_aperture_fluence": 0.017734220738475415,
+  "fine_aperture_fluence": 0.017734220738475415,
+  "paired_difference": 0.0,
+  "paired_se": 0.0,
+  "four_se_relative_upper_bound": 0.0,
+  "fixed_fractional_allowance": 0.003,
+  "invalid_or_incomplete_histories": 0,
+  "elapsed_seconds": 48.01977816500016,
+  "scope": "transverse boundary discretization at fixed 30-pc radius; not a general cylinder-versus-frustum bound"
+}

@@ -1,0 +1,69 @@
+{
+  "executable_sha256": "b451b81854fbecdb99f292d3a661ea85ab1b417a25e5907d565f4318f34c788c",
+  "repository_tip_inspected": "7deb50ce432b8b68e87406fe1038b4e7ebc6ab77",
+  "physics": "DUMP PHOTO gas plus depleted DUST absorption/scattering; analytic deflection sampler from supplied executable",
+  "production_host_loader_validation": "unchanged loader and phase integral ASTs executed with NumPy; imports/JAX array construction excluded",
+  "jax_transport_rerun": false,
+  "reflex_image_benchmark_passed": false,
+  "date": "2026-10-15",
+  "sigma_sca_cm2_per_h": [
+    4.456617422299833e-24,
+    1.9772030633480432e-24,
+    9.620668407032726e-25
+  ],
+  "sigma_abs_cm2_per_h": [
+    7.602830304342424e-24,
+    2.4832587463374627e-24,
+    9.302692746578282e-25
+  ],
+  "reflex_input_halo_counts": 5976,
+  "reflex_input_direct_counts": 313691,
+  "tests": [
+    {
+      "case": "combined",
+      "packets": 200000,
+      "nh_cm2": 1e+22,
+      "unscattered_counts": 191339,
+      "measured_transmission": 0.956695,
+      "predicted_transmission": 0.9563755406707551,
+      "binomial_se": 0.0004567349662412323,
+      "z": 0.6994413672197196,
+      "passed": true
+    },
+    {
+      "case": "half_column",
+      "packets": 200000,
+      "nh_cm2": 5e+21,
+      "unscattered_counts": 195587,
+      "measured_transmission": 0.977935,
+      "predicted_transmission": 0.9779445488731736,
+      "binomial_se": 0.0003283976872818881,
+      "z": -0.029077163279223557,
+      "passed": true
+    },
+    {
+      "case": "absorption_only",
+      "packets": 200000,
+      "nh_cm2": 1e+22,
+      "unscattered_counts": 195092,
+      "measured_transmission": 0.97546,
+      "predicted_transmission": 0.9754732048029486,
+      "binomial_se": 0.0003458701455345146,
+      "z": -0.038178498835838924,
+      "passed": true
+    },
+    {
+      "case": "scattering_only",
+      "packets": 200000,
+      "nh_cm2": 1e+22,
+      "unscattered_counts": 196084,
+      "measured_transmission": 0.98042,
+      "predicted_transmission": 0.9804221540497862,
+      "binomial_se": 0.00030979472153478934,
+      "z": -0.0069531519954101305,
+      "passed": true
+    }
+  ],
+  "stage": "historical initial preflight; superseded by 16 October transport comparison",
+  "superseded_by": "../results_2026-10-16/comparison_results.json"
+}

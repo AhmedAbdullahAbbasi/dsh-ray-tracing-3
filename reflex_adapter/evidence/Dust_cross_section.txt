@@ -1,0 +1,121 @@
+
+reflex_probe/reflex:     file format elf64-x86-64
+
+
+Disassembly of section .init:
+
+Disassembly of section .plt:
+
+Disassembly of section .text:
+
+0000000000408bc0 <Dust_cross_section>:
+  408bc0:	push   %r12
+  408bc2:	movapd %xmm0,%xmm2
+  408bc6:	mov    %rdx,%r12
+  408bc9:	push   %rbp
+  408bca:	mov    %rdi,%rbp
+  408bcd:	push   %rbx
+  408bce:	mov    %rsi,%rbx
+  408bd1:	sub    $0x10,%rsp
+  408bd5:	movsd  0x10ce3(%rip),%xmm0        # 4198c0 <L+0x160>
+  408bdd:	ucomisd %xmm2,%xmm0
+  408be1:	jbe    408c50 <Dust_cross_section+0x90>
+  408be3:	mov    0x242d0b(%rip),%eax        # 64b8f4 <PHYS_Dust_Phot>
+  408be9:	mov    0x242d01(%rip),%edx        # 64b8f0 <PHYS_Dust_Scat>
+  408bef:	movq   $0x0,0x0(%rbp)
+  408bf7:	movq   $0x0,(%rbx)
+  408bfe:	movq   $0x0,(%r12)
+  408c06:	test   %edx,%edx
+  408c08:	jne    408c27 <Dust_cross_section+0x67>
+  408c0a:	movsd  0x10b8e(%rip),%xmm0        # 4197a0 <L+0x40>
+  408c12:	subsd  (%rbx),%xmm0
+  408c16:	mulsd  0x0(%rbp),%xmm0
+  408c1b:	movsd  %xmm0,0x0(%rbp)
+  408c20:	movq   $0x0,(%rbx)
+  408c27:	test   %eax,%eax
+  408c29:	jne    408c45 <Dust_cross_section+0x85>
+  408c2b:	movsd  0x0(%rbp),%xmm0
+  408c30:	movsd  0x10b68(%rip),%xmm4        # 4197a0 <L+0x40>
+  408c38:	mulsd  (%rbx),%xmm0
+  408c3c:	movsd  %xmm0,0x0(%rbp)
+  408c41:	movsd  %xmm4,(%rbx)
+  408c45:	add    $0x10,%rsp
+  408c49:	pop    %rbx
+  408c4a:	pop    %rbp
+  408c4b:	pop    %r12
+  408c4d:	ret
+  408c4e:	xchg   %ax,%ax
+  408c50:	mov    0x242c9e(%rip),%edx        # 64b8f4 <PHYS_Dust_Phot>
+  408c56:	test   %edx,%edx
+  408c58:	jne    408c70 <Dust_cross_section+0xb0>
+  408c5a:	mov    0x242c90(%rip),%eax        # 64b8f0 <PHYS_Dust_Scat>
+  408c60:	test   %eax,%eax
+  408c62:	jne    408c70 <Dust_cross_section+0xb0>
+  408c64:	xor    %edx,%edx
+  408c66:	xor    %eax,%eax
+  408c68:	jmp    408bef <Dust_cross_section+0x2f>
+  408c6a:	nopw   0x0(%rax,%rax,1)
+  408c70:	ucomisd 0x10c50(%rip),%xmm2        # 4198c8 <L+0x168>
+  408c78:	ja     408d08 <Dust_cross_section+0x148>
+  408c7e:	movapd %xmm2,%xmm0
+  408c82:	mov    $0x202,%edx
+  408c87:	mov    $0x61f7c0,%esi
+  408c8c:	mov    $0x621800,%edi
+  408c91:	movsd  %xmm2,0x8(%rsp)
+  408c97:	call   417eb0 <binary_search>
+  408c9c:	mulsd  0x10c3c(%rip),%xmm0        # 4198e0 <L+0x180>
+  408ca4:	mov    $0x202,%edx
+  408ca9:	mov    $0x6207e0,%esi
+  408cae:	movsd  0x8(%rsp),%xmm2
+  408cb4:	mov    $0x621800,%edi
+  408cb9:	movsd  %xmm0,0x0(%rbp)
+  408cbe:	movapd %xmm2,%xmm0
+  408cc2:	call   417eb0 <binary_search>
+  408cc7:	movsd  0x8(%rsp),%xmm2
+  408ccd:	movsd  %xmm0,(%rbx)
+  408cd1:	ucomisd 0x10c27(%rip),%xmm2        # 419900 <L+0x1a0>
+  408cd9:	jbe    408d98 <Dust_cross_section+0x1d8>
+  408cdf:	movsd  0x10c11(%rip),%xmm0        # 4198f8 <L+0x198>
+  408ce7:	mov    0x242c03(%rip),%edx        # 64b8f0 <PHYS_Dust_Scat>
+  408ced:	mov    0x242c01(%rip),%eax        # 64b8f4 <PHYS_Dust_Phot>
+  408cf3:	divsd  %xmm2,%xmm0
+  408cf7:	movsd  %xmm0,(%r12)
+  408cfd:	jmp    408c06 <Dust_cross_section+0x46>
+  408d02:	nopw   0x0(%rax,%rax,1)
+  408d08:	movsd  0x10bc0(%rip),%xmm1        # 4198d0 <L+0x170>
+  408d10:	movapd %xmm2,%xmm0
+  408d14:	movsd  %xmm2,0x8(%rsp)
+  408d1a:	call   401230 <pow@plt>
+  408d1f:	mulsd  0x10bb1(%rip),%xmm0        # 4198d8 <L+0x178>
+  408d27:	movsd  0x8(%rsp),%xmm2
+  408d2d:	mulsd  0x10bab(%rip),%xmm0        # 4198e0 <L+0x180>
+  408d35:	movsd  %xmm0,0x0(%rbp)
+  408d3a:	movsd  0x10ba6(%rip),%xmm0        # 4198e8 <L+0x188>
+  408d42:	mulsd  %xmm2,%xmm0
+  408d46:	call   401170 <exp@plt>
+  408d4b:	movsd  0x10a4d(%rip),%xmm3        # 4197a0 <L+0x40>
+  408d53:	movsd  0x10b95(%rip),%xmm1        # 4198f0 <L+0x190>
+  408d5b:	subsd  %xmm0,%xmm3
+  408d5f:	movapd %xmm3,%xmm0
+  408d63:	call   401230 <pow@plt>
+  408d68:	movsd  0x8(%rsp),%xmm2
+  408d6e:	mov    0x242b7c(%rip),%edx        # 64b8f0 <PHYS_Dust_Scat>
+  408d74:	movsd  %xmm0,(%rbx)
+  408d78:	mov    0x242b76(%rip),%eax        # 64b8f4 <PHYS_Dust_Phot>
+  408d7e:	movsd  0x10b72(%rip),%xmm0        # 4198f8 <L+0x198>
+  408d86:	divsd  %xmm2,%xmm0
+  408d8a:	movsd  %xmm0,(%r12)
+  408d90:	jmp    408c06 <Dust_cross_section+0x46>
+  408d95:	nopl   (%rax)
+  408d98:	movapd %xmm2,%xmm0
+  408d9c:	mov    $0x5b,%edx
+  408da1:	mov    $0x61f200,%esi
+  408da6:	mov    $0x61f4e0,%edi
+  408dab:	call   417eb0 <binary_search>
+  408db0:	mulsd  0x10b50(%rip),%xmm0        # 419908 <L+0x1a8>
+  408db8:	mov    0x242b32(%rip),%edx        # 64b8f0 <PHYS_Dust_Scat>
+  408dbe:	mov    0x242b30(%rip),%eax        # 64b8f4 <PHYS_Dust_Phot>
+  408dc4:	movsd  %xmm0,(%r12)
+  408dca:	jmp    408c06 <Dust_cross_section+0x46>
+
+Disassembly of section .fini:

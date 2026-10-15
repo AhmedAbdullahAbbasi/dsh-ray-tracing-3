@@ -1,0 +1,56 @@
+
+reflex_probe/reflex:     file format elf64-x86-64
+
+
+Disassembly of section .init:
+
+Disassembly of section .plt:
+
+Disassembly of section .text:
+
+00000000004130e0 <get_index>:
+  4130e0:	test   %rdi,%rdi
+  4130e3:	je     413180 <get_index+0xa0>
+  4130e9:	mov    0x1e8(%rdi),%rax
+  4130f0:	mov    (%rax),%edi
+  4130f2:	movsd  0x8(%rax),%xmm3
+  4130f7:	movsd  0x10(%rax),%xmm2
+  4130fc:	movsd  0x6824(%rip),%xmm1        # 419928 <L+0x1c8>
+  413104:	ucomisd %xmm0,%xmm1
+  413108:	ja     413158 <get_index+0x78>
+  41310a:	subsd  %xmm1,%xmm0
+  41310e:	movsd  0x95c2(%rip),%xmm4        # 41c6d8 <L+0x2f78>
+  413116:	movapd %xmm0,%xmm1
+  41311a:	mulsd  %xmm2,%xmm1
+  41311e:	mulsd  %xmm4,%xmm1
+  413122:	cvttsd2si %xmm1,%eax
+  413126:	cvtsi2sd %eax,%xmm1
+  41312a:	lea    -0x1(%rdi,%rax,1),%eax
+  41312e:	mulsd  %xmm3,%xmm1
+  413132:	mulsd  0x6786(%rip),%xmm1        # 4198c0 <L+0x160>
+  41313a:	subsd  %xmm1,%xmm0
+  41313e:	mulsd  %xmm0,%xmm2
+  413142:	movsd  %xmm0,(%rcx)
+  413146:	mulsd  %xmm4,%xmm2
+  41314a:	movsd  %xmm2,(%rdx)
+  41314e:	mov    %eax,(%rsi)
+  413150:	ret
+  413151:	nopl   0x0(%rax)
+  413158:	movapd %xmm0,%xmm1
+  41315c:	mulsd  %xmm2,%xmm1
+  413160:	cvttsd2si %xmm1,%eax
+  413164:	cvtsi2sd %eax,%xmm1
+  413168:	mov    %eax,(%rsi)
+  41316a:	mulsd  %xmm3,%xmm1
+  41316e:	subsd  %xmm1,%xmm0
+  413172:	movsd  %xmm0,(%rcx)
+  413176:	mulsd  %xmm2,%xmm0
+  41317a:	movsd  %xmm0,(%rdx)
+  41317e:	ret
+  41317f:	nop
+  413180:	mov    $0x186a0,%edi
+  413185:	movsd  0x9543(%rip),%xmm2        # 41c6d0 <L+0x2f70>
+  41318d:	movsd  0x936b(%rip),%xmm3        # 41c500 <L+0x2da0>
+  413195:	jmp    4130fc <get_index+0x1c>
+
+Disassembly of section .fini:

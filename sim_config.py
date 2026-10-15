@@ -78,3 +78,10 @@ IMAGE_ENERGY_KEV = 4.9  # nearest energy band is plotted; None sums all bands
 IMAGE_FOV_ARCSEC = None  # e.g. 300.0 crops to a centered field of view; None keeps all
 IMAGE_SCALES = ("log", "linear")  # one set of images is saved per colour scale
 IMAGE_DPI = 200
+
+# --- optional matched RefleX material comparison ---
+# "default" preserves the existing MRN/TBabs behavior. "reflex" requires
+# ENERGY_EDGES_KEV = None and the optional reflex_adapter/ package.
+MATERIAL_MODEL = "default"
+REFLEX_MATERIAL_DIRECTORY = "reflex_adapter/materials"
+REFLEX_ABSORPTION_ENABLED = True

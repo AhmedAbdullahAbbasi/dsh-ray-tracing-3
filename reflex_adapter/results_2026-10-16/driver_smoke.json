@@ -1,0 +1,21 @@
+{
+  "material_model": "reflex",
+  "sigma_sca_4p9": 1.9772031422134333e-24,
+  "statuses": [
+    0,
+    7734,
+    288,
+    170,
+    0,
+    0,
+    0
+  ],
+  "packets": 8192,
+  "scored_fluence": 0.019899543491192162,
+  "passed": true,
+  "image_shape": [
+    60,
+    60
+  ],
+  "binned_scoring_events": 149
+}

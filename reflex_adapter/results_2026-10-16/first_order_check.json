@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "dsh_first_order_fluence": 0.01809408745126954,
+  "reference_first_order_fluence": 0.01799593725348301,
+  "dsh_mc_se": 5.522802262589888e-05,
+  "dsh_over_reference": 1.005454019782578,
+  "z": 1.7771810961145096,
+  "numerical_l1_error": 1.0757494094853714e-08,
+  "numerical_relative_l1_error": 5.977734831661332e-07,
+  "fixed_relative_regression_allowance": 0.001,
+  "shared_material_coefficients": true,
+  "scope": "first-order, absorbed, finite-volume, aperture-integrated; not individual higher-order validation"
+}

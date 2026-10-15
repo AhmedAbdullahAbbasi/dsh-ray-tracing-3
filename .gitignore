@@ -19,6 +19,11 @@ dist/
 # Large input data not tracked in git -- see README for how to get it
 *.fits
 
+# Small RefleX benchmark fixtures required to reproduce the comparison
+!reflex_adapter/evidence/cross_sections.fits
+!reflex_adapter/evidence/reference_dust_e4p9.fits
+!reflex_adapter/evidence/reference_allphotons_e4p9.fits
+
 # Local Monte Carlo products
 outputs/
 validation_outputs/

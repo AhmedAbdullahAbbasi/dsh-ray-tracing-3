@@ -412,10 +412,28 @@ def report_device():
 def main():
     run_start = time.time()
     report_device()
+    material_model = getattr(cfg, "MATERIAL_MODEL", "default")
+    if material_model not in ("default", "reflex"):
+        raise ValueError("MATERIAL_MODEL must be 'default' or 'reflex'")
+    if material_model == "reflex" and cfg.ENERGY_EDGES_KEV is not None:
+        raise ValueError("The initial RefleX material package supports monochromatic runs only")
     if cfg.ENERGY_EDGES_KEV is None:
-        scattering = load_newdust_scattering_table()
-        absorption = load_photoelectric_absorption_table()
-        physics = build_dust_physics_from_tables(scattering, absorption)
+        if material_model == "reflex":
+            from reflex_adapter.reflex_materials import load_reflex_materials
+
+            scattering, absorption, physics = load_reflex_materials(
+                getattr(cfg, "REFLEX_MATERIAL_DIRECTORY", "reflex_adapter/materials"),
+                absorption_enabled=getattr(cfg, "REFLEX_ABSORPTION_ENABLED", True),
+            )
+            if not np.array_equal(scattering.energy_kev, np.array([3.3, 4.9, 6.9])):
+                raise ValueError("This driver hook requires the standard three representative energies")
+            print("Material model: RefleX-derived three-energy tables")
+            print(f"RefleX DUMP SHA256: {scattering.metadata['source_dump_sha256']}")
+            print(f"Absorption enabled: {getattr(cfg, 'REFLEX_ABSORPTION_ENABLED', True)}")
+        else:
+            scattering = load_newdust_scattering_table()
+            absorption = load_photoelectric_absorption_table()
+            physics = build_dust_physics_from_tables(scattering, absorption)
         source = build_source(scattering.energy_kev)
         energy_edges_kev = centers_to_edges(scattering.energy_kev)
         centers_kev = np.asarray(scattering.energy_kev)

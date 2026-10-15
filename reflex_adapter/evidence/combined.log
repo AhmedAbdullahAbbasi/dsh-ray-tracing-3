@@ -1,0 +1,42 @@
++------------------------------------------------------------------------------+
+
+RefleX 3.0
+
+Reference: S. Paltani & C. Ricci, 2017, A&A 607, A31
+Please cite this paper if you use RefleX in a publication
+https://www.astro.unige.ch/reflex/
+
++------------------------------------------------------------------------------+
+--> VERBOSE: set to: 0
+--> NPHOTS: Number of photons set to: 200000
+--> THREAD: Number of threads set to: 1
+--> RANDOM: Seed set to: 2026
+--> PHYSICS: Compton scattering turned OFF
+--> PHYSICS: Rayleigh scattering turned OFF
+--> PHYSICS: Fluorescence turned OFF
+--> PHYSICS: Photoelectric absorption turned ON
+--> PHYSICS: Dust photo-electric absorption turned ON
+--> PHYSICS: Dust scattering turned ON
+--> TEMPERATURE: Medium set to COLD
+--> EMSPEC: Monoenergetic at energy 4.900000e+03 eV
+--> EGEN : Create photon between 4.800000e+03 and 5.000000e+03 eV
+--> ECUT : Minimum propagation energy set to 1.000000e+02 eV
+--> LENGTH: Using Parsec
+--> EMGEOM: Point source at (0.000000e+00,0.000000e+00,0.000000e+00) around (0.00,0.00)deg with 0.00deg opening
+--> MATTER: composition set to wilm
+--> METALLICITY: set to 1.000000
+--> H2FRACTION: set to: 0.200000
+--> OBJECT: World with radius 1.235126e+12
+--> LENGTH: Using Centimeter
+--> DENSITY: 2.910652e+33 atoms per light-second^3
+--> LENGTH: Using Parsec
+--> OBJECT: Computing new cross-sections
+--> done
+--> OBJECT: Disc DUST_CLOUD at (0.000000e+00,0.000000e+00,5.146356e+11), radius 3.087814e+09 and size 3.087814e+09
+--> IMAGE: Defining a new image: combined_all.fits
+--> IMAGE: Defining a new image: combined_dust.fits
+--> IMAGE: Adding image constraint: DUSTSCAT > 0
+--> Initializing atomic layers. done
+--> Starting simulation...
+==> 200000 photons have been computed
+--> Simulation finished.

@@ -1,0 +1,29 @@
+JAX device: cpu:0 (cpu)
+Material model: RefleX-derived three-energy tables
+RefleX DUMP SHA256: 1840bf5dc34aab160e348fb266a790829a8de78b474b9ec87889e3cbf9f01627
+Absorption enabled: True
+Energy bands: 3.3 keV, 4.9 keV, 6.9 keV
+Cloud: uniform-density disc cloud
+Cloud shape (z, y, x): (5, 60, 60)
+Simulated source fluence: 1 ph cm^-2
+Source launch sampler: radial
+Progress log: /workspace/scratch/ce63bade8aaf/reflex_driver_smoke/progress.log
+2026-10-15 14:42:10   62.50%  5,120 / 8,192 packets  elapsed 0:00:06  ETA 0:00:03
+2026-10-15 14:42:11  100.00%  8,192 / 8,192 packets  elapsed 0:00:06  ETA 0:00:00
+Simulation wall time: 6.2 s
+Transport terminal states:
+  active: 0
+  reached the observer plane: 7,734
+  escaped through the outer transport boundary: 288
+  absorbed: 170
+  reached the numerical interaction safety limit: 0
+  energy lies outside the dust table: 0
+  position or photon four-momentum is invalid: 0
+Analog interactions/scatterings: 319 / 149
+Scored/binned observer fluence [ph cm^-2]: 0.01989954 / 0.01989954
+Scored events valid/binned: 149 / 149
+Unbinned events outside sky/energy/arrival time: 0 / 0 / 0
+Saved /workspace/scratch/ce63bade8aaf/reflex_driver_smoke/dsh_image_linear.png and /workspace/scratch/ce63bade8aaf/reflex_driver_smoke/dsh_count_linear.png
+Saved /workspace/scratch/ce63bade8aaf/reflex_driver_smoke/counts.npy: shape (60, 60) (y, x)
+Image events: 149, max 3 per pixel, 3,474 of 3,600 pixels empty
+Total run time: 6.9 s

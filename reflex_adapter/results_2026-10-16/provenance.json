@@ -1,0 +1,23 @@
+{
+  "collection_fingerprint": "3910e0a2f3fda09a01b58c517d8045d3c963cca39fcc86769afd515a70b4267d",
+  "sha256": {
+    "dsh/geometry/rays.py": "ab73865214664fbdca598b906105a01f28822f7c1468888237f99e070b4c5ec3",
+    "dsh/geometry/clouds.py": "fb582dbfc7a7f7d33ce97e883312aff3582f6b80808ecb5735d16a537754f22f",
+    "dsh/sources/launch.py": "860de38cd95daf90b79bae459314729460018757f8731f3c56f16bb5dae594eb",
+    "dsh/sources/radial_launch.py": "df75a83cf6f838c7d65749ab95e04f7dd6d3d9b701cc78c7b03222601164da4d",
+    "dsh/transport/kernel.py": "a7ac0a18cef6d5bf8927abbfb1aa092fda8523d3155ad1a03eea3e62cfc9a0b4",
+    "dsh/observer/scoring.py": "4abab7a8736c8888f5755a74f3d1d1cbb529cf582febeca8cc1b349e9398b6fc",
+    "dsh/physics/dust.py": "03b5624adea1e8aacb6f0f4d4d73557548a74c54f95c481e13a0e7ff2b151e83",
+    "reflex_adapter/reflex_materials.py": "55383b883f8a1a3aeb41c50a1f6d880f0503480a207d16887bf281afdb25b0ff",
+    "reflex_adapter/materials/reflex_scattering_v1.npz": "7d496f1e13ff37c048c31909fd1f11e8cc93a302259900a5929a2fc37463283d",
+    "reflex_adapter/materials/reflex_absorption_v1.npz": "112327596d2293783077b8fd715cf0ba6e106cce42d73625f4d8a263faacbd9d",
+    "reflex_adapter/evidence/reference_dust_e4p9.fits": "da7ac211e3780cab82d78eac55277e186027c3a37205456494579404922a2c16",
+    "reflex_adapter/evidence/reference_allphotons_e4p9.fits": "d91a13cea095ed2857b36a97a27213b14ea51703d7cbb94617620a572e5024ab"
+  },
+  "repository_commit": "7deb50ce432b8b68e87406fe1038b4e7ebc6ab77",
+  "jax": "0.11.2",
+  "numpy": "2.5.4",
+  "astropy": "8.0.1",
+  "scipy": "1.18.1",
+  "backend": "cpu"
+}

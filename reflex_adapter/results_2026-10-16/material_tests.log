@@ -1,0 +1,9 @@
+test_phase_evaluator_matches_analytic_solid_angle_density (reflex_adapter.test_reflex_materials.RefleXMaterialTests.test_phase_evaluator_matches_analytic_solid_angle_density) ... ok
+test_transmission_against_independent_reflex_pencil_runs (reflex_adapter.test_reflex_materials.RefleXMaterialTests.test_transmission_against_independent_reflex_pencil_runs) ... ok
+test_transport_inverse_cdf_matches_analytic_angle_probabilities (reflex_adapter.test_reflex_materials.RefleXMaterialTests.test_transport_inverse_cdf_matches_analytic_angle_probabilities) ... ok
+test_zero_absorption_control_preserves_scattering_law (reflex_adapter.test_reflex_materials.RefleXMaterialTests.test_zero_absorption_control_preserves_scattering_law) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 1.717s
+
+OK

@@ -1,0 +1,135 @@
+
+reflex_probe/reflex:     file format elf64-x86-64
+
+
+Disassembly of section .init:
+
+Disassembly of section .plt:
+
+Disassembly of section .text:
+
+0000000000413600 <get_all_sigma>:
+  413600:	push   %r14
+  413602:	mov    %rsi,%r14
+  413605:	push   %r13
+  413607:	mov    %rdx,%r13
+  41360a:	push   %r12
+  41360c:	push   %rbp
+  41360d:	mov    %rcx,%rbp
+  413610:	push   %rbx
+  413611:	mov    %rdi,%rbx
+  413614:	sub    $0x30,%rsp
+  413618:	mov    0x1e8(%rdi),%rax
+  41361f:	movq   $0x0,(%rsi)
+  413626:	mov    0x60(%rsp),%r12
+  41362b:	movq   $0x0,(%rdx)
+  413632:	movq   $0x0,(%rcx)
+  413639:	movq   $0x0,(%r8)
+  413640:	movq   $0x0,(%r9)
+  413647:	movq   $0x0,(%r12)
+  41364f:	movsd  0x8(%rax),%xmm1
+  413654:	ucomisd %xmm0,%xmm1
+  413658:	movsd  0x62f8(%rip),%xmm1        # 419958 <L+0x1f8>
+  413660:	ja     4136c0 <get_all_sigma+0xc0>
+  413662:	ucomisd %xmm1,%xmm0
+  413666:	jb     4136d8 <get_all_sigma+0xd8>
+  413668:	movslq 0x4(%rax),%rdx
+  41366c:	mov    0x28(%rax),%rax
+  413670:	movsd  %xmm1,0x8(%rsp)
+  413676:	movsd  -0x8(%rax,%rdx,8),%xmm4
+  41367c:	movsd  %xmm4,(%rsp)
+  413681:	call   408050 <KleinNishina_total>
+  413686:	mulsd  (%rsp),%xmm0
+  41368b:	movsd  0x8(%rsp),%xmm1
+  413691:	movsd  %xmm0,(%rsp)
+  413696:	movapd %xmm1,%xmm0
+  41369a:	call   408050 <KleinNishina_total>
+  41369f:	movsd  (%rsp),%xmm3
+  4136a4:	divsd  %xmm0,%xmm3
+  4136a8:	movsd  %xmm3,0x0(%rbp)
+  4136ad:	add    $0x30,%rsp
+  4136b1:	pop    %rbx
+  4136b2:	pop    %rbp
+  4136b3:	pop    %r12
+  4136b5:	pop    %r13
+  4136b7:	pop    %r14
+  4136b9:	ret
+  4136ba:	nopw   0x0(%rax,%rax,1)
+  4136c0:	ucomisd %xmm1,%xmm0
+  4136c4:	jae    413668 <get_all_sigma+0x68>
+  4136c6:	add    $0x30,%rsp
+  4136ca:	pop    %rbx
+  4136cb:	pop    %rbp
+  4136cc:	pop    %r12
+  4136ce:	pop    %r13
+  4136d0:	pop    %r14
+  4136d2:	ret
+  4136d3:	nopl   0x0(%rax,%rax,1)
+  4136d8:	lea    0x28(%rsp),%rcx
+  4136dd:	lea    0x20(%rsp),%rdx
+  4136e2:	lea    0x1c(%rsp),%rsi
+  4136e7:	mov    %r9,0x8(%rsp)
+  4136ec:	mov    %r8,(%rsp)
+  4136f0:	call   4130e0 <get_index>
+  4136f5:	movslq 0x1c(%rsp),%rax
+  4136fa:	mov    0x1e8(%rbx),%rcx
+  413701:	movsd  0x20(%rsp),%xmm1
+  413707:	mov    (%rsp),%r8
+  41370b:	mov    0x8(%rsp),%r9
+  413710:	mov    0x18(%rcx),%rsi
+  413714:	add    $0x1,%rax
+  413718:	lea    0x0(,%rax,8),%rdx
+  413720:	movsd  (%rsi,%rax,8),%xmm0
+  413725:	movsd  -0x8(%rsi,%rdx,1),%xmm2
+  41372b:	mov    0x20(%rcx),%rsi
+  41372f:	subsd  %xmm2,%xmm0
+  413733:	mulsd  %xmm1,%xmm0
+  413737:	addsd  %xmm2,%xmm0
+  41373b:	mulsd  0x1d8(%rbx),%xmm0
+  413743:	movsd  %xmm0,(%r14)
+  413748:	movsd  -0x8(%rsi,%rdx,1),%xmm2
+  41374e:	movsd  (%rsi,%rax,8),%xmm0
+  413753:	mov    0x28(%rcx),%rsi
+  413757:	subsd  %xmm2,%xmm0
+  41375b:	mulsd  %xmm1,%xmm0
+  41375f:	addsd  %xmm2,%xmm0
+  413763:	mulsd  0x1d8(%rbx),%xmm0
+  41376b:	movsd  %xmm0,0x0(%r13)
+  413771:	movsd  -0x8(%rsi,%rdx,1),%xmm2
+  413777:	movsd  (%rsi,%rax,8),%xmm0
+  41377c:	mov    0x40(%rcx),%rsi
+  413780:	subsd  %xmm2,%xmm0
+  413784:	mulsd  %xmm1,%xmm0
+  413788:	addsd  %xmm2,%xmm0
+  41378c:	mulsd  0x1d8(%rbx),%xmm0
+  413794:	movsd  %xmm0,0x0(%rbp)
+  413799:	movsd  -0x8(%rsi,%rdx,1),%xmm2
+  41379f:	movsd  (%rsi,%rax,8),%xmm0
+  4137a4:	mov    0x48(%rcx),%rsi
+  4137a8:	mov    0x50(%rcx),%rcx
+  4137ac:	subsd  %xmm2,%xmm0
+  4137b0:	mulsd  %xmm1,%xmm0
+  4137b4:	addsd  %xmm2,%xmm0
+  4137b8:	mulsd  0x1e0(%rbx),%xmm0
+  4137c0:	movsd  %xmm0,(%r8)
+  4137c5:	movsd  -0x8(%rsi,%rdx,1),%xmm2
+  4137cb:	movsd  (%rsi,%rax,8),%xmm0
+  4137d0:	subsd  %xmm2,%xmm0
+  4137d4:	mulsd  %xmm1,%xmm0
+  4137d8:	addsd  %xmm2,%xmm0
+  4137dc:	movsd  %xmm0,(%r9)
+  4137e1:	movsd  -0x8(%rcx,%rdx,1),%xmm2
+  4137e7:	movsd  (%rcx,%rax,8),%xmm0
+  4137ec:	subsd  %xmm2,%xmm0
+  4137f0:	mulsd  %xmm1,%xmm0
+  4137f4:	addsd  %xmm2,%xmm0
+  4137f8:	movsd  %xmm0,(%r12)
+  4137fe:	add    $0x30,%rsp
+  413802:	pop    %rbx
+  413803:	pop    %rbp
+  413804:	pop    %r12
+  413806:	pop    %r13
+  413808:	pop    %r14
+  41380a:	ret
+
+Disassembly of section .fini:

@@ -1,0 +1,82 @@
+
+reflex_probe/reflex:     file format elf64-x86-64
+
+
+Disassembly of section .init:
+
+Disassembly of section .plt:
+
+Disassembly of section .text:
+
+0000000000408750 <Dust_angular>:
+  408750:	push   %rbp
+  408751:	mov    %esi,%ebp
+  408753:	push   %rbx
+  408754:	mov    %rdi,%rbx
+  408757:	mov    %esi,%edi
+  408759:	sub    $0x98,%rsp
+  408760:	movsd  %xmm0,0x38(%rsp)
+  408766:	call   415c60 <random_uniform>
+  40876b:	mov    %ebp,%edi
+  40876d:	movsd  %xmm0,0x48(%rsp)
+  408773:	call   415c60 <random_uniform>
+  408778:	movsd  0x48(%rsp),%xmm2
+  40877e:	movsd  0x1101a(%rip),%xmm1        # 4197a0 <L+0x40>
+  408786:	movsd  %xmm0,0x40(%rsp)
+  40878c:	subsd  %xmm2,%xmm1
+  408790:	divsd  %xmm1,%xmm2
+  408794:	sqrtsd %xmm2,%xmm0
+  408798:	ucomisd %xmm0,%xmm0
+  40879c:	jp     408880 <Dust_angular+0x130>
+  4087a2:	mov    0x30(%rbx),%rax
+  4087a6:	mulsd  0x38(%rsp),%xmm0
+  4087ac:	lea    0x50(%rsp),%rdi
+  4087b1:	mov    %rax,(%rsp)
+  4087b5:	mov    0x38(%rbx),%rax
+  4087b9:	mov    %rax,0x8(%rsp)
+  4087be:	mov    0x40(%rbx),%rax
+  4087c2:	movsd  %xmm0,0x38(%rsp)
+  4087c8:	mov    %rax,0x10(%rsp)
+  4087cd:	call   418810 <vector_orthogonal>
+  4087d2:	mov    0x50(%rsp),%rax
+  4087d7:	lea    0x70(%rsp),%rdi
+  4087dc:	movsd  0x38(%rsp),%xmm0
+  4087e2:	mov    %rax,0x18(%rsp)
+  4087e7:	mov    0x58(%rsp),%rax
+  4087ec:	mov    %rax,0x20(%rsp)
+  4087f1:	mov    0x60(%rsp),%rax
+  4087f6:	mov    %rax,0x28(%rsp)
+  4087fb:	mov    0x30(%rbx),%rax
+  4087ff:	mov    %rax,(%rsp)
+  408803:	mov    0x38(%rbx),%rax
+  408807:	mov    %rax,0x8(%rsp)
+  40880c:	mov    0x40(%rbx),%rax
+  408810:	mov    %rax,0x10(%rsp)
+  408815:	call   418a20 <vector_rotate_vector>
+  40881a:	mov    0x30(%rbx),%rax
+  40881e:	movsd  0x40(%rsp),%xmm3
+  408824:	lea    0x30(%rbx),%rdi
+  408828:	mulsd  0x10ff0(%rip),%xmm3        # 419820 <L+0xc0>
+  408830:	mov    %rax,0x18(%rsp)
+  408835:	mov    0x38(%rbx),%rax
+  408839:	mov    %rax,0x20(%rsp)
+  40883e:	mov    0x40(%rbx),%rax
+  408842:	movapd %xmm3,%xmm0
+  408846:	mov    %rax,0x28(%rsp)
+  40884b:	mov    0x70(%rsp),%rax
+  408850:	mov    %rax,(%rsp)
+  408854:	mov    0x78(%rsp),%rax
+  408859:	mov    %rax,0x8(%rsp)
+  40885e:	mov    0x80(%rsp),%rax
+  408866:	mov    %rax,0x10(%rsp)
+  40886b:	call   418a20 <vector_rotate_vector>
+  408870:	movsd  0x38(%rsp),%xmm0
+  408876:	add    $0x98,%rsp
+  40887d:	pop    %rbx
+  40887e:	pop    %rbp
+  40887f:	ret
+  408880:	movapd %xmm2,%xmm0
+  408884:	call   401400 <sqrt@plt>
+  408889:	jmp    4087a2 <Dust_angular+0x52>
+
+Disassembly of section .fini:

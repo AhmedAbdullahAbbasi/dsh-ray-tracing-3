@@ -1,0 +1,14 @@
+[
+  {
+    "crlf": false,
+    "passed": true,
+    "repeated_install_idempotent": true,
+    "science_settings_preserved": true
+  },
+  {
+    "crlf": true,
+    "passed": true,
+    "repeated_install_idempotent": true,
+    "science_settings_preserved": true
+  }
+]

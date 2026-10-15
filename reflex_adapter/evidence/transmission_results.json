@@ -1,0 +1,46 @@
+[
+  {
+    "case": "combined",
+    "packets": 200000,
+    "nh_cm2": 1e+22,
+    "unscattered_counts": 191339,
+    "measured_transmission": 0.956695,
+    "predicted_transmission": 0.9563755406707551,
+    "binomial_se": 0.0004567349662412323,
+    "z": 0.6994413672197196,
+    "passed": true
+  },
+  {
+    "case": "half_column",
+    "packets": 200000,
+    "nh_cm2": 5e+21,
+    "unscattered_counts": 195587,
+    "measured_transmission": 0.977935,
+    "predicted_transmission": 0.9779445488731736,
+    "binomial_se": 0.0003283976872818881,
+    "z": -0.029077163279223557,
+    "passed": true
+  },
+  {
+    "case": "absorption_only",
+    "packets": 200000,
+    "nh_cm2": 1e+22,
+    "unscattered_counts": 195092,
+    "measured_transmission": 0.97546,
+    "predicted_transmission": 0.9754732048029486,
+    "binomial_se": 0.0003458701455345146,
+    "z": -0.038178498835838924,
+    "passed": true
+  },
+  {
+    "case": "scattering_only",
+    "packets": 200000,
+    "nh_cm2": 1e+22,
+    "unscattered_counts": 196084,
+    "measured_transmission": 0.98042,
+    "predicted_transmission": 0.9804221540497862,
+    "binomial_se": 0.00030979472153478934,
+    "z": -0.0069531519954101305,
+    "passed": true
+  }
+]
