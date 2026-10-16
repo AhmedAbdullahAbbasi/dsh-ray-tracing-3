@@ -101,10 +101,15 @@ def _interpolate_nonnegative_pair(low, high, fraction):
     return jnp.where((low > 0.0) & (high > 0.0), logarithmic, linear)
 
 
-def _energy_fraction(energy_grid, energy):
+def _energy_fraction(energy_grid, energy, energy_edge_kev=None):
     lower, upper = _interpolation_bracket(energy_grid, energy)
     log_grid = jnp.log(energy_grid)
     fraction = (jnp.log(energy) - log_grid[lower]) / (log_grid[upper] - log_grid[lower])
+    if energy_edge_kev is not None:
+        edge = energy_edge_kev[lower]
+        fraction = jnp.where(
+            edge > 0, (energy >= edge).astype(fraction.dtype), fraction
+        )
     return lower, upper, jnp.clip(fraction, 0.0, 1.0)
 
 
@@ -155,7 +160,7 @@ def scattering_phase_pdf_per_sr(
         physics.scattering_angle_rad[-1],
     )
     energy_lower, energy_upper, energy_fraction = _energy_fraction(
-        physics.energy_kev, safe_energy
+        physics.energy_kev, safe_energy, physics.energy_edge_kev
     )
     angle_lower, angle_upper, angle_fraction = _angle_fraction(
         physics.scattering_angle_rad, safe_angle
@@ -192,7 +197,9 @@ def _cross_sections_at_energy(physics: DustPhysicsTable, energy_kev):
         & (energy <= physics.energy_kev[-1])
     )
     safe_energy = jnp.clip(energy, physics.energy_kev[0], physics.energy_kev[-1])
-    lower, upper, fraction = _energy_fraction(physics.energy_kev, safe_energy)
+    lower, upper, fraction = _energy_fraction(
+        physics.energy_kev, safe_energy, physics.energy_edge_kev
+    )
     sigma_scattering = _interpolate_nonnegative_pair(
         physics.scattering_cross_section_cm2_per_h[lower],
         physics.scattering_cross_section_cm2_per_h[upper],

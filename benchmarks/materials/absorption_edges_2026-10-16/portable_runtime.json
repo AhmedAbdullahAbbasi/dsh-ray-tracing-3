@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "miepython_installed": false,
+  "native_backend_loading_blocked": true,
+  "energy_nodes": 184,
+  "declared_edges": 16,
+  "material_definition_sha256": "ae70e088497ae23d534b8fb1815eb1b157013e0e57dba2f8457d90dd91e61400"
+}

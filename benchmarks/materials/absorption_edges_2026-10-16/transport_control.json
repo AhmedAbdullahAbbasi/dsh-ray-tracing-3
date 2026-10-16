@@ -1,0 +1,98 @@
+{
+  "all_passed": true,
+  "nh_cm2": 3e+23,
+  "maximum_first_event_absolute_z": 5,
+  "scope": "Exact central first-flight survival/competing risks; later multiple scatterings present, with termination checked but no independent new-model multiple-order halo prediction",
+  "rows": [
+    {
+      "energy_kev": 6.9,
+      "histories": 32768,
+      "first_interaction_counts_none_scatter_absorb": [
+        18543,
+        7242,
+        6983
+      ],
+      "analytic_first_probabilities": [
+        0.5626682020413734,
+        0.2209216788250888,
+        0.2164101191335379
+      ],
+      "first_probability_z": [
+        1.1747564560085653,
+        0.03779577258964705,
+        -1.4532076990607525
+      ],
+      "multiple_scattering_histories": 997,
+      "terminal_status_counts": [
+        0,
+        24708,
+        0,
+        8060,
+        0,
+        0,
+        0
+      ],
+      "passed": true
+    },
+    {
+      "energy_kev": 7.1239,
+      "histories": 32768,
+      "first_interaction_counts_none_scatter_absorb": [
+        14912,
+        5828,
+        12028
+      ],
+      "analytic_first_probabilities": [
+        0.45831722121998,
+        0.17713931583675724,
+        0.3645434629432628
+      ],
+      "first_probability_z": [
+        -1.1767744063290595,
+        0.3400179958347383,
+        0.948520539606234
+      ],
+      "multiple_scattering_histories": 634,
+      "terminal_status_counts": [
+        0,
+        19240,
+        0,
+        13528,
+        0,
+        0,
+        0
+      ],
+      "passed": true
+    },
+    {
+      "energy_kev": 7.1241,
+      "histories": 32768,
+      "first_interaction_counts_none_scatter_absorb": [
+        13586,
+        5587,
+        13595
+      ],
+      "analytic_first_probabilities": [
+        0.4142164352613767,
+        0.16975990902971286,
+        0.41602365570891037
+      ],
+      "first_probability_z": [
+        0.14529767583041606,
+        0.3576781021980787,
+        -0.4176360310801933
+      ],
+      "multiple_scattering_histories": 612,
+      "terminal_status_counts": [
+        0,
+        17521,
+        0,
+        15247,
+        0,
+        0,
+        0
+      ],
+      "passed": true
+    }
+  ]
+}

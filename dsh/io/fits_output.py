@@ -159,7 +159,7 @@ def _source_table_hdu(fits, source: TabulatedBandSource):
 
 
 def _physics_table_hdu(fits, physics: DustPhysicsTable):
-    return fits.BinTableHDU.from_columns(
+    hdu = fits.BinTableHDU.from_columns(
         [
             fits.Column(
                 name="ENERGY",
@@ -188,6 +188,28 @@ def _physics_table_hdu(fits, physics: DustPhysicsTable):
         ],
         name="PHYSICS",
     )
+    if physics.energy_edge_kev is not None:
+        hdu = fits.BinTableHDU.from_columns(
+            hdu.columns
+            + fits.ColDefs(
+                [
+                    fits.Column(
+                        name="EDGE_KEV",
+                        format="D",
+                        unit="keV",
+                        array=np.r_[
+                            np.asarray(physics.energy_edge_kev, dtype=float), 0.0
+                        ],
+                    )
+                ]
+            ),
+            name="PHYSICS",
+        )
+        hdu.header["EDGEINT"] = (
+            "ONESIDED",
+            "EDGE_KEV marks interval after row; zero=smooth",
+        )
+    return hdu
 
 
 def _diagnostics_table_hdu(fits, result: IdealObserverSimulationResult):
@@ -314,6 +336,7 @@ def write_ideal_observer_fits(
         "material_tables": "MATMODEL",
         "scattering_table_sha256": "SCATSHA",
         "absorption_table_sha256": "ABSSHA",
+        "material_definition_sha256": "MDEFSHA",
     }
     for field, keyword in material_headers.items():
         if field in metadata:

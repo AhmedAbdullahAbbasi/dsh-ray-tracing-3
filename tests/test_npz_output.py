@@ -161,6 +161,36 @@ class TestIdealObserverNpz(unittest.TestCase):
                 self.assertEqual(str(archive["source_spectrum"]), "hard-state-powerlaw")
                 self.assertAlmostEqual(float(archive["source_total_fluence"]), 3.8)
 
+            from dsh.physics.wd01_ism import load_wd01_ism
+
+            material_path = (
+                Path(__file__).resolve().parent.parent
+                / "dsh/data/materials/wd01_wilm_c50_si90_v1"
+            )
+            definition, _, _, _, edged_physics = load_wd01_ism(material_path)
+            edged_path = Path(directory) / "edged.npz"
+            write_ideal_observer_npz(
+                edged_path,
+                result,
+                bin_geometry,
+                powerlaw,
+                cloud,
+                edged_physics,
+                launch_geometry,
+                run_metadata={
+                    **metadata,
+                    "material_definition_sha256": definition.sha256,
+                },
+            )
+            with np.load(edged_path, allow_pickle=False) as archive:
+                self.assertEqual(int(archive["output_schema_version"]), 7)
+                self.assertEqual(
+                    str(archive["material_definition_sha256"]), definition.sha256
+                )
+                np.testing.assert_array_equal(
+                    archive["physics_energy_edge_kev"], edged_physics.energy_edge_kev
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

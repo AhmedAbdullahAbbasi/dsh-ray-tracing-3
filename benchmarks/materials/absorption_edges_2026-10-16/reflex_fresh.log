@@ -1,0 +1,112 @@
+seed=8261: 8,192/2,000,000, 5.2s, halo=7.736879e-05
+seed=8261: 212,992/2,000,000, 26.2s, halo=0.001989008
+seed=8261: 417,792/2,000,000, 38.6s, halo=0.003846809
+seed=8261: 622,592/2,000,000, 50.6s, halo=0.005664887
+seed=8261: 827,392/2,000,000, 62.4s, halo=0.007558615
+seed=8261: 1,032,192/2,000,000, 77.8s, halo=0.009375193
+seed=8261: 1,236,992/2,000,000, 89.5s, halo=0.01121507
+seed=8261: 1,441,792/2,000,000, 101.1s, halo=0.01308806
+seed=8261: 1,646,592/2,000,000, 112.8s, halo=0.01498034
+seed=8261: 1,851,392/2,000,000, 124.5s, halo=0.01679067
+seed=8261: 2,000,000/2,000,000, 133.4s, halo=0.01814552
+seed=8262: 8,192/2,000,000, 3.2s, halo=7.007089e-05
+seed=8262: 212,992/2,000,000, 15.1s, halo=0.001955297
+seed=8262: 417,792/2,000,000, 26.9s, halo=0.003882876
+seed=8262: 622,592/2,000,000, 39.8s, halo=0.005832286
+seed=8262: 827,392/2,000,000, 51.4s, halo=0.007678201
+seed=8262: 1,032,192/2,000,000, 64.2s, halo=0.00950791
+seed=8262: 1,236,992/2,000,000, 76.5s, halo=0.01134255
+seed=8262: 1,441,792/2,000,000, 89.1s, halo=0.0132238
+seed=8262: 1,646,592/2,000,000, 102.2s, halo=0.01512313
+seed=8262: 1,851,392/2,000,000, 117.0s, halo=0.01695345
+seed=8262: 2,000,000/2,000,000, 128.8s, halo=0.01835123
+seed=8263: 8,192/2,000,000, 3.8s, halo=7.564858e-05
+seed=8263: 212,992/2,000,000, 18.3s, halo=0.001926339
+seed=8263: 417,792/2,000,000, 31.0s, halo=0.003800126
+seed=8263: 622,592/2,000,000, 42.7s, halo=0.005667148
+seed=8263: 827,392/2,000,000, 56.6s, halo=0.007535148
+seed=8263: 1,032,192/2,000,000, 70.6s, halo=0.009387454
+seed=8263: 1,236,992/2,000,000, 86.0s, halo=0.01129484
+seed=8263: 1,441,792/2,000,000, 98.8s, halo=0.01317322
+seed=8263: 1,646,592/2,000,000, 111.5s, halo=0.01509
+seed=8263: 1,851,392/2,000,000, 123.5s, halo=0.01694419
+seed=8263: 2,000,000/2,000,000, 132.2s, halo=0.01830794
+WARNING: Unexpected extra padding at the end of the file.  This padding may not be preserved when saving changes. [astropy.io.fits.header]
+{
+  "all_passed": true,
+  "gates": {
+    "absolute_aperture": true,
+    "radial_annuli": true,
+    "global_radial_profile": true,
+    "direct_transmission": true,
+    "sampling_sufficient": true,
+    "seed_consistency": true,
+    "transport_complete": true,
+    "order_closure": true
+  },
+  "histories": 6000000,
+  "reference_halo_counts": 5976.0,
+  "predicted_halo_counts": 5997.255206701167,
+  "reference_direct_counts": 313691.0,
+  "predicted_direct_counts": 313967.3306182544,
+  "absolute_aperture_z": -0.2667266954576792,
+  "direct_z": -0.4939347966084332,
+  "global_radial_chi2": 4.043838868040068,
+  "radial_degrees_of_freedom": 9,
+  "global_radial_pvalue": 0.9085035154822461,
+  "maximum_annulus_absolute_z": 1.0268118021539479,
+  "aperture_relative_mc_se": 0.0031348337595031948,
+  "seed_consistency_pvalue": 0.30205744644177596,
+  "source_camera_normalization": 328288.7495996549,
+  "order_fluences": [
+    0.01809408745126954,
+    0.00017370426182125205,
+    4.40792637057541e-07
+  ],
+  "multiple_to_first_ratio": 0.009624417640696823,
+  "transport_status_counts": [
+    0,
+    5648137,
+    212463,
+    139400,
+    0,
+    0,
+    0
+  ],
+  "annulus_observed_counts": [
+    933.0,
+    1460.0,
+    1299.0,
+    784.0,
+    693.0,
+    360.0,
+    244.0,
+    140.0,
+    63.0
+  ],
+  "annulus_predicted_counts": [
+    962.0692407325873,
+    1466.2949257322118,
+    1279.801059105408,
+    791.0951154370961,
+    667.3047517816806,
+    353.9674909673726,
+    261.08824968898716,
+    150.81783561930317,
+    64.81653763652
+  ],
+  "annulus_z": [
+    -0.9118218164473754,
+    -0.15992725932701657,
+    0.5219803762831211,
+    -0.24511353591787896,
+    0.9642300450601973,
+    0.3098269152156443,
+    -1.0268118021539479,
+    -0.8535826631823283,
+    -0.21526416042817684
+  ],
+  "geometry_response_fraction_allowance": 0.003,
+  "fitted_parameters": 0,
+  "passes_without_geometry_response_allowance": true
+}

@@ -28,6 +28,8 @@ PC_LIGHT_S = 3.0856775814913673e18 / 299_792_45800.0
 def host_material(physics, energy):
     grid = np.asarray(physics.energy_kev, dtype=np.float64)
     e = float(energy)
+    if physics.energy_edge_kev is not None:
+        e = float(np.asarray(energy, dtype=np.asarray(physics.energy_kev).dtype))
     if e < grid[0] or e > grid[-1]:
         raise ValueError("energy outside the material table")
     frac_index = int(np.clip(np.searchsorted(grid, e, side="right"), 1, len(grid) - 1))
@@ -35,6 +37,10 @@ def host_material(physics, energy):
     fraction = (math.log(e) - math.log(grid[low])) / (
         math.log(grid[high]) - math.log(grid[low])
     )
+    if physics.energy_edge_kev is not None:
+        edge = float(np.asarray(physics.energy_edge_kev)[low])
+        if edge > 0:
+            fraction = float(e >= edge)
     sca = np.asarray(physics.scattering_cross_section_cm2_per_h, dtype=np.float64)
     absorption = np.asarray(
         physics.absorption_cross_section_cm2_per_h, dtype=np.float64
@@ -251,7 +257,8 @@ def first_order_radial_quadrature(
                     high = middle
             radial_breaks.append((low + high) * 0.5)
         if annulus_arcsec is not None:
-            def sky_angle(slope):
+
+            def sky_angle(slope, shell_radius=shell_radius):
                 vector = direction(slope)
                 path = _entry_distance(vector, shell_radius)
                 point = source + path[..., None] * vector
@@ -308,6 +315,7 @@ def first_order_radial_quadrature(
 
     boundaries = [path_at_delay(t) for t in edges]
     if annulus_arcsec is not None:
+
         def path_at_angle(theta):
             tangent = math.tan(theta)
             if tangent == 0.0:

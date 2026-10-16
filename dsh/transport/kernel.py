@@ -131,6 +131,11 @@ def _physics_at_energy(physics: DustPhysicsTable, energy_kev):
     )
     safe_energy = jnp.clip(energy_kev, physics.energy_kev[0], physics.energy_kev[-1])
     lower, upper, fraction = _interpolation_bracket(physics.energy_kev, safe_energy)
+    if physics.energy_edge_kev is not None:
+        edge = physics.energy_edge_kev[lower]
+        fraction = jnp.where(
+            edge > 0, (safe_energy >= edge).astype(fraction.dtype), fraction
+        )
     sigma_sca = _interpolate_nonnegative(
         physics.scattering_cross_section_cm2_per_h,
         lower,

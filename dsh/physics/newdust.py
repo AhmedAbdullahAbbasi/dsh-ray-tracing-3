@@ -195,6 +195,7 @@ def build_dust_physics_from_newdust(
         differential_cross_section_cm2_per_sr_per_h=(
             scattering.differential_cross_section_cm2_per_sr_per_h
         ),
+        edge_energies_kev=scattering.metadata.get("edge_energies_kev"),
     )
 
 
@@ -213,6 +214,10 @@ def build_dust_physics_from_tables(
         raise ValueError(
             "scattering and absorption tables must have identical energy grids"
         )
+    if scattering.metadata.get("edge_energies_kev", []) != absorption.metadata.get(
+        "edge_energies_kev", []
+    ):
+        raise ValueError("scattering and absorption edge declarations differ")
     scattering_grid = scattering.metadata.get("shared_energy_grid_sha256")
     absorption_grid = absorption.metadata.get("shared_energy_grid_sha256")
     if (scattering_grid is None) != (absorption_grid is None) or (

@@ -1,0 +1,81 @@
+{
+  "material_definition_sha256": "ae70e088497ae23d534b8fb1815eb1b157013e0e57dba2f8457d90dd91e61400",
+  "model": "tbvarabs",
+  "tbabs_version": 2,
+  "scope": "Independent XSPEC-process comparison, 18 core atoms + H2 only; no grain absorption or extra PHFIT2 atoms",
+  "validation_executed": false,
+  "relative_cross_section_tolerance": 0.001,
+  "jobs": [
+    {
+      "energy_kev": 3.3,
+      "nh_cm2": 1e+22,
+      "commands_file": "gas_e3.3_nh1e+22.xcm",
+      "commands_sha256": "0d10effb2ae38c621ebf5630aff8a31d4f8ebed5e98f8cbb0807e71e977f2f32",
+      "expected_core_cross_section_cm2_per_h": 5.704701653083815e-24
+    },
+    {
+      "energy_kev": 3.3,
+      "nh_cm2": 1e+23,
+      "commands_file": "gas_e3.3_nh1e+23.xcm",
+      "commands_sha256": "9a5f6a5610f3664062c6d752e2e0b9e6c9aaad858042b1c0e2463085409eb561",
+      "expected_core_cross_section_cm2_per_h": 5.704701653083815e-24
+    },
+    {
+      "energy_kev": 4.9,
+      "nh_cm2": 1e+22,
+      "commands_file": "gas_e4.9_nh1e+22.xcm",
+      "commands_sha256": "7f6298931f3074c04739d175c16ee2e64c0eb1912b92cce8c04a48ec5c4d816a",
+      "expected_core_cross_section_cm2_per_h": 1.855515733499691e-24
+    },
+    {
+      "energy_kev": 4.9,
+      "nh_cm2": 1e+23,
+      "commands_file": "gas_e4.9_nh1e+23.xcm",
+      "commands_sha256": "4f13de3f7c32d5544d35c6f9333c4d8140a58048fcbf15fe972cc99b940d4982",
+      "expected_core_cross_section_cm2_per_h": 1.855515733499691e-24
+    },
+    {
+      "energy_kev": 6.9,
+      "nh_cm2": 1e+22,
+      "commands_file": "gas_e6.9_nh1e+22.xcm",
+      "commands_sha256": "90fb37dc69f4a8b1300c9d96a5f2051a841189875bfabc91c0e92bac17255e3a",
+      "expected_core_cross_section_cm2_per_h": 6.81779268231249e-25
+    },
+    {
+      "energy_kev": 6.9,
+      "nh_cm2": 1e+23,
+      "commands_file": "gas_e6.9_nh1e+23.xcm",
+      "commands_sha256": "4a5873d7fa2ee30758ef39ec0d48d273274b51a6fd53a17631e235d43050f931",
+      "expected_core_cross_section_cm2_per_h": 6.81779268231249e-25
+    },
+    {
+      "energy_kev": 7.1239,
+      "nh_cm2": 1e+22,
+      "commands_file": "gas_e7.1239_nh1e+22.xcm",
+      "commands_sha256": "9c7112fdd46be8ece839c60a75ebbd1c2ffa48da6560195406ea188096eee634",
+      "expected_core_cross_section_cm2_per_h": 6.198703703988627e-25
+    },
+    {
+      "energy_kev": 7.1239,
+      "nh_cm2": 1e+23,
+      "commands_file": "gas_e7.1239_nh1e+23.xcm",
+      "commands_sha256": "6fec02c12094af7af03e1ce4281c28fdb9767f9f009f21f6f0253bcb8550e9ec",
+      "expected_core_cross_section_cm2_per_h": 6.198703703988627e-25
+    },
+    {
+      "energy_kev": 7.1241,
+      "nh_cm2": 1e+22,
+      "commands_file": "gas_e7.1241_nh1e+22.xcm",
+      "commands_sha256": "0d9a3b2c9c661291fb67f86f95be6732488c7e1e89ed7cc14d12e1614090c184",
+      "expected_core_cross_section_cm2_per_h": 9.620096212176584e-25
+    },
+    {
+      "energy_kev": 7.1241,
+      "nh_cm2": 1e+23,
+      "commands_file": "gas_e7.1241_nh1e+23.xcm",
+      "commands_sha256": "3428103ac1d3145d25a8ddac18f2f05c98e60653de7a3128977b48f5a619ef48",
+      "expected_core_cross_section_cm2_per_h": 9.620096212176584e-25
+    }
+  ],
+  "all_passed": null
+}

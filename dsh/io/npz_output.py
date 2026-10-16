@@ -112,6 +112,9 @@ def write_ideal_observer_npz(
         source_model=np.asarray(metadata["source_model"]),
         source_spectrum=np.asarray(metadata.get("source_spectrum", "representative")),
         material_tables=np.asarray(metadata.get("material_tables", "unspecified")),
+        material_definition_sha256=np.asarray(
+            metadata.get("material_definition_sha256", "unspecified")
+        ),
         scattering_table_sha256=np.asarray(
             metadata.get("scattering_table_sha256", "unspecified")
         ),
@@ -138,6 +141,14 @@ def write_ideal_observer_npz(
             ),
             launch_hemisphere_probability=np.asarray(
                 launch_geometry.hemisphere_probability
+            ),
+        )
+    if physics.energy_edge_kev is not None:
+        payload.update(
+            output_schema_version=np.asarray(7),
+            physics_energy_edge_kev=np.asarray(physics.energy_edge_kev),
+            physics_edge_interpolation=np.asarray(
+                "one-sided endpoints inside narrow edge brackets; high-energy side at threshold"
             ),
         )
     np.savez_compressed(output_path, **payload)

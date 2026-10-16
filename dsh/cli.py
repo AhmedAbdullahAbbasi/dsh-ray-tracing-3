@@ -32,6 +32,7 @@ from .physics.newdust import (
     build_dust_physics_from_tables,
     load_newdust_scattering_table,
 )
+from .physics.wd01_ism import load_wd01_ism
 from .pipeline import (
     TRANSPORT_STATUS_LABELS,
     run_tabulated_source_to_observer_chunked,
@@ -60,9 +61,14 @@ def parse_arguments():
     )
     parser.add_argument(
         "--materials",
-        choices=("v1", "2-10"),
+        choices=("v1", "2-10", "declared"),
         default="v1",
-        help="frozen three-energy tables (default) or checked 2–10 keV tables",
+        help="frozen three-energy default, checked 2–10 keV, or an explicitly supplied complete audited material",
+    )
+    parser.add_argument(
+        "--material-directory",
+        type=Path,
+        help="explicit complete audited material directory for --materials declared",
     )
     parser.add_argument(
         "--source-model",
@@ -182,7 +188,16 @@ def main():
             "'python -m pip install astropy'."
         ) from error
 
-    if args.materials == "2-10":
+    definition = None
+    if args.material_directory is not None and args.materials != "declared":
+        raise ValueError("--material-directory requires --materials declared")
+    if args.materials == "declared":
+        if args.material_directory is None:
+            raise ValueError("--materials declared requires --material-directory")
+        definition, scattering, _, absorption, physics = load_wd01_ism(
+            args.material_directory
+        )
+    elif args.materials == "2-10":
         scattering, absorption, physics = load_2_10_material_tables()
     else:
         scattering = load_newdust_scattering_table()
@@ -190,8 +205,10 @@ def main():
         physics = build_dust_physics_from_tables(scattering, absorption)
     hard_state = args.source_spectrum == "hard-state-powerlaw"
     if hard_state:
-        if args.materials != "2-10":
-            raise ValueError("hard-state-powerlaw requires --materials 2-10")
+        if args.materials not in ("2-10", "declared"):
+            raise ValueError(
+                "hard-state-powerlaw requires --materials 2-10 or declared"
+            )
         if args.source_model != "constant-flare":
             raise ValueError("hard-state-powerlaw currently supports constant-flare")
         if (
@@ -377,6 +394,9 @@ def main():
         "source_photon_index": args.photon_index if hard_state else None,
         "scattering_table_sha256": scattering.metadata["table_sha256"],
         "absorption_table_sha256": absorption.metadata["table_sha256"],
+        "material_definition_sha256": definition.sha256
+        if definition is not None
+        else "unspecified",
         "packets": args.packets,
         "chunk_size": args.chunk_size,
         "max_interactions": args.max_interactions,

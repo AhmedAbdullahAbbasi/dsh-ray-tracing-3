@@ -7,9 +7,11 @@ interactions, exact geometric delays, and ideal-observer halo products.
 
 The post-RefleX physics work includes chemical material definitions and abundance
 audits, plus an independent [WD01/D03 Mie and forward-ADT dust producer](benchmarks/materials/WD01.md)
-with scattering and grain-absorption tables. Gas absorption and detailed edge
-validation are the next stage. See [material accounting](benchmarks/materials/README.md)
-for the composition contract and accepted benchmark regression.
+with scattering and grain-absorption tables. The next [absorption and edge milestone](benchmarks/materials/ABSORPTION_EDGES.md)
+adds residual gas/H2, an explicitly renormalized experimental Wilms-budget
+material, and one-sided runtime thresholds. It is selected with `--materials
+declared --material-directory ...`; existing defaults remain available. See
+[material accounting](benchmarks/materials/README.md) for the composition contract.
 
 The output is physical observer fluence, not telescope counts. Effective
 area, PSF, exposure maps, detector redistribution, background, and counting
@@ -77,7 +79,9 @@ It writes:
 - `outputs/dsh_v1_ideal_observer.fits`: images, cubes, axes, inputs, and
   diagnostics.
 
-New NPZ files use output schema 6 and record `material_tables`,
+Standard-material NPZ files use output schema 6; edge-aware declared materials
+use schema 7 and also store the one-sided threshold array and material-definition
+fingerprint. Both record `material_tables`,
 `scattering_table_sha256`, and `absorption_table_sha256`. FITS outputs carry
 the same provenance in the primary header as `MATMODEL`, `SCATSHA`, and
 `ABSSHA`. Schema 5 and later record the source spectrum and, when applicable,

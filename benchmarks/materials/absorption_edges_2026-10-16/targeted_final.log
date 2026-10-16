@@ -1,0 +1,25 @@
+test_empty_edge_declaration_preserves_legacy_results (tests.test_gas_edges.EnergyEdgeTests.test_empty_edge_declaration_preserves_legacy_results) ... ok
+test_fits_retains_edge_thresholds (tests.test_gas_edges.EnergyEdgeTests.test_fits_retains_edge_thresholds) ... ok
+test_grid_requires_resolved_narrow_distinct_brackets (tests.test_gas_edges.EnergyEdgeTests.test_grid_requires_resolved_narrow_distinct_brackets) ... ok
+test_jump_uses_one_side_in_jitted_transport_and_observer (tests.test_gas_edges.EnergyEdgeTests.test_jump_uses_one_side_in_jitted_transport_and_observer) ... ok
+test_spectral_invalid_inputs_fail (tests.test_gas_edges.EnergyEdgeTests.test_spectral_invalid_inputs_fail) ... ok
+test_spectral_panels_split_at_discontinuities (tests.test_gas_edges.EnergyEdgeTests.test_spectral_panels_split_at_discontinuities) ... ok
+test_all_elements_and_native_edges_present (tests.test_gas_edges.GasInventoryTests.test_all_elements_and_native_edges_present) ... ok
+test_atomic_and_h2_absorption_use_actual_residual_counts (tests.test_gas_edges.GasInventoryTests.test_atomic_and_h2_absorption_use_actual_residual_counts) ... ok
+test_basis_no_extrapolation_or_checksum_repair (tests.test_gas_edges.GasInventoryTests.test_basis_no_extrapolation_or_checksum_repair) ... ok
+test_budget_targets_and_derived_other_depletions (tests.test_gas_edges.GasInventoryTests.test_budget_targets_and_derived_other_depletions) ... ok
+test_complete_material_rejects_mislabeled_total_or_edge (tests.test_gas_edges.GasInventoryTests.test_complete_material_rejects_mislabeled_total_or_edge) ... ok
+test_hydrogen_analytic_cross_section_and_molecule_units (tests.test_gas_edges.GasInventoryTests.test_hydrogen_analytic_cross_section_and_molecule_units) ... ok
+test_molecular_fraction_moves_hydrogen_without_duplication (tests.test_gas_edges.GasInventoryTests.test_molecular_fraction_moves_hydrogen_without_duplication) ... ok
+test_no_duplicate_grains_or_missing_absorption_phases (tests.test_gas_edges.GasInventoryTests.test_no_duplicate_grains_or_missing_absorption_phases) ... ok
+test_nominal_wd01_wilm_still_rejected (tests.test_gas_edges.GasInventoryTests.test_nominal_wd01_wilm_still_rejected) ... ok
+test_nonrepresentable_edge_uses_same_precision_in_host_and_jax (tests.test_gas_edges.GasInventoryTests.test_nonrepresentable_edge_uses_same_precision_in_host_and_jax) ... ok
+test_xspec_gas_control_converts_total_h_to_residual_gas_h (tests.test_gas_edges.GasInventoryTests.test_xspec_gas_control_converts_total_h_to_residual_gas_h) ... ok
+test_xspec_gas_control_has_explicit_residual_abundances (tests.test_gas_edges.GasInventoryTests.test_xspec_gas_control_has_explicit_residual_abundances) ... ok
+test_zero_h2_component_roundtrip_is_explicit (tests.test_gas_edges.GasInventoryTests.test_zero_h2_component_roundtrip_is_explicit) ... ok
+test_complete_npz_product_round_trip (tests.test_npz_output.TestIdealObserverNpz.test_complete_npz_product_round_trip) ... ok
+
+----------------------------------------------------------------------
+Ran 20 tests in 5.930s
+
+OK

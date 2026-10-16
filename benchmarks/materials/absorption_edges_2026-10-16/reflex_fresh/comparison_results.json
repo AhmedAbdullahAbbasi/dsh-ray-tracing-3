@@ -1,0 +1,140 @@
+{
+  "all_passed": true,
+  "gates": {
+    "absolute_aperture": true,
+    "radial_annuli": true,
+    "global_radial_profile": true,
+    "direct_transmission": true,
+    "sampling_sufficient": true,
+    "seed_consistency": true,
+    "transport_complete": true,
+    "order_closure": true
+  },
+  "histories": 6000000,
+  "reference_halo_counts": 5976.0,
+  "predicted_halo_counts": 5997.255206701167,
+  "reference_direct_counts": 313691.0,
+  "predicted_direct_counts": 313967.3306182544,
+  "absolute_aperture_z": -0.2667266954576792,
+  "direct_z": -0.4939347966084332,
+  "global_radial_chi2": 4.043838868040068,
+  "radial_degrees_of_freedom": 9,
+  "global_radial_pvalue": 0.9085035154822461,
+  "maximum_annulus_absolute_z": 1.0268118021539479,
+  "aperture_relative_mc_se": 0.0031348337595031948,
+  "seed_consistency_pvalue": 0.30205744644177596,
+  "source_camera_normalization": 328288.7495996549,
+  "order_fluences": [
+    0.01809408745126954,
+    0.00017370426182125205,
+    4.40792637057541e-07
+  ],
+  "order_covariance": [
+    [
+      3.050134483166799e-09,
+      2.908371353305513e-11,
+      7.359125711847206e-14
+    ],
+    [
+      2.908371353305513e-11,
+      1.7106710226567692e-10,
+      2.179971206278546e-14
+    ],
+    [
+      7.359125711847206e-14,
+      2.179971206278546e-14,
+      4.9367300280014795e-14
+    ]
+  ],
+  "multiple_to_first_ratio": 0.009624417640696823,
+  "transport_status_counts": [
+    0,
+    5648137,
+    212463,
+    139400,
+    0,
+    0,
+    0
+  ],
+  "annulus_observed_counts": [
+    933.0,
+    1460.0,
+    1299.0,
+    784.0,
+    693.0,
+    360.0,
+    244.0,
+    140.0,
+    63.0
+  ],
+  "annulus_predicted_counts": [
+    962.0692407325873,
+    1466.2949257322118,
+    1279.801059105408,
+    791.0951154370961,
+    667.3047517816806,
+    353.9674909673726,
+    261.08824968898716,
+    150.81783561930317,
+    64.81653763652
+  ],
+  "annulus_z": [
+    -0.9118218164473754,
+    -0.15992725932701657,
+    0.5219803762831211,
+    -0.24511353591787896,
+    0.9642300450601973,
+    0.3098269152156443,
+    -1.0268118021539479,
+    -0.8535826631823283,
+    -0.21526416042817684
+  ],
+  "geometry_response_fraction_allowance": 0.003,
+  "fitted_parameters": 0,
+  "passes_without_geometry_response_allowance": true,
+  "config": {
+    "source_distance_kpc": 10.0,
+    "cloud_center_kpc": 5.0,
+    "cloud_thickness_pc": 30.0,
+    "cloud_radius_pc": 30.0,
+    "cloud_sky_cells": 16,
+    "nh_cm2": 1e+22,
+    "energy_kev": 4.9,
+    "source_fluence_ph_cm2": 1.0,
+    "image_half_width_arcsec": 150.0,
+    "pixel_arcsec": 5.0,
+    "camera_aperture_radius_pc": 0.1,
+    "reflex_photons": 100000000,
+    "source_cone_half_angle_deg": 1.0,
+    "camera_grid_side": 100,
+    "camera_spacing_pc": 0.2,
+    "packets_per_seed": 2000000,
+    "seeds": [
+      8261,
+      8262,
+      8263
+    ],
+    "chunk_size": 8192,
+    "max_interactions": 8,
+    "annulus_edges_arcsec": [
+      0,
+      15,
+      30,
+      45,
+      60,
+      80,
+      100,
+      125,
+      150,
+      215
+    ],
+    "maximum_aperture_relative_mc_se": 0.006,
+    "minimum_reflex_counts_per_annulus": 20,
+    "minimum_global_pvalue": 0.001,
+    "aperture_sigma_limit": 3.0,
+    "annulus_sigma_limit": 4.0,
+    "geometry_response_fraction_allowance": 0.003,
+    "reflex_dust_image": "reflex_adapter/evidence/reference_dust_e4p9.fits",
+    "reflex_all_image": "reflex_adapter/evidence/reference_allphotons_e4p9.fits"
+  }
+}

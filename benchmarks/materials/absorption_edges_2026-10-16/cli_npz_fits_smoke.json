@@ -1,0 +1,24 @@
+{
+  "passed": true,
+  "histories": 8192,
+  "source": "continuous 2--10 keV Gamma=1.7 one-hour flare, built-in four-cloud scene",
+  "npz_schema": 7,
+  "status_counts": [
+    0,
+    6884,
+    289,
+    1019,
+    0,
+    0,
+    0
+  ],
+  "scored_observer_events": 488,
+  "binned_observer_events": 488,
+  "scored_observer_fluence": 7.406730890274048,
+  "material_definition_sha256": "ae70e088497ae23d534b8fb1815eb1b157013e0e57dba2f8457d90dd91e61400",
+  "output_sha256": {
+    "smoke.npz": "b119c14377ee34633c9381b4832741669e2e54594a0dede1a7c9500afbc599cb",
+    "smoke.fits": "eef30eec2aa6e646cc7538c7f50a4da2a398f56e0c9ed50baa229e8850d2827d"
+  },
+  "raw_products": "Not included in the Git evidence; regenerate with the documented 8192-history CLI command."
+}

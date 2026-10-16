@@ -91,8 +91,22 @@ def load_photoelectric_absorption_table(
         raise ValueError("absorption energies must be strictly increasing")
     if sigma.shape != energy.shape:
         raise ValueError("absorption cross-section shape must match energy_kev")
-    if not np.all(np.isfinite(sigma)) or np.any(sigma <= 0.0):
-        raise ValueError("absorption cross-sections must be finite and positive")
+    coverage = metadata.get("absorption_coverage")
+    declared = (
+        isinstance(coverage, list)
+        and bool(coverage)
+        and all(isinstance(p, str) for p in coverage)
+        and len(set(coverage)) == len(coverage)
+        and set(coverage).issubset({"atomic_gas", "molecular_hydrogen", "grains"})
+    )
+    if (
+        not np.all(np.isfinite(sigma))
+        or np.any(sigma < 0.0)
+        or (not declared and np.any(sigma == 0.0))
+    ):
+        raise ValueError(
+            "absorption cross-sections must be finite and positive, or explicitly declared nonnegative components"
+        )
 
     metadata_energy = np.asarray(metadata.get("energy_kev", []), dtype=float)
     if metadata_energy.shape != energy.shape or not np.array_equal(

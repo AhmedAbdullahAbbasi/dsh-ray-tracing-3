@@ -24,6 +24,8 @@ from typing import NamedTuple
 import jax.numpy as jnp
 import numpy as np
 
+from .energy_edges import edge_intervals
+
 
 class DustPhysicsTable(NamedTuple):
     """Fixed-shape JAX arrays for energy-dependent DSH interactions."""
@@ -34,6 +36,7 @@ class DustPhysicsTable(NamedTuple):
     scattering_angle_rad: jnp.ndarray
     scattering_angle_cdf: jnp.ndarray
     differential_cross_section_cm2_per_sr_per_h: jnp.ndarray
+    energy_edge_kev: jnp.ndarray | None = None
 
 
 def build_dust_physics_table(
@@ -43,6 +46,8 @@ def build_dust_physics_table(
     scattering_angle_rad,
     scattering_angle_cdf,
     differential_cross_section_cm2_per_sr_per_h=None,
+    *,
+    edge_energies_kev=None,
 ) -> DustPhysicsTable:
     """Validate host arrays and construct a JAX-ready dust table.
 
@@ -123,6 +128,9 @@ def build_dust_physics_table(
                 "scattering-angle CDF does not match the differential table"
             )
 
+    intervals = (
+        None if edge_energies_kev is None else edge_intervals(energy, edge_energies_kev)
+    )
     return DustPhysicsTable(
         energy_kev=jnp.asarray(energy),
         scattering_cross_section_cm2_per_h=jnp.asarray(sigma_sca),
@@ -130,6 +138,7 @@ def build_dust_physics_table(
         scattering_angle_rad=jnp.asarray(angle),
         scattering_angle_cdf=jnp.asarray(cdf),
         differential_cross_section_cm2_per_sr_per_h=jnp.asarray(differential),
+        energy_edge_kev=None if intervals is None else jnp.asarray(intervals),
     )
 
 

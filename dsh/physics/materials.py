@@ -95,6 +95,10 @@ def build_declared_material_tables(definition, scattering, absorption_components
             raise ValueError("absorption components must have identical energy grids")
         if metadata.get("shared_energy_grid_sha256") != grid_sha:
             raise ValueError("absorption component shared-grid checksum differs")
+        if metadata.get("edge_energies_kev", []) != scattering.metadata.get(
+            "edge_energies_kev", []
+        ):
+            raise ValueError("absorption component edge declaration differs")
         if (
             metadata.get("quantity") != "photoelectric_absorption_cross_section"
             or metadata.get("cross_section_unit") != "cm2 H-1"
@@ -151,6 +155,8 @@ def build_declared_material_tables(definition, scattering, absorption_components
     }
     if grid_sha is not None:
         metadata["shared_energy_grid_sha256"] = grid_sha
+    if "edge_energies_kev" in scattering.metadata:
+        metadata["edge_energies_kev"] = scattering.metadata["edge_energies_kev"]
     absorption = PhotoelectricAbsorptionTable(
         energy_kev=np.array(scattering.energy_kev, copy=True),
         absorption_cross_section_cm2_per_h=total,

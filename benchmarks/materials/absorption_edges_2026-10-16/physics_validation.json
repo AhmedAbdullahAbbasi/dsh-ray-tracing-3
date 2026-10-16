@@ -1,0 +1,170 @@
+{
+  "material_definition_sha256": "ae70e088497ae23d534b8fb1815eb1b157013e0e57dba2f8457d90dd91e61400",
+  "scope": "Neutral 2--10 keV gas/H2 plus declared WD01-shape Mie grains; standalone author routines, not an XSPEC-process validation",
+  "gas_basis_check": {
+    "energies": 3185,
+    "maximum_atomic_relative_error": 0.00026215326997469646,
+    "maximum_h2_relative_error": 1.7231520341609574e-05,
+    "relative_error_limit": 0.0005
+  },
+  "upstream_full_gas_summation_check": {
+    "energies": 7,
+    "columns_cm2": [
+      1e+20,
+      1e+22,
+      3e+23
+    ],
+    "maximum_transmission_relative_error": 8.881784197001252e-16,
+    "relative_error_limit": 1e-10,
+    "scope": "18 TBnew atoms + H2, residual element columns, rho=0; extended atoms validated through PHFIT2 separately"
+  },
+  "folded_direct_beam_check": {
+    "spectrum": "E^-1.7",
+    "relative_error_limit": 0.001,
+    "reference_quadrature_limit": 1e-05,
+    "rows": [
+      {
+        "band_kev": [
+          2,
+          4
+        ],
+        "nh_cm2": 1e+21,
+        "production": 0.33107795152533404,
+        "author_gas_reference": 0.33107789051903785,
+        "relative_error": 1.8426569070584264e-07,
+        "reference_quadrature_relative_difference": 7.421796510698186e-11
+      },
+      {
+        "band_kev": [
+          2,
+          4
+        ],
+        "nh_cm2": 1e+22,
+        "production": 0.27543467277275363,
+        "author_gas_reference": 0.2754341927248264,
+        "relative_error": 1.7428770280325523e-06,
+        "reference_quadrature_relative_difference": 6.307925293214112e-10
+      },
+      {
+        "band_kev": [
+          2,
+          4
+        ],
+        "nh_cm2": 1e+23,
+        "production": 0.06017858796504725,
+        "author_gas_reference": 0.0601779654910065,
+        "relative_error": 1.0343886432062632e-05,
+        "reference_quadrature_relative_difference": 6.831346599511789e-10
+      },
+      {
+        "band_kev": [
+          4,
+          6
+        ],
+        "nh_cm2": 1e+21,
+        "production": 0.13311320574002886,
+        "author_gas_reference": 0.13311320451057929,
+        "relative_error": 9.236120313005358e-09,
+        "reference_quadrature_relative_difference": 3.65019126036259e-12
+      },
+      {
+        "band_kev": [
+          4,
+          6
+        ],
+        "nh_cm2": 1e+22,
+        "production": 0.12741570187514162,
+        "author_gas_reference": 0.12741569016886659,
+        "relative_error": 9.187467431281959e-08,
+        "reference_quadrature_relative_difference": 3.522582225912174e-11
+      },
+      {
+        "band_kev": [
+          4,
+          6
+        ],
+        "nh_cm2": 1e+23,
+        "production": 0.08298054983281018,
+        "author_gas_reference": 0.08298047762873291,
+        "relative_error": 8.701333051863713e-07,
+        "reference_quadrature_relative_difference": 2.3331181431274217e-10
+      },
+      {
+        "band_kev": [
+          6,
+          10
+        ],
+        "nh_cm2": 1e+21,
+        "production": 0.12228032794933735,
+        "author_gas_reference": 0.12228032895787938,
+        "relative_error": -8.247786342785446e-09,
+        "reference_quadrature_relative_difference": 1.2942980021080075e-11
+      },
+      {
+        "band_kev": [
+          6,
+          10
+        ],
+        "nh_cm2": 1e+22,
+        "production": 0.12008540435548537,
+        "author_gas_reference": 0.12008541421424698,
+        "relative_error": -8.209791069191397e-08,
+        "reference_quadrature_relative_difference": 1.2866663290367342e-10
+      },
+      {
+        "band_kev": [
+          6,
+          10
+        ],
+        "nh_cm2": 1e+23,
+        "production": 0.10026875964041382,
+        "author_gas_reference": 0.10026883820142324,
+        "relative_error": -7.835037368897346e-07,
+        "reference_quadrature_relative_difference": 1.2123171355682416e-09
+      }
+    ],
+    "scope": "Actual JAX total extinction versus direct author gas + interpolated grain absorption/scattering; independent grain checks reported separately"
+  },
+  "beer_lambert_maximum_coefficient_recovery_relative_error": 9.168221737354543e-13,
+  "source_precision_note": "PHFIT2 uses float32 energies internally; sub-ulp threshold locations are not claimed. Runtime thresholds follow stored JAX precision.",
+  "direct_grain_interpolation_check": {
+    "scope": "Direct order-24 Mie totals / forward-ADT phase, between original energy nodes, same optical constants and shape recipe",
+    "total_relative_error_limit": 0.001,
+    "cdf_absolute_error_limit": 0.0005,
+    "rows": [
+      {
+        "energy_kev": 2.05,
+        "scattering_relative_error": -7.735072290171452e-05,
+        "grain_absorption_relative_error": -7.62006581898067e-05,
+        "maximum_cdf_absolute_error": 0.00016366710472748291
+      },
+      {
+        "energy_kev": 4.95,
+        "scattering_relative_error": -2.610568420546855e-06,
+        "grain_absorption_relative_error": -1.4343405205785587e-06,
+        "maximum_cdf_absolute_error": 2.6830011598644177e-05
+      },
+      {
+        "energy_kev": 7.1125,
+        "scattering_relative_error": -6.915324998191252e-07,
+        "grain_absorption_relative_error": 4.949309053081663e-05,
+        "maximum_cdf_absolute_error": 5.716775671293917e-06
+      },
+      {
+        "energy_kev": 7.124,
+        "scattering_relative_error": 8.110181523024451e-05,
+        "grain_absorption_relative_error": -5.297628875577942e-05,
+        "maximum_cdf_absolute_error": 6.698299391372231e-06
+      }
+    ]
+  },
+  "gates": {
+    "gas_basis": true,
+    "native_tbnew_summation": true,
+    "folded_extinction": true,
+    "folded_reference_convergence": true,
+    "beer_lambert": true,
+    "grain_energy_interpolation": true
+  },
+  "all_passed": true
+}

@@ -4,8 +4,11 @@ This is the first milestone after the accepted RefleX benchmark at `8a5073c`.
 It adds chemical input definitions and an opt-in table-composition contract on
 `development/post-reflex-improvements`. The following [WD01/D03 milestone](WD01.md)
 now adds actual size distributions, Mie/forward-ADT scattering and grain
-absorption. TBnew gas components, dedicated edge validation and ZDA04 remain
-following work. The description below documents the first milestone's contract.
+absorption. The [absorption/edge milestone](ABSORPTION_EDGES.md) adds a pinned
+gas/H2 basis, an explicit experimental budget variant and runtime edge handling;
+its independent XSPEC-process check is prepared but not yet run. ZDA04 and
+evolving-spectral response validation remain following work. The description
+below documents the first milestone's contract.
 
 ## Definition and normalization
 
@@ -137,8 +140,9 @@ collect new photon histories or extend the original physical validation scope.
 1. Implemented in [WD01/D03](WD01.md): the published size law, explicit
    normalization variants, mass integrals, Mie and bounded forward ADT.
    Nominal WD01 does not fit Wilms abundances; that combination is rejected.
-3. Generate consistent depleted-gas/H2/grain absorption and handle energy
-   edges explicitly in both scattering and absorption.
+3. Implemented in [absorption and edges](ABSORPTION_EDGES.md): residual gas/H2,
+   explicit grain accounting, one-sided interpolation and split spectral folds.
+   Independent XSPEC-process verification remains pending.
 4. Validate evolving intrinsic spectra and energy-angle-delay responses,
    followed by instrument/extraction-region predictions.
 5. Add selected ZDA04 alternatives; then undertake the larger refactor and
