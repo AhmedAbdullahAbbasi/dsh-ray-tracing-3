@@ -1,0 +1,273 @@
+seed=29017: 8,192/8,192, 4.3s, halo=0.04890511
+{
+  "all_passed": true,
+  "scope": "Numerical size/angle integration and forward ADT check against finer full Mie; no independent external halo validation",
+  "limits": {
+    "total_cross_section_relative": 0.001,
+    "cdf_absolute": 0.0005,
+    "angular_bin_relative": 0.01,
+    "minimum_reference_bin_probability": 0.0001,
+    "raw_angular_closure_relative": 0.003
+  },
+  "angular_bin_edges_arcsec": [
+    0,
+    15,
+    30,
+    60,
+    120,
+    240,
+    480,
+    960
+  ],
+  "angle_convention": "intrinsic deflection, not observer halo radius",
+  "production_shape": [
+    153,
+    1153
+  ],
+  "reference_shape": [
+    5,
+    2561
+  ],
+  "production_quadrature_order": 12,
+  "reference_quadrature_order": 24,
+  "maximum_raw_angular_closure_relative_error": 0.0002447371347265026,
+  "production_npz_sha256": {
+    "wd01_grain_absorption_v1.npz": "07763f8a5c3514a294b2fc6f1c684cadbbcbd1e46b2d124b653f1edcf159cac7",
+    "wd01_producer_diagnostics.npz": "6bf676a0ec3866257e6cfa147dc312f64769005ae09ac2dc79cd20ba738679c5",
+    "wd01_scattering_v1.npz": "3e397b3b399f5a03a646e54192db55ba4d861a6adf7bce0790bb45faabf39dfa"
+  },
+  "reference_npz_sha256": {
+    "wd01_grain_absorption_v1.npz": "c89da4b6abae440a43e1c7441a40849fe3fd102cfe90e5485913ad905780530f",
+    "wd01_producer_diagnostics.npz": "aba34a83a8605cdbfa8e18291589876746b00b4a267c9fdf172701c53b060339",
+    "wd01_scattering_v1.npz": "345480a3de6b649b22db9b6c472ccf001ed45ada858551bb6fb6205aa7e76961"
+  },
+  "energies": [
+    {
+      "energy_kev": 2.0,
+      "scattering_relative_error": -2.474272753349993e-08,
+      "grain_absorption_relative_error": 7.94400167869469e-09,
+      "maximum_cdf_absolute_error": 3.562891671238244e-05,
+      "maximum_significant_bin_relative_error": 0.00018081542255021787,
+      "production_bin_probabilities": [
+        0.005837407103427922,
+        0.017089848813676003,
+        0.06265302827479606,
+        0.18659644330890102,
+        0.3420143246553461,
+        0.24488763068119235,
+        0.0932345842736364
+      ],
+      "reference_bin_probabilities": [
+        0.00583635180101087,
+        0.01708739926426196,
+        0.06264472552975078,
+        0.18659055374501549,
+        0.34204846857065774,
+        0.24487959479632382,
+        0.0932342001233828
+      ],
+      "passed": true
+    },
+    {
+      "energy_kev": 3.3,
+      "scattering_relative_error": -1.7347453473703922e-09,
+      "grain_absorption_relative_error": 3.2930569382472186e-09,
+      "maximum_cdf_absolute_error": 5.9735822936946015e-05,
+      "maximum_significant_bin_relative_error": 0.00023846320522413755,
+      "production_bin_probabilities": [
+        0.015706128979116725,
+        0.04421738348516245,
+        0.14325220187795334,
+        0.31422648886961674,
+        0.30179214796170184,
+        0.11908421363053323,
+        0.041508822519605415
+      ],
+      "reference_bin_probabilities": [
+        0.015704906921660593,
+        0.0442160660038322,
+        0.1432536402977238,
+        0.31425239576873387,
+        0.3018058705427217,
+        0.11905582319733299,
+        0.041504079504622315
+      ],
+      "passed": true
+    },
+    {
+      "energy_kev": 4.9,
+      "scattering_relative_error": 7.793163891989252e-10,
+      "grain_absorption_relative_error": 3.019100525136764e-09,
+      "maximum_cdf_absolute_error": 6.656457052078846e-05,
+      "maximum_significant_bin_relative_error": 0.00028529827613610337,
+      "production_bin_probabilities": [
+        0.03418985765408183,
+        0.08969045986423926,
+        0.24117537458449884,
+        0.35426032613477637,
+        0.18334012002662725,
+        0.06516523116163098,
+        0.021694833842133443
+      ],
+      "reference_bin_probabilities": [
+        0.03418853537061569,
+        0.08969257358317387,
+        0.24119456189242727,
+        0.35429020076375617,
+        0.18331360985204948,
+        0.06514664493613465,
+        0.02169089685113379
+      ],
+      "passed": true
+    },
+    {
+      "energy_kev": 6.9,
+      "scattering_relative_error": 1.8136498969312242e-09,
+      "grain_absorption_relative_error": 2.9940747658940836e-09,
+      "maximum_cdf_absolute_error": 6.937888671509906e-05,
+      "maximum_significant_bin_relative_error": 0.0003263034460012637,
+      "production_bin_probabilities": [
+        0.06652223686549891,
+        0.15532469863096154,
+        0.32507361533343154,
+        0.2876765513082892,
+        0.10941170952519996,
+        0.03769465702726016,
+        0.012288810095714364
+      ],
+      "reference_bin_probabilities": [
+        0.06652145858802759,
+        0.15533444953933223,
+        0.3251139844539288,
+        0.287659195391923,
+        0.10939348561943407,
+        0.03768236114296575,
+        0.012287086851124562
+      ],
+      "passed": true
+    },
+    {
+      "energy_kev": 10.0,
+      "scattering_relative_error": 2.370468932255676e-09,
+      "grain_absorption_relative_error": 3.1598399452548165e-09,
+      "maximum_cdf_absolute_error": 7.361363359126294e-05,
+      "maximum_significant_bin_relative_error": 0.0002748041580813432,
+      "production_bin_probabilities": [
+        0.12811251930734674,
+        0.24663860679599414,
+        0.35372880663620704,
+        0.1776397970013729,
+        0.0628768567455048,
+        0.020901994032378024,
+        0.006749505485820428
+      ],
+      "reference_bin_probabilities": [
+        0.1281150067743996,
+        0.2466623090922573,
+        0.3537736885906411,
+        0.1775916005570537,
+        0.06286406920109466,
+        0.02089625165553477,
+        0.0067479555102218924
+      ],
+      "passed": true
+    }
+  ],
+  "reference_total_convergence": {
+    "all_passed": true,
+    "scope": "Independent higher-order size integration of exact Mie totals; phase grid is not recomputed",
+    "refined_quadrature_order": 48,
+    "relative_error_limit": 0.0001,
+    "energy_kev": [
+      2.0,
+      3.3,
+      4.9,
+      6.9,
+      10.0
+    ],
+    "reference_scattering_relative_error": [
+      4.4959842515623905e-09,
+      -1.8061362405674686e-09,
+      2.3495827505826128e-09,
+      9.214276008862043e-10,
+      -1.5314527423981872e-10
+    ],
+    "reference_grain_absorption_relative_error": [
+      -4.847631185356249e-10,
+      -1.1991097004226958e-10,
+      -6.809719454992091e-11,
+      3.114264401915534e-11,
+      5.447642337230718e-12
+    ]
+  },
+  "transport_smoke": {
+    "all_passed": true,
+    "gates": {
+      "all_histories_terminated": true,
+      "no_active_capped_or_invalid_histories": true,
+      "positive_finite_observer_fluence": true,
+      "order_image_radial_closure": true,
+      "aperture_accounting_closure": true
+    },
+    "scope": "Production transport/peeloff integration smoke, grain absorption only; not a complete ISM model or RefleX agreement test",
+    "configuration": {
+      "source_distance_kpc": 10.0,
+      "cloud_center_kpc": 5.0,
+      "cloud_thickness_pc": 30.0,
+      "cloud_radius_pc": 30.0,
+      "cloud_sky_cells": 16,
+      "nh_cm2": 1e+22,
+      "energy_kev": 4.9,
+      "source_fluence_ph_cm2": 1.0,
+      "image_half_width_arcsec": 150.0,
+      "pixel_arcsec": 5.0,
+      "camera_aperture_radius_pc": 0.1,
+      "reflex_photons": 100000000,
+      "source_cone_half_angle_deg": 1.0,
+      "camera_grid_side": 100,
+      "camera_spacing_pc": 0.2,
+      "packets_per_seed": 8192,
+      "seeds": [
+        29017
+      ],
+      "chunk_size": 8192,
+      "max_interactions": 8,
+      "annulus_edges_arcsec": [
+        0,
+        15,
+        30,
+        45,
+        60,
+        80,
+        100,
+        125,
+        150,
+        215
+      ],
+      "maximum_aperture_relative_mc_se": 0.006,
+      "minimum_reflex_counts_per_annulus": 20,
+      "minimum_global_pvalue": 0.001,
+      "aperture_sigma_limit": 3.0,
+      "annulus_sigma_limit": 4.0,
+      "geometry_response_fraction_allowance": 0.003,
+      "reflex_dust_image": "reflex_adapter/evidence/reference_dust_e4p9.fits",
+      "reflex_all_image": "reflex_adapter/evidence/reference_allphotons_e4p9.fits"
+    },
+    "transport_status_counts": [
+      0,
+      7772,
+      271,
+      149,
+      0,
+      0,
+      0
+    ],
+    "order_fluences": [
+      0.047373639143188484,
+      0.001531470752418329,
+      0.0
+    ],
+    "all_observer_fluence": 0.05222482416491658,
+    "outside_image_fluence": 0.0033197142693097703
+  }
+}

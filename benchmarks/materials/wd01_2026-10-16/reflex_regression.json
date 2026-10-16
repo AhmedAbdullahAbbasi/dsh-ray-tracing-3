@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "accepted_statistics_identical": true,
+  "accepted_package_checksums_match": 63,
+  "all_gates_passed": true,
+  "histories": 6000000,
+  "global_radial_chi2": 4.043838868040068,
+  "global_radial_pvalue": 0.9085035154822461,
+  "method": "Reanalysis of saved accepted moments after production/input fingerprint verification; no new RefleX histories or WD01 halo agreement claim"
+}

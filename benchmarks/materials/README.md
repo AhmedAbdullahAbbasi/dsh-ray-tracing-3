@@ -2,8 +2,10 @@
 
 This is the first milestone after the accepted RefleX benchmark at `8a5073c`.
 It adds chemical input definitions and an opt-in table-composition contract on
-`development/post-reflex-improvements`. It does not yet generate WD01/ZDA04
-size distributions, Mie/ADT opacities, TBnew components, or new spectral edges.
+`development/post-reflex-improvements`. The following [WD01/D03 milestone](WD01.md)
+now adds actual size distributions, Mie/forward-ADT scattering and grain
+absorption. TBnew gas components, dedicated edge validation and ZDA04 remain
+following work. The description below documents the first milestone's contract.
 
 ## Definition and normalization
 
@@ -22,7 +24,7 @@ abundance set instead of silently inheriting Wilms.
 Every grain component declares its stoichiometry, material density, mass in
 g per H nucleus, size-distribution identifier/parameters, optical-constant
 identifier, and reference. The population mass is an input to this milestone:
-the future size-distribution generator must independently verify
+a size-distribution generator must independently verify
 
     mass/H = integral [(4*pi/3) * a^3 * rho * (dn/da per H)] da.
 
@@ -132,10 +134,9 @@ collect new photon histories or extend the original physical validation scope.
 
 ## Following milestones
 
-1. Implement the chosen published WD01 population and its mass integrals,
-   with explicit original/renormalized variants and compatible abundances.
-2. Generate Mie tables from pinned optical constants; compare ADT in its
-   validity range and verify angular/size integration convergence.
+1. Implemented in [WD01/D03](WD01.md): the published size law, explicit
+   normalization variants, mass integrals, Mie and bounded forward ADT.
+   Nominal WD01 does not fit Wilms abundances; that combination is rejected.
 3. Generate consistent depleted-gas/H2/grain absorption and handle energy
    edges explicitly in both scattering and absorption.
 4. Validate evolving intrinsic spectra and energy-angle-delay responses,

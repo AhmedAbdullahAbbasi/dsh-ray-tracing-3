@@ -1,0 +1,6 @@
+{
+  "passed": true,
+  "command": "python -m pip wheel . --no-deps --no-build-isolation",
+  "new_data_files_byte_verified": 9,
+  "wheel_sha256": "0fb0585222d6ae4222d18db5b0602fc504a2708121769d0a074d705698ae0439"
+}

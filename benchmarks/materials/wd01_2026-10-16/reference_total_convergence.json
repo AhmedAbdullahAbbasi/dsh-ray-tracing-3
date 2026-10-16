@@ -1,0 +1,27 @@
+{
+  "all_passed": true,
+  "scope": "Independent higher-order size integration of exact Mie totals; phase grid is not recomputed",
+  "refined_quadrature_order": 48,
+  "relative_error_limit": 0.0001,
+  "energy_kev": [
+    2.0,
+    3.3,
+    4.9,
+    6.9,
+    10.0
+  ],
+  "reference_scattering_relative_error": [
+    4.4959842515623905e-09,
+    -1.8061362405674686e-09,
+    2.3495827505826128e-09,
+    9.214276008862043e-10,
+    -1.5314527423981872e-10
+  ],
+  "reference_grain_absorption_relative_error": [
+    -4.847631185356249e-10,
+    -1.1991097004226958e-10,
+    -6.809719454992091e-11,
+    3.114264401915534e-11,
+    5.447642337230718e-12
+  ]
+}

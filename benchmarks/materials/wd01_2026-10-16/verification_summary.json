@@ -1,0 +1,76 @@
+{
+  "milestone": "WD01 population, Mie/forward ADT scattering, consistent grain absorption",
+  "branch": "development/post-reflex-improvements",
+  "producer_implementation_commit": "d0c3923f34337180f1683652bb2b3631f6b75879",
+  "producer_source_hashes_match_committed_version": true,
+  "subsequent_hardening": "Defensive copies in population export; early CLI energy-grid validation and worker configuration checks. No change to size law, optical inputs or numerical sphere calculations.",
+  "current_population_fingerprint_matches_generated_tables": true,
+  "full_suite": {
+    "passed": true,
+    "tests": 192,
+    "seconds": 130.766,
+    "command": "python -m unittest discover -v"
+  },
+  "new_wd01_tests": 19,
+  "numerical_validation": {
+    "passed": true,
+    "energy_nodes": 153,
+    "angle_nodes": 1153,
+    "maximum_raw_angular_closure_relative_error": 0.0002447371347265026,
+    "maximum_total_scattering_relative_error": 2.474272753349993e-08,
+    "maximum_grain_absorption_relative_error": 7.94400167869469e-09,
+    "maximum_cdf_absolute_error": 7.361363359126294e-05,
+    "maximum_significant_bin_relative_error": 0.0003263034460012637,
+    "reference_totals_converged": true
+  },
+  "production_transport_smoke": {
+    "passed": true,
+    "histories": 8192,
+    "energy_kev": 4.9,
+    "absorption": "grains only"
+  },
+  "reflex_regression": {
+    "passed": true,
+    "accepted_statistics_identical": true,
+    "accepted_package_checksums_match": 63,
+    "all_gates_passed": true,
+    "histories": 6000000,
+    "global_radial_chi2": 4.043838868040068,
+    "global_radial_pvalue": 0.9085035154822461,
+    "method": "Reanalysis of saved accepted moments after production/input fingerprint verification; no new RefleX histories or WD01 halo agreement claim"
+  },
+  "wheel_packaging": {
+    "passed": true,
+    "command": "python -m pip wheel . --no-deps --no-build-isolation",
+    "new_data_files_byte_verified": 9,
+    "wheel_sha256": "0fb0585222d6ae4222d18db5b0602fc504a2708121769d0a074d705698ae0439"
+  },
+  "portable_runtime": {
+    "passed": true,
+    "loaded_from_built_wheel": true,
+    "miepython_installed": false,
+    "energy_nodes": 153,
+    "angle_nodes": 1153,
+    "absorption_scope": [
+      "grains"
+    ]
+  },
+  "lint": {
+    "tool": "ruff",
+    "version": "0.17.1",
+    "check_passed": true,
+    "format_check_passed": true
+  },
+  "current_source_sha256_lf_normalized": {
+    "dsh/physics/grain_populations.py": "9bf20cfa5179ac5d14b82a4e121c9116cd2f012b4b981205c11d82e3efb0e3e1",
+    "dsh/physics/optical_constants.py": "38ad5704da27bad2c59cd4e75988a9be562e666520954d08e8e541542e107211",
+    "dsh/physics/sphere_scattering.py": "51121964260805e998f6529eca331ec04a7525fc9fa6d0e0d1dffe7fe42c9879",
+    "dsh/physics/wd01_tables.py": "b0d77839ffa4687b2493f84e847dedf34204a46c150bb299ee90eefc82c16a0c",
+    "scripts/generate_wd01_tables.py": "58439d0693dc33e9bd2d446f2d8f48ae1b24a7a3bd370b06e9d5c0b38e813bb8",
+    "scripts/validate_wd01_tables.py": "52bdfaa5d7951b93dc4981226d4f40cdb7e222a5f8826ad5097d1906f421413c",
+    "tests/test_wd01.py": "5da2e486a24669ef61e3e6c4826913e8389bca0f1488de8a7bd84e21ee14fc4d",
+    "pyproject.toml": "ed91fddac59784550a941ac8bd336bba86f1e6c9e7f58574ea6a9707270832cd"
+  },
+  "scope": "Dust physics building block only: bulk graphite spheres, no PAH-specific optics, no residual-gas/H2 absorption or dedicated edge-segmented interpolation validation. Existing runtime defaults and accepted RefleX provider unchanged. No independent WD01 halo-image agreement claimed.",
+  "manifest_text_checksum_convention": "Normalize CRLF to LF for .py/.json/.md/.toml/.log and .gitattributes; all other files, including pinned .dat and binary .npz/.png/.pdf, use exact bytes."
+}

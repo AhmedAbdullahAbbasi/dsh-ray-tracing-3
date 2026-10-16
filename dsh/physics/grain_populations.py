@@ -75,9 +75,9 @@ class WD01Population:
             "silicate_scale": self.silicate_scale,
             "minimum_radius_um": MINIMUM_RADIUS_UM,
             "maximum_radius_um": self.maximum_radius_um,
-            "parameters": WD01_PARAMETERS,
-            "densities_g_cm3": DENSITIES_G_CM3,
-            "d03_optical_material_densities_g_cm3": D03_DENSITIES_G_CM3,
+            "parameters": dict(WD01_PARAMETERS),
+            "densities_g_cm3": dict(DENSITIES_G_CM3),
+            "d03_optical_material_densities_g_cm3": dict(D03_DENSITIES_G_CM3),
             "carbon_atom_mass_g": ATOMIC_WEIGHTS_U["C"] * ATOMIC_MASS_UNIT_G,
             "carbon_optics": "D03 bulk graphite spheres, 1/3 parallel + 2/3 perpendicular; PAH-specific optics not included",
         }

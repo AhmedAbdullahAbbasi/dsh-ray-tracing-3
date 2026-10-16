@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "loaded_from_built_wheel": true,
+  "miepython_installed": false,
+  "energy_nodes": 153,
+  "angle_nodes": 1153,
+  "absorption_scope": [
+    "grains"
+  ]
+}

@@ -86,7 +86,21 @@ def main():
         return
     if args.output is None:
         parser.error("--output is required unless --audit-only is selected")
-    energy = default_wd01_energy_grid() if args.energies is None else args.energies
+    energy = np.asarray(
+        default_wd01_energy_grid() if args.energies is None else args.energies,
+        dtype=np.float64,
+    )
+    if (
+        energy.ndim != 1
+        or energy.size < 2
+        or np.any(~np.isfinite(energy))
+        or np.any(np.diff(energy) <= 0)
+        or energy[0] < 2
+        or energy[-1] > 10
+    ):
+        parser.error(
+            "energies must contain at least two increasing nodes within 2--10 keV"
+        )
     angle = default_wd01_angle_grid(args.forward_nodes, args.tail_nodes)
     if args.workers < 1:
         parser.error("workers must be positive")
@@ -114,6 +128,11 @@ def main():
             for i, row in enumerate(pool.map(work, energy)):
                 rows.append(row)
                 print(f"{i + 1}/{len(energy)}: {float(energy[i]):.9g} keV", flush=True)
+        if any(
+            row["producer_configuration"] != rows[0]["producer_configuration"]
+            for row in rows[1:]
+        ):
+            raise ValueError("worker results have different producer configurations")
         arrays = {}
         for key in rows[0]:
             if key in ("producer_configuration", "scattering_angle_rad"):

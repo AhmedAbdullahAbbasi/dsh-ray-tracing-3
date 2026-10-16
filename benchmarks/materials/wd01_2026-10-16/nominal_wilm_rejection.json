@@ -1,0 +1,22 @@
+{
+  "accepted": false,
+  "error": "grain inventory exceeds C abundance: 0.000249280516781 > 0.00024 atoms/H",
+  "overdrawn_elements": {
+    "C": {
+      "solid_atoms_per_h": 0.00024928051678101923,
+      "total_wilm_atoms_per_h": 0.00024
+    },
+    "Mg": {
+      "solid_atoms_per_h": 5.2570023838555295e-05,
+      "total_wilm_atoms_per_h": 2.51e-05
+    },
+    "Fe": {
+      "solid_atoms_per_h": 5.2570023838555295e-05,
+      "total_wilm_atoms_per_h": 2.69e-05
+    },
+    "Si": {
+      "solid_atoms_per_h": 5.2570023838555295e-05,
+      "total_wilm_atoms_per_h": 1.86e-05
+    }
+  }
+}

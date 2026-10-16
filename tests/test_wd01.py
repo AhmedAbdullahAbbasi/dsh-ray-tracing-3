@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import shutil
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 
@@ -36,6 +39,17 @@ HAS_PRODUCERS = all(
 
 
 class WD01PopulationTests(unittest.TestCase):
+    def test_export_cannot_mutate_population_law_or_inventory(self):
+        population = WD01Population()
+        fingerprint = population.sha256
+        inventory = population.inventory()
+        exported = population.as_dict()
+        exported["parameters"]["silicate"] = (0, 0, 1, 1, 0)
+        exported["densities_g_cm3"]["silicate"] = 0
+        exported["d03_optical_material_densities_g_cm3"]["carbonaceous"] = 0
+        self.assertEqual(population.sha256, fingerprint)
+        self.assertEqual(population.inventory(), inventory)
+
     def test_moments_match_independent_published_table1(self):
         inventory = WD01Population().inventory()
         # Published Table 1 has rounded fit parameters AND rounded volumes.
@@ -154,6 +168,31 @@ class OpticalConstantsTests(unittest.TestCase):
         edge = table.energy_kev[(table.energy_kev > 7.1) & (table.energy_kev < 7.2)]
         self.assertGreater(edge.size, 20)
         self.assertTrue(np.all(np.isin(edge, grid)))
+
+
+class WD01CommandTests(unittest.TestCase):
+    def test_invalid_parallel_energy_grid_fails_before_generation(self):
+        from scripts.generate_wd01_tables import main
+
+        with tempfile.TemporaryDirectory() as directory:
+            for energy in ([2], [3, 2], [2, 2], [1, 3], [2, 11], [2, "nan"]):
+                arguments = [
+                    "generate_wd01_tables",
+                    "--output",
+                    directory,
+                    "--workers",
+                    "2",
+                    "--energies",
+                    *map(str, energy),
+                ]
+                with (
+                    patch("sys.argv", arguments),
+                    redirect_stderr(io.StringIO()),
+                    self.assertRaises(SystemExit) as result,
+                ):
+                    main()
+                self.assertEqual(result.exception.code, 2)
+            self.assertFalse(list(Path(directory).iterdir()))
 
 
 @unittest.skipUnless(HAS_PRODUCERS, 'requires optional ".[materials]" dependencies')

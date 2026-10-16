@@ -1,2 +1,2 @@
 # Preserve the pinned author data checksums on Windows checkouts.
-*.dat -text
+*.dat -text -whitespace

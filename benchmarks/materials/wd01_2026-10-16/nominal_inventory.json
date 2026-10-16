@@ -1,0 +1,81 @@
+{
+  "population": {
+    "model": "WD01-RV3.1-bC60-caseA",
+    "reference": "Weingartner & Draine 2001, ApJ 548, 296; Table 1, R_V=3.1, b_C=6e-5, case A; https://arxiv.org/abs/astro-ph/0008146",
+    "normalization": "wd01_original",
+    "base_scale": 1.0,
+    "carbon_scale": 1.0,
+    "silicate_scale": 1.0,
+    "minimum_radius_um": 0.00035,
+    "maximum_radius_um": 2.0,
+    "parameters": {
+      "carbonaceous": [
+        -1.54,
+        -0.165,
+        0.0107,
+        0.428,
+        9.99e-12
+      ],
+      "silicate": [
+        -2.21,
+        0.3,
+        0.164,
+        0.1,
+        1e-13
+      ]
+    },
+    "densities_g_cm3": {
+      "carbonaceous": 2.24,
+      "silicate": 3.5
+    },
+    "d03_optical_material_densities_g_cm3": {
+      "carbonaceous": 2.2,
+      "silicate": 3.8
+    },
+    "carbon_atom_mass_g": 1.994473475679812e-23,
+    "carbon_optics": "D03 bulk graphite spheres, 1/3 parallel + 2/3 perpendicular; PAH-specific optics not included"
+  },
+  "inventory_wd01": {
+    "carbonaceous": {
+      "volume_cm3_per_h": 2.2599244487431776e-27,
+      "mass_g_per_h": 5.062230765184718e-27,
+      "density_g_cm3": 2.24,
+      "atoms_per_h": {
+        "C": 0.0002538128898134014
+      }
+    },
+    "silicate": {
+      "volume_cm3_per_h": 3.9565348786713646e-27,
+      "mass_g_per_h": 1.3847872075349778e-26,
+      "density_g_cm3": 3.5,
+      "atoms_per_h": {
+        "Mg": 4.841975879866936e-05,
+        "Fe": 4.841975879866936e-05,
+        "Si": 4.841975879866936e-05,
+        "O": 0.00019367903519467743
+      }
+    }
+  },
+  "inventory_d03": {
+    "carbonaceous": {
+      "volume_cm3_per_h": 2.2599244487431776e-27,
+      "mass_g_per_h": 4.971833787234991e-27,
+      "density_g_cm3": 2.2,
+      "atoms_per_h": {
+        "C": 0.00024928051678101923
+      }
+    },
+    "silicate": {
+      "volume_cm3_per_h": 3.9565348786713646e-27,
+      "mass_g_per_h": 1.5034832538951185e-26,
+      "density_g_cm3": 3.8,
+      "atoms_per_h": {
+        "Mg": 5.2570023838555295e-05,
+        "Fe": 5.2570023838555295e-05,
+        "Si": 5.2570023838555295e-05,
+        "O": 0.00021028009535422118
+      }
+    }
+  },
+  "chemical_audit": null
+}
