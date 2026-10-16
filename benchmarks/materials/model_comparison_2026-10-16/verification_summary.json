@@ -1,0 +1,16 @@
+{
+  "successful": true,
+  "protected_original_files": {
+    "reflex_adapter/SHA256SUMS.json": 63,
+    "benchmarks/materials/wd01_reflex_2026-10-16/SHA256SUMS.json": 25
+  },
+  "numerical_quality_all_models": true,
+  "independent_histories": 24000000,
+  "model_inventory_preserved": true,
+  "preserved_cached_model_estimates": true,
+  "native_fits_grid_and_checksums": true,
+  "npz_crc_checked": 17,
+  "csv_summaries_and_radial_counts": true,
+  "radial_covariance_positive_definite": true,
+  "fitted_parameters": 0
+}

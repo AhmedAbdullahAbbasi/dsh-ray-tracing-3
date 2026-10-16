@@ -1,0 +1,6 @@
+{
+  "recipe": "Same Wilms C50/Si90 budget as hybrid; full Mie dust reference",
+  "source": "benchmarks/materials/wd01_2026-10-16/full_mie_reference",
+  "validated_comparison_energy_kev": 4.9,
+  "scope": "Exact source energy node; sparse dust grid is not broadband edge validation"
+}

@@ -1,0 +1,6 @@
+WARNING: Unexpected extra padding at the end of the file.  This padding may not be preserved when saving changes. [astropy.io.fits.header]
+
+MODEL reflex_adapter: DSH: RefleX-matched material
+{"halo_counts": 5997.255206701167, "halo_ratio": 1.0035567614961791, "radial_pvalue": 0.9009696922440794, "numerical_quality_passed": true}
+
+MODEL mrn_rg: DSH: MRN/RG–Drude + TBabs

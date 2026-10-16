@@ -1,0 +1,90 @@
+{
+  "histories": 6000000,
+  "halo_counts": 5997.255206701167,
+  "reference_halo_counts": 5976.0,
+  "halo_ratio": 1.0035567614961791,
+  "halo_ratio_combined_se": 0.013357230918474731,
+  "halo_difference_z": 0.2671741448116111,
+  "radial_chi2": 4.154251776410551,
+  "radial_dof": 9,
+  "radial_pvalue": 0.9009696922440794,
+  "maximum_annulus_absolute_z": 1.0600342246211338,
+  "aperture_relative_mc_se": 0.0031348337595031948,
+  "seed_consistency_pvalue": 0.30205744644177596,
+  "multiple_to_first_ratio": 0.009624417640696823,
+  "numerical_quality_passed": true,
+  "numerical_quality_gates": {
+    "transport_complete": true,
+    "sampling_sufficient": true,
+    "seed_consistency": true,
+    "order_closure": true
+  },
+  "transport_status_counts": [
+    0,
+    5648137,
+    212463,
+    139400,
+    0,
+    0,
+    0
+  ],
+  "annulus_halo_counts": [
+    962.0692407325873,
+    1466.2949257322118,
+    1279.801059105408,
+    791.0951154370961,
+    667.3047517816806,
+    353.9674909673726,
+    261.08824968898716,
+    150.81783561930317,
+    64.81653763652
+  ],
+  "annulus_ratio": [
+    1.0311567424786574,
+    1.0043115929672684,
+    0.985220214861746,
+    1.009049892139153,
+    0.9629217197426848,
+    0.9832430304649239,
+    1.0700338102007672,
+    1.0772702544235941,
+    1.0288339307384127
+  ],
+  "annulus_ratio_se": [
+    0.0346699847138192,
+    0.027014662472068973,
+    0.028116185551132076,
+    0.03707862712010319,
+    0.03777793327160792,
+    0.05366016569132127,
+    0.07042060767874198,
+    0.09375119602329705,
+    0.1356930548131077
+  ],
+  "fitted_parameters": 0,
+  "model": {
+    "label": "DSH: RefleX-matched material",
+    "short_label": "RefleX-matched adapter",
+    "color": "#227c9d",
+    "seeds": [
+      8261,
+      8262,
+      8263
+    ],
+    "cached": "benchmarks/materials/absorption_edges_2026-10-16/reflex_fresh",
+    "scattering": "RefleX exported dust opacity and analytic angular law",
+    "absorption": "RefleX PHOTO + DUST*(1-ALBEDO), already depletion-scaled",
+    "abundances": "Exported Wilms; H2 nuclei fraction 0.2; iron solid fraction 0.691"
+  },
+  "diagnostics": {
+    "scattering_cm2_per_h": 1.9772032213265226e-24,
+    "absorption_cm2_per_h": 2.4832589302222087e-24,
+    "central_direct_transmission": 0.9563755374012589,
+    "physical_angle_quantiles_arcsec": [
+      24.920802314202838,
+      74.76244182380098,
+      224.28739369519894
+    ]
+  },
+  "material": {}
+}

@@ -1,0 +1,21 @@
+{
+  "successful": true,
+  "tests_run": 12,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "elapsed_seconds": 2.751,
+  "command": "python -m unittest tests.test_material_model_comparison tests.test_wd01_reflex_comparison tests.test_atomic_output -v",
+  "coverage": [
+    "complete full-Mie/hybrid elemental-inventory and 4.9 keV opacity identity",
+    "historical MRN material identity",
+    "disjoint seed sets",
+    "strict geometry comparison",
+    "changed material cache rejection",
+    "Gaussian statistic and numerical-quality separation",
+    "independent-seed history covariance including zeros",
+    "ratio uncertainty propagation",
+    "native FITS coordinates/units/checksums",
+    "atomic archive replacement"
+  ]
+}

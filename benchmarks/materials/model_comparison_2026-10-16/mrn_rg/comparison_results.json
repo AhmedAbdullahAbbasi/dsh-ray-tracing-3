@@ -1,0 +1,91 @@
+{
+  "histories": 6000000,
+  "halo_counts": 16422.16773175337,
+  "reference_halo_counts": 5976.0,
+  "halo_ratio": 2.748020035433964,
+  "halo_ratio_combined_se": 0.03597452304366765,
+  "halo_difference_z": 124.25434920167609,
+  "radial_chi2": 16065.916815697154,
+  "radial_dof": 9,
+  "radial_pvalue": 0.0,
+  "maximum_annulus_absolute_z": 63.97637299287173,
+  "aperture_relative_mc_se": 0.0020124877219993595,
+  "seed_consistency_pvalue": 0.7768704666006853,
+  "multiple_to_first_ratio": 0.02651927522564795,
+  "numerical_quality_passed": true,
+  "numerical_quality_gates": {
+    "transport_complete": true,
+    "sampling_sufficient": true,
+    "seed_consistency": true,
+    "order_closure": true
+  },
+  "transport_status_counts": [
+    0,
+    5645272,
+    212410,
+    142318,
+    0,
+    0,
+    0
+  ],
+  "annulus_halo_counts": [
+    1911.0004701097125,
+    3568.96719738668,
+    3803.4597799303338,
+    2520.0910011947994,
+    2078.4040668141793,
+    1076.5721608339304,
+    789.8115129974908,
+    456.343139086118,
+    217.51840340012637
+  ],
+  "annulus_ratio": [
+    2.04823201512295,
+    2.4444980804018357,
+    2.927990592710034,
+    3.2144017872382644,
+    2.9991400675529283,
+    2.9904782245386956,
+    3.2369324303175855,
+    3.2595938506151287,
+    3.452673069843276
+  ],
+  "annulus_ratio_se": [
+    0.06787182886230446,
+    0.06469949640729517,
+    0.08208574681257069,
+    0.11592749282500606,
+    0.11514564664254837,
+    0.15940115547868622,
+    0.21018474687150818,
+    0.2807954926915743,
+    0.46216673744734316
+  ],
+  "fitted_parameters": 0,
+  "model": {
+    "label": "DSH: MRN/RG\u2013Drude + TBabs",
+    "short_label": "MRN/RG\u2013Drude + TBabs",
+    "color": "#7851a9",
+    "seeds": [
+      38611,
+      38612,
+      38613
+    ],
+    "scattering": "Historical MRN Gaussian RG/Drude, radii 0.005\u20130.3 micron",
+    "absorption": "Frozen XSPEC TBabs, abund wilm, xsect vern; full effective absorption",
+    "abundances": "Historical effective dust normalization; dust mass/H 2.32475e-26 g"
+  },
+  "diagnostics": {
+    "scattering_cm2_per_h": 5.682159799461621e-24,
+    "absorption_cm2_per_h": 2.5350614604341722e-24,
+    "central_direct_transmission": 0.9211133177183741,
+    "physical_angle_quantiles_arcsec": [
+      30.123726769263463,
+      84.72581595560736,
+      259.98849946911963
+    ]
+  },
+  "material": {
+    "legacy_v1_4p9_cross_sections_match_rtol": 1e-07
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "full_mie_over_hybrid_halo_ratio": 1.00130244584,
+  "halo_ratio_independent_mc_se": 0.004362999965198998,
+  "radial_pair_pvalue": 0.5462815927806255,
+  "maximum_runtime_phase_relative_difference_0p5_to_450_arcsec": 0.0009430158731198457,
+  "maximum_runtime_phase_relative_difference_0p5_to_2000_arcsec": 0.04361175292467501,
+  "maximum_cdf_absolute_difference_all_angles": 6.425007753285694e-05,
+  "scope": "Same physical inventory and optics; angular solver and table sampling/interpolation differ. Not a pure ADT error estimate."
+}

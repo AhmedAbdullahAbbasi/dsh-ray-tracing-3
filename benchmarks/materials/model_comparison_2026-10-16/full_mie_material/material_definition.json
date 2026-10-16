@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "normalization": "per H nucleus",
+  "mass_convention": "CIAAW-2024-abridged/CODATA-2022-u",
+  "material_id": "WD01-RV3.1-bC60-Xray-dab36f3c096b",
+  "abundances": {
+    "abundance_id": "xspec-wilm-2000",
+    "atoms_per_h": {
+      "Al": 2.14e-06,
+      "Ar": 2.57e-06,
+      "B": 0.0,
+      "Be": 0.0,
+      "C": 0.00024,
+      "Ca": 1.58e-06,
+      "Cl": 1.32e-07,
+      "Co": 8.32e-08,
+      "Cr": 3.24e-07,
+      "Cu": 0.0,
+      "F": 0.0,
+      "Fe": 2.69e-05,
+      "H": 1.0,
+      "He": 0.0977,
+      "K": 0.0,
+      "Li": 0.0,
+      "Mg": 2.51e-05,
+      "Mn": 2.19e-07,
+      "N": 7.59e-05,
+      "Na": 1.45e-06,
+      "Ne": 8.71e-05,
+      "Ni": 1.12e-06,
+      "O": 0.00049,
+      "P": 2.63e-07,
+      "S": 1.23e-05,
+      "Sc": 0.0,
+      "Si": 1.86e-05,
+      "Ti": 6.46e-08,
+      "V": 0.0,
+      "Zn": 0.0
+    },
+    "reference": "Wilms, Allen & McCray (2000); XSPEC abund wilm vector, https://heasarc.gsfc.nasa.gov/docs/software/xspec/manual/XSabund.html"
+  },
+  "grains": [
+    {
+      "component_id": "carbonaceous",
+      "stoichiometry": {
+        "C": 1.0
+      },
+      "density_g_cm3": 2.2,
+      "mass_per_h_g": 2.393368170815775e-27,
+      "size_distribution_id": "WD01-RV3.1-bC60-wd01_original",
+      "optical_constants_id": "Draine2003-carbonaceous-Xray-spheres-v1",
+      "reference": "Weingartner & Draine 2001, ApJ 548, 296; Table 1, R_V=3.1, b_C=6e-5, case A; https://arxiv.org/abs/astro-ph/0008146",
+      "size_parameters": {
+        "maximum_radius_um": 2.0,
+        "minimum_radius_um": 0.00035,
+        "normalization_scale": 0.4813853948538391
+      }
+    },
+    {
+      "component_id": "silicate",
+      "stoichiometry": {
+        "Fe": 1.0,
+        "Mg": 1.0,
+        "O": 4.0,
+        "Si": 1.0
+      },
+      "density_g_cm3": 3.8,
+      "mass_per_h_g": 4.787578135307148e-27,
+      "size_distribution_id": "WD01-RV3.1-bC60-wd01_original",
+      "optical_constants_id": "Draine2003-silicate-Xray-spheres-v1",
+      "reference": "Weingartner & Draine 2001, ApJ 548, 296; Table 1, R_V=3.1, b_C=6e-5, case A; https://arxiv.org/abs/astro-ph/0008146",
+      "size_parameters": {
+        "maximum_radius_um": 2.0,
+        "minimum_radius_um": 0.00035,
+        "normalization_scale": 0.3184324217049859
+      }
+    }
+  ],
+  "molecular_hydrogen_fraction": 0.2,
+  "scattering_method": "mie",
+  "reference": "Weingartner & Draine 2001, ApJ 548, 296; Table 1, R_V=3.1, b_C=6e-5, case A; https://arxiv.org/abs/astro-ph/0008146"
+}

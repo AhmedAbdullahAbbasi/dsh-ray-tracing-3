@@ -1,0 +1,287 @@
+{
+  "histories": 6000000,
+  "halo_counts": 5992.022678970212,
+  "reference_halo_counts": 5976.0,
+  "halo_ratio": 1.0026811711797543,
+  "halo_ratio_combined_se": 0.013333879892133183,
+  "halo_difference_z": 0.20158960101489304,
+  "radial_chi2": 16.279930923655552,
+  "radial_dof": 9,
+  "radial_pvalue": 0.061261069065824514,
+  "maximum_annulus_absolute_z": 2.238369823482597,
+  "aperture_relative_mc_se": 0.003084927781621855,
+  "seed_consistency_pvalue": 0.49320961287907816,
+  "multiple_to_first_ratio": 0.008390731564525663,
+  "numerical_quality_passed": true,
+  "numerical_quality_gates": {
+    "transport_complete": true,
+    "sampling_sufficient": true,
+    "seed_consistency": true,
+    "order_closure": true
+  },
+  "transport_status_counts": [
+    0,
+    5645980,
+    211829,
+    142191,
+    0,
+    0,
+    0
+  ],
+  "annulus_halo_counts": [
+    936.3488762175323,
+    1461.96336209023,
+    1356.9141339760838,
+    844.1767585660738,
+    637.2749324132377,
+    316.57483827830544,
+    236.91768309274028,
+    140.5576033508587,
+    61.29449098515027
+  ],
+  "annulus_ratio": [
+    1.003589363577205,
+    1.0013447685549521,
+    1.0445836289269312,
+    1.076756069599584,
+    0.9195886470609491,
+    0.8793745507730707,
+    0.9709741110358208,
+    1.0039828810775622,
+    0.9729284283357186
+  ],
+  "annulus_ratio_se": [
+    0.03375568040880088,
+    0.02693094029872184,
+    0.029796691146492343,
+    0.0395444871276162,
+    0.036000200032731855,
+    0.04769063391153395,
+    0.0641413126321155,
+    0.08709159399272869,
+    0.12597780315291243
+  ],
+  "fitted_parameters": 0,
+  "model": {
+    "label": "DSH: WD01/D03 Mie\u2013ADT",
+    "short_label": "WD01/D03 Mie\u2013ADT",
+    "color": "#c64a26",
+    "seeds": [
+      28611,
+      28612,
+      28613
+    ],
+    "cached": "benchmarks/materials/wd01_reflex_2026-10-16",
+    "scattering": "WD01 shapes, D03 optics; Mie totals, hybrid Mie/ADT phase",
+    "absorption": "Residual neutral TBnew/Verner + H2 + Mie grain absorption",
+    "abundances": "Wilms budget; 50% C and 90% Si in solids; MgFeSiO4 stoichiometry; H2=0.2"
+  },
+  "diagnostics": {
+    "scattering_cm2_per_h": 2.0087027525893543e-24,
+    "absorption_cm2_per_h": 2.540355559663056e-24,
+    "central_direct_transmission": 0.9555286006253444,
+    "physical_angle_quantiles_arcsec": [
+      25.277657178292344,
+      75.32557419084512,
+      230.22183689865017
+    ]
+  },
+  "material": {
+    "definition_sha256": "ae70e088497ae23d534b8fb1815eb1b157013e0e57dba2f8457d90dd91e61400",
+    "audit": {
+      "material_id": "WD01-RV3.1-bC60-Xray-dab36f3c096b",
+      "material_definition_sha256": "ae70e088497ae23d534b8fb1815eb1b157013e0e57dba2f8457d90dd91e61400",
+      "normalization": "per H nucleus",
+      "mass_convention": "CIAAW-2024-abridged/CODATA-2022-u",
+      "elements": {
+        "Al": {
+          "total_atoms_per_h": 2.14e-06,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 2.14e-06,
+          "gas_fraction": 1.0
+        },
+        "Ar": {
+          "total_atoms_per_h": 2.57e-06,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 2.57e-06,
+          "gas_fraction": 1.0
+        },
+        "B": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "Be": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "C": {
+          "total_atoms_per_h": 0.00024,
+          "grain_atoms_per_h": 0.00012000000000000003,
+          "gas_atoms_per_h": 0.00011999999999999998,
+          "gas_fraction": 0.4999999999999999
+        },
+        "Ca": {
+          "total_atoms_per_h": 1.58e-06,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 1.58e-06,
+          "gas_fraction": 1.0
+        },
+        "Cl": {
+          "total_atoms_per_h": 1.32e-07,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 1.32e-07,
+          "gas_fraction": 1.0
+        },
+        "Co": {
+          "total_atoms_per_h": 8.32e-08,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 8.32e-08,
+          "gas_fraction": 1.0
+        },
+        "Cr": {
+          "total_atoms_per_h": 3.24e-07,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 3.24e-07,
+          "gas_fraction": 1.0
+        },
+        "Cu": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "F": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "Fe": {
+          "total_atoms_per_h": 2.69e-05,
+          "grain_atoms_per_h": 1.6740000000000002e-05,
+          "gas_atoms_per_h": 1.0159999999999998e-05,
+          "gas_fraction": 0.37769516728624525
+        },
+        "H": {
+          "total_atoms_per_h": 1.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 1.0,
+          "gas_fraction": 1.0
+        },
+        "He": {
+          "total_atoms_per_h": 0.0977,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0977,
+          "gas_fraction": 1.0
+        },
+        "K": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "Li": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "Mg": {
+          "total_atoms_per_h": 2.51e-05,
+          "grain_atoms_per_h": 1.6740000000000002e-05,
+          "gas_atoms_per_h": 8.359999999999998e-06,
+          "gas_fraction": 0.3330677290836653
+        },
+        "Mn": {
+          "total_atoms_per_h": 2.19e-07,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 2.19e-07,
+          "gas_fraction": 1.0
+        },
+        "N": {
+          "total_atoms_per_h": 7.59e-05,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 7.59e-05,
+          "gas_fraction": 1.0
+        },
+        "Na": {
+          "total_atoms_per_h": 1.45e-06,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 1.45e-06,
+          "gas_fraction": 1.0
+        },
+        "Ne": {
+          "total_atoms_per_h": 8.71e-05,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 8.71e-05,
+          "gas_fraction": 1.0
+        },
+        "Ni": {
+          "total_atoms_per_h": 1.12e-06,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 1.12e-06,
+          "gas_fraction": 1.0
+        },
+        "O": {
+          "total_atoms_per_h": 0.00049,
+          "grain_atoms_per_h": 6.696000000000001e-05,
+          "gas_atoms_per_h": 0.00042303999999999996,
+          "gas_fraction": 0.8633469387755102
+        },
+        "P": {
+          "total_atoms_per_h": 2.63e-07,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 2.63e-07,
+          "gas_fraction": 1.0
+        },
+        "S": {
+          "total_atoms_per_h": 1.23e-05,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 1.23e-05,
+          "gas_fraction": 1.0
+        },
+        "Sc": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "Si": {
+          "total_atoms_per_h": 1.86e-05,
+          "grain_atoms_per_h": 1.6740000000000002e-05,
+          "gas_atoms_per_h": 1.8599999999999991e-06,
+          "gas_fraction": 0.09999999999999995
+        },
+        "Ti": {
+          "total_atoms_per_h": 6.46e-08,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 6.46e-08,
+          "gas_fraction": 1.0
+        },
+        "V": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "Zn": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        }
+      },
+      "dust_mass_per_h_g": 7.180946306122923e-27,
+      "gas_mass_per_h_g": 2.344139870032293e-24,
+      "total_mass_per_h_g": 2.351320816338416e-24,
+      "dust_to_gas_mass_ratio": 0.0030633608505724525,
+      "atomic_hydrogen_atoms_per_h": 0.8,
+      "molecular_hydrogen_molecules_per_h": 0.1,
+      "grain_hydrogen_atoms_per_h": 0.0
+    }
+  }
+}
