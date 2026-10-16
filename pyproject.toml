@@ -17,6 +17,7 @@ dependencies = [
 fits = ["astropy>=6"]
 dev = ["astropy>=6", "ruff>=0.16"]
 benchmark = ["astropy>=6", "matplotlib>=3.8", "scipy>=1.13", "xdust==1.0"]
+materials = ["scipy>=1.13", "miepython==3.3.0", "numba>=0.60"]
 
 [project.scripts]
 dsh-v1 = "dsh.cli:main"
@@ -25,7 +26,7 @@ dsh-v1 = "dsh.cli:main"
 include = ["dsh*"]
 
 [tool.setuptools.package-data]
-dsh = ["data/**/*.json", "data/**/*.npz"]
+dsh = ["data/**/*.json", "data/**/*.npz", "data/**/*.dat"]
 
 [tool.ruff]
 target-version = "py310"

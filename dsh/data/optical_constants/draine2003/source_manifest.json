@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "reference": "Draine (2003), ApJ 598, 1026; https://www.astro.princeton.edu/~draine/dust/dust.diel.html",
+  "files": {
+    "silD03.dat": {
+      "url": "https://www.astro.princeton.edu/~draine/dust/diel/callindex.out_silD03",
+      "sha256": "31072857d3fe8acf08bf58d02dd2ea12b0fd9480ee284450ad68c7ea416afb6b"
+    },
+    "graphite_parallel_D03.dat": {
+      "url": "https://www.astro.princeton.edu/~draine/dust/diel/callindex.out_CpaD03_0.10",
+      "sha256": "518670c9a850f3a3b5c3d011d3809088a6f6c1aaf0f3ebc8316574f1d55005a5"
+    },
+    "graphite_perpendicular_D03.dat": {
+      "url": "https://www.astro.princeton.edu/~draine/dust/diel/callindex.out_CpeD03_0.10",
+      "sha256": "7cf5e0dae097e8d8b385606176825501c3f5094dbba2a6a7fb68fda0ca792013"
+    }
+  },
+  "supported_energy_kev": [
+    2.0,
+    10.0
+  ],
+  "graphite_reference_radius_um": 0.1,
+  "note": "Pinned author data. X-ray bulk homogeneous-sphere approximation; no PAH molecular edge calculation.",
+  "optical_material_densities_g_cm3": {
+    "carbonaceous": 2.2,
+    "silicate": 3.8
+  },
+  "density_reference": "Draine (2003), ApJ 598, 1026, Sections 2.1--2.2; differs from WD01 size-law normalization densities"
+}
