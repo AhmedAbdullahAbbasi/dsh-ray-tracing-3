@@ -6,9 +6,11 @@ It adds chemical input definitions and an opt-in table-composition contract on
 now adds actual size distributions, Mie/forward-ADT scattering and grain
 absorption. The [absorption/edge milestone](ABSORPTION_EDGES.md) adds a pinned
 gas/H2 basis, an explicit experimental budget variant and runtime edge handling;
-its independent XSPEC-process check is prepared but not yet run. ZDA04 and
-evolving-spectral response validation remain following work. The description
-below documents the first milestone's contract.
+the user subsequently reported the independent XSPEC-process checks passing.
+The [spectral-history milestone](SPECTRAL_HISTORIES.md) adds changing intrinsic
+spectra and validation of a reusable physical halo response. ZDA04 alternatives
+remain the next physics milestone. The description below documents the first
+milestone's contract.
 
 ## Definition and normalization
 

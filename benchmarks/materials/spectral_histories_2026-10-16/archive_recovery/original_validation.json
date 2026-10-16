@@ -1,0 +1,132 @@
+{
+  "all_passed": true,
+  "gates": {
+    "independent_total_response": true,
+    "independent_first_order_response": true,
+    "independent_multiple_order_response": true,
+    "joint_source_sampling": true,
+    "production_binning": true,
+    "transport_complete": true,
+    "multiple_orders_exercised": true,
+    "response_order_closure": true
+  },
+  "controls": {
+    "total": {
+      "response_fluence": 21.80080669426718,
+      "direct_fluence": 21.782991006402487,
+      "window_total_z": -0.20987493757105122,
+      "well_sampled_bins": 30,
+      "maximum_absolute_bin_z": 2.019388596994969,
+      "global_chi2": 22.083292134956817,
+      "global_degrees_of_freedom": 30,
+      "global_pvalue": 0.8509969709448864,
+      "passes": true
+    },
+    "first": {
+      "response_fluence": 17.91350462913779,
+      "direct_fluence": 17.899684620333744,
+      "window_total_z": -0.3724727217917895,
+      "well_sampled_bins": 30,
+      "maximum_absolute_bin_z": 2.176053820231043,
+      "global_chi2": 26.361568406599666,
+      "global_degrees_of_freedom": 30,
+      "global_pvalue": 0.6565552501445717,
+      "passes": true
+    },
+    "multiple": {
+      "response_fluence": 3.8873020651293806,
+      "direct_fluence": 3.8833063860687447,
+      "window_total_z": -0.05414418586644247,
+      "well_sampled_bins": 17,
+      "maximum_absolute_bin_z": 1.2292900417830395,
+      "global_chi2": 6.693527030230131,
+      "global_degrees_of_freedom": 17,
+      "global_pvalue": 0.9871809999224423,
+      "passes": true
+    }
+  },
+  "histories_each_run": 4194304,
+  "chunk_size": 8192,
+  "max_interactions": 16,
+  "seed": 20261016,
+  "source_total_fluence": 201.60000610351562,
+  "response_events": 632921,
+  "response_multiple_events": 87608,
+  "direct_multiple_events_in_window": 177838,
+  "direct_transport_status_counts": [
+    0,
+    2124906,
+    148227,
+    1921171,
+    0,
+    0,
+    0
+  ],
+  "maximum_joint_cell_absolute_z": 1.3978370455574327,
+  "maximum_production_binning_relative_difference": 8.731013899501937e-07,
+  "geometry": {
+    "source_distance_kpc": 10,
+    "screen_fraction": 0.5,
+    "thickness_kpc": 0.03,
+    "column_cm2": 1e+23,
+    "half_width_arcsec": 1800
+  },
+  "response_sha256": "ae875c3d53bc3069cc439932666d3dc5c6730316d0d263314900fee347390a69",
+  "response_provenance": {
+    "chunk_size": 8192,
+    "cloud_sha256": "665810f17eaec7aed0ef1167168d710c2bc422f62c8016e527c53b4305503552",
+    "jax_backend": "cpu",
+    "jax_version": "0.11.2",
+    "launch_sha256": "74dda0fb4362bce4476524a963a7bc175ecbd7995aae3e84647e356f7f728298",
+    "material_definition_sha256": "ae70e088497ae23d534b8fb1815eb1b157013e0e57dba2f8457d90dd91e61400",
+    "material_sha256": "f8df58aa77f63c412ce9043b7e08a35a62a4cca81ee7cf2fc935370f9c7d7f6c",
+    "max_interactions": 16,
+    "numpy_version": "2.5.4",
+    "proposal_band_flux": [
+      [
+        0.25,
+        0.20000000298023224,
+        0.15000000596046448,
+        0.20000000298023224,
+        0.20000000298023224
+      ]
+    ],
+    "proposal_energy_edges_kev": [
+      2.0,
+      4.0,
+      6.900000095367432,
+      7.124000072479248,
+      7.400000095367432,
+      10.0
+    ],
+    "proposal_photon_index": 1.0,
+    "runtime_files_sha256": {
+      "geometry/clouds.py": "fb582dbfc7a7f7d33ce97e883312aff3582f6b80808ecb5735d16a537754f22f",
+      "geometry/coordinates.py": "65905d0e242f92c6f21a4f313846f3550ec53b05e7a8b2a2bf993d6226b4fc24",
+      "geometry/rays.py": "ab73865214664fbdca598b906105a01f28822f7c1468888237f99e070b4c5ec3",
+      "observer/response.py": "2ad19cae9203d3dee6373fdcdf6594fde4d339e750b18eb89c72cd7a78aa3125",
+      "observer/response_transport.py": "5c33f318be42a0ebf13b490988d370c772fc56fbc6faf53efadda119f24b0abb",
+      "observer/scoring.py": "479708e00a76eb33c4b8cb5d8309132b54e4092145d45f4def4555b1609ac350",
+      "physics/dust.py": "0da4baac58893043086c63b28264edf27e33636f8a3d695264098d1f7a72bfd6",
+      "sources/histories.py": "001f05b3085b10d6ad201376cfc9a1056204506645e7e74d99a3038f58b1434a",
+      "sources/launch.py": "860de38cd95daf90b79bae459314729460018757f8731f3c56f16bb5dae594eb",
+      "sources/models.py": "a54b296338530686d3ffbc929f249129d2db3e604a49e6eb8fb4f9a254531798",
+      "sources/radial_launch.py": "df75a83cf6f838c7d65749ab95e04f7dd6d3d9b701cc78c7b03222601164da4d",
+      "transport/directions.py": "350e0cd6044d31bb0dd19e38877c917d59e0984aa1d9c11864a854cb17469e7a",
+      "transport/kernel.py": "55a4622286151c3b40e0cc2ce1a62705a956f20c4703d7eba1fef01a2e78da66"
+    },
+    "runtime_sha256": "0de75678f7672679d2b195dac913ade65c92b62c152a7ec1e36214c91ced022d",
+    "seed": 20261016,
+    "transport_status_counts": [
+      0,
+      2951223,
+      148705,
+      1094376,
+      0,
+      0,
+      0
+    ]
+  },
+  "scope": "Independent Monte Carlo check of joint spectral histories and physical halo-response reuse; no new external halo or instrument calibration reference",
+  "xspec_status": "user reported checks pass; raw XSPEC report not available in this environment"
+}

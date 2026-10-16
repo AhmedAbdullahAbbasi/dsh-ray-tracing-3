@@ -191,6 +191,39 @@ class TestIdealObserverNpz(unittest.TestCase):
                     archive["physics_energy_edge_kev"], edged_physics.energy_edge_kev
                 )
 
+            history = build_powerlaw_band_source(
+                [0, 10, 100], [0.04, 0.008], [2, 4, 6, 10], [1.0, 2.2]
+            )
+            history_path = Path(directory) / "history.npz"
+            write_ideal_observer_npz(
+                history_path,
+                result,
+                bin_geometry,
+                history,
+                cloud,
+                edged_physics,
+                launch_geometry,
+                run_metadata={
+                    **metadata,
+                    "source_spectrum": "spectral-history",
+                    "source_history_sha256": "c" * 64,
+                    "source_epoch": "relative test origin",
+                    "source_time_scale": "simulation-relative",
+                },
+            )
+            with np.load(history_path, allow_pickle=False) as archive:
+                self.assertEqual(int(archive["output_schema_version"]), 8)
+                self.assertEqual(str(archive["source_history_sha256"]), "c" * 64)
+                self.assertEqual(
+                    str(archive["source_time_scale"]), "simulation-relative"
+                )
+                np.testing.assert_array_equal(
+                    archive["source_photon_index"], history.photon_index
+                )
+                np.testing.assert_array_equal(
+                    archive["source_energy_edges_kev"], history.energy_edges_kev
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

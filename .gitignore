@@ -27,3 +27,6 @@ dist/
 # Local Monte Carlo products
 outputs/
 validation_outputs/
+
+# Unpublished temporary files from atomic NPZ exports
+.*.npz

@@ -185,6 +185,39 @@ class TestIdealObserverFits(unittest.TestCase):
                     hdul["SOURCE"].data["ENERGY_HIGH"], [4.0, 6.0, 10.0]
                 )
 
+            history = build_powerlaw_band_source(
+                [0, 10, 100], [0.04, 0.008], [2, 4, 6, 10], [1.0, 2.2]
+            )
+            history_path = Path(directory) / "history.fits"
+            write_ideal_observer_fits(
+                history_path,
+                result,
+                bin_geometry,
+                history,
+                cloud,
+                physics,
+                launch_geometry,
+                run_metadata={
+                    "source_spectrum": "spectral-history",
+                    "source_history_sha256": "c" * 64,
+                    "source_epoch": "relative test origin",
+                    "source_time_scale": "simulation-relative",
+                },
+            )
+            with fits.open(history_path, checksum=True) as hdul:
+                hdul.verify("exception")
+                self.assertEqual(hdul[0].header["SRCSPEC"], "spectral-history")
+                self.assertNotIn("PHINDEX", hdul[0].header)
+                self.assertEqual(hdul[0].header["SPECINT"], "CELLPOWERLAW")
+                self.assertEqual(hdul[0].header["SRCHSHA"], "c" * 64)
+                self.assertEqual(hdul[0].header["SRCTSCL"], "simulation-relative")
+                np.testing.assert_allclose(
+                    hdul["SOURCE"].data["PHOTON_INDEX"], [1, 1, 1, 2.2, 2.2, 2.2]
+                )
+                np.testing.assert_allclose(
+                    hdul["SOURCE"].data["PHOTON_FLUX"].reshape(2, 3), history.band_flux
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

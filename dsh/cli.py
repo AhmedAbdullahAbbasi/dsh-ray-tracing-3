@@ -37,6 +37,7 @@ from .pipeline import (
     TRANSPORT_STATUS_LABELS,
     run_tabulated_source_to_observer_chunked,
 )
+from .sources.histories import load_spectral_history
 from .sources.launch import build_cloud_launch_geometry
 from .sources.models import build_powerlaw_band_source
 from .sources.radial_launch import build_radial_cloud_launch_geometry
@@ -75,11 +76,17 @@ def parse_arguments():
         choices=("constant-flare", "exponential-decay"),
         default="constant-flare",
     )
-    parser.add_argument(
+    spectrum_group = parser.add_mutually_exclusive_group()
+    spectrum_group.add_argument(
         "--source-spectrum",
         choices=("representative", "hard-state-powerlaw"),
         default="representative",
         help="three fixed energies (default) or continuous 2–10 keV hard-state power law",
+    )
+    spectrum_group.add_argument(
+        "--source-history",
+        type=Path,
+        help="intrinsic spectral-history JSON with explicit epoch, units, and cell slopes",
     )
     parser.add_argument(
         "--photon-index",
@@ -204,7 +211,21 @@ def main():
         absorption = load_photoelectric_absorption_table()
         physics = build_dust_physics_from_tables(scattering, absorption)
     hard_state = args.source_spectrum == "hard-state-powerlaw"
-    if hard_state:
+    history_metadata = {}
+    history_mode = args.source_history is not None
+    if history_mode:
+        if args.source_model != "constant-flare":
+            raise ValueError("--source-history supplies its own time history")
+        if args.materials not in ("2-10", "declared"):
+            raise ValueError("--source-history requires --materials 2-10 or declared")
+        source, history_metadata = load_spectral_history(args.source_history)
+        energy_edges_kev = np.asarray(source.energy_edges_kev)
+        if (
+            energy_edges_kev[0] < scattering.energy_kev[0]
+            or energy_edges_kev[-1] > scattering.energy_kev[-1]
+        ):
+            raise ValueError("spectral history extends outside material energy support")
+    elif hard_state:
         if args.materials not in ("2-10", "declared"):
             raise ValueError(
                 "hard-state-powerlaw requires --materials 2-10 or declared"
@@ -247,7 +268,7 @@ def main():
         )
         cloud_description = str(args.cloud_fits)
 
-    if not hard_state:
+    if not hard_state and not history_mode:
         if args.source_model == "constant-flare":
             source = build_v1_test_source(
                 source_energies,
@@ -287,7 +308,12 @@ def main():
 
     print(f"JAX backend: {jax.default_backend()}")
     print(f"Material tables: {args.materials} ({scattering.energy_kev.size} nodes)")
-    if hard_state:
+    if history_mode:
+        print(
+            f"Source spectrum: intrinsic spectral history; {source.band_flux.shape[0]} time intervals; "
+            f"{source.band_flux.shape[1]} continuous energy bands"
+        )
+    elif hard_state:
         print(
             "Source spectrum: continuous 2–10 keV power law; "
             f"photon index={args.photon_index:g}; "
@@ -299,7 +325,13 @@ def main():
     print(f"Cloud: {cloud_description}")
     print(f"Cloud shape (z, y, x): {tuple(cloud.delta_nh_cm2.shape)}")
     print(f"Packets: {args.packets:,} in chunks of {args.chunk_size:,}")
-    if args.source_model == "constant-flare":
+    if history_mode:
+        print(f"Input source: {args.source_history}")
+        print(
+            f"  epoch: {history_metadata['source_epoch']}; "
+            f"time scale: {history_metadata['source_time_scale']}"
+        )
+    elif args.source_model == "constant-flare":
         print("Input source: constant one-hour unabsorbed observer-equivalent flare")
     else:
         print("Input source: unabsorbed observer-equivalent exponential decay")
@@ -311,13 +343,14 @@ def main():
             f"source bins={args.source_time_bin_days:g} days"
         )
     for index, flux in enumerate(np.asarray(source.band_flux)[0]):
-        if hard_state:
+        if hard_state or history_mode:
             label = f"{energy_edges_kev[index]:g}–{energy_edges_kev[index + 1]:g} keV"
         else:
             label = f"{source_energies[index]:.1f} keV"
-        print(f"  {label} peak: {float(flux):.7g} ph cm^-2 s^-1")
+        description = "first interval" if history_mode else "peak"
+        print(f"  {label} {description}: {float(flux):.7g} ph cm^-2 s^-1")
     print(
-        "  peak total: "
+        f"  {'first interval' if history_mode else 'peak'} total: "
         f"{float(np.sum(np.asarray(source.band_flux)[0])):.7g} ph cm^-2 s^-1; "
         f"simulated fluence={float(np.asarray(source.total_fluence)):.7g} "
         "ph cm^-2"
@@ -390,7 +423,7 @@ def main():
         "simulation_jax": jax.__version__,
         "material_tables": args.materials,
         "launch_sampler": args.launch_sampler,
-        "source_spectrum": args.source_spectrum,
+        "source_spectrum": "spectral-history" if history_mode else args.source_spectrum,
         "source_photon_index": args.photon_index if hard_state else None,
         "scattering_table_sha256": scattering.metadata["table_sha256"],
         "absorption_table_sha256": absorption.metadata["table_sha256"],
@@ -402,15 +435,16 @@ def main():
         "max_interactions": args.max_interactions,
         "seed": args.seed,
         "cloud_description": cloud_description,
-        "source_model": args.source_model,
+        "source_model": "spectral-history" if history_mode else args.source_model,
         "peak_band_fluxes": np.asarray(source.band_flux)[0],
-        "baseline_band_fluxes": (0.0, 0.0, 0.0)
-        if hard_state
+        "baseline_band_fluxes": np.zeros(source.band_flux.shape[1])
+        if hard_state or history_mode
         else args.baseline_band_fluxes,
         "decay_time_days": args.decay_time_days if decay_mode else None,
         "decay_start_days": args.decay_start_days if decay_mode else None,
         "decay_duration_days": args.decay_duration_days if decay_mode else None,
         "source_time_bin_days": args.source_time_bin_days if decay_mode else None,
+        **history_metadata,
     }
     output_path = write_ideal_observer_npz(
         args.output,

@@ -1,0 +1,23 @@
+............................................................................................................................................................................................................................
+----------------------------------------------------------------------
+Ran 220 tests in 165.786s
+
+OK
+Source launch sampler: radial
+JAX backend: cpu
+Material tables: 2-10 (130 nodes)
+Source spectrum: continuous 2–10 keV power law; photon index=1.7; total photon flux=0.038 ph cm^-2 s^-1
+Devices: [CpuDevice(id=0)]
+Cloud: built-in four-cloud synthetic scene
+Cloud shape (z, y, x): (160, 51, 51)
+Packets: 2,500,000 in chunks of 256
+Input source: constant one-hour unabsorbed observer-equivalent flare
+  2–4 keV peak: 0.02161404 ph cm^-2 s^-1
+  4–6 keV peak: 0.008552176 ph cm^-2 s^-1
+  6–10 keV peak: 0.007833779 ph cm^-2 s^-1
+  peak total: 0.038 ph cm^-2 s^-1; simulated fluence=136.8 ph cm^-2
+Starting ideal-observer simulation...
+wrote /tmp/tmpv61m47zw/scattering.npz and /tmp/tmpv61m47zw/scattering.json (3 energies)
+wrote /tmp/tmpv61m47zw/absorption.npz
+wrote /tmp/tmpv61m47zw/absorption.json
+sigma_abs [cm^2/H] = [1.25000000e-23 2.78264741e-24 1.00000000e-25]

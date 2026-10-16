@@ -14,6 +14,7 @@ from ..pipeline import TRANSPORT_STATUS_LABELS, IdealObserverSimulationResult
 from ..sources.launch import SourceLaunchGeometry
 from ..sources.models import TabulatedBandSource
 from ..sources.radial_launch import RadialLaunchGeometry
+from .atomic import atomic_savez_compressed
 
 
 def _named_tuple_arrays(value) -> dict[str, np.ndarray]:
@@ -151,5 +152,15 @@ def write_ideal_observer_npz(
                 "one-sided endpoints inside narrow edge brackets; high-energy side at threshold"
             ),
         )
-    np.savez_compressed(output_path, **payload)
+    if source.photon_index is not None and source.photon_index.ndim == 2:
+        payload.update(
+            output_schema_version=np.asarray(8),
+            source_spectral_interpolation=np.asarray(
+                "piecewise power law; constant in time cells"
+            ),
+        )
+    for name in ("source_history_sha256", "source_epoch", "source_time_scale"):
+        if name in metadata:
+            payload[name] = np.asarray(metadata[name])
+    atomic_savez_compressed(output_path, **payload)
     return output_path

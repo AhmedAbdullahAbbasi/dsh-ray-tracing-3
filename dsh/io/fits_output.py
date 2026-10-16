@@ -155,6 +155,15 @@ def _source_table_hdu(fits, source: TabulatedBandSource):
                 ),
             ]
         )
+        columns.append(
+            fits.Column(
+                name="PHOTON_INDEX",
+                format="D",
+                array=np.broadcast_to(
+                    np.asarray(source.photon_index), flux.shape
+                ).reshape(-1),
+            )
+        )
     return fits.BinTableHDU.from_columns(columns, name="SOURCE")
 
 
@@ -329,9 +338,22 @@ def write_ideal_observer_fits(
         )
     )
     if source.photon_index is not None:
-        primary.header["PHINDEX"] = (float(source.photon_index), "source photon index")
+        if source.photon_index.ndim == 0:
+            primary.header["PHINDEX"] = (
+                float(source.photon_index),
+                "source photon index",
+            )
+        else:
+            primary.header["SPECINT"] = "CELLPOWERLAW"
         primary.header["EMINKEV"] = float(source.energy_edges_kev[0])
         primary.header["EMAXKEV"] = float(source.energy_edges_kev[-1])
+    for name, keyword in (
+        ("source_history_sha256", "SRCHSHA"),
+        ("source_epoch", "SRCEPOCH"),
+        ("source_time_scale", "SRCTSCL"),
+    ):
+        if name in metadata:
+            primary.header[keyword] = str(metadata[name])
     material_headers = {
         "material_tables": "MATMODEL",
         "scattering_table_sha256": "SCATSHA",

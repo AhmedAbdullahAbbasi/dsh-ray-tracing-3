@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "flux_convention": "unabsorbed observer-equivalent",
+  "units": {"time": "s", "energy": "keV", "band_flux": "ph cm^-2 s^-1"},
+  "epoch": "arbitrary origin for static response collection",
+  "time_scale": "simulation-relative",
+  "time_edges_s": [0, 1],
+  "energy_edges_kev": [2, 4, 6.9, 7.124, 7.4, 10],
+  "band_flux": [[0.25, 0.2, 0.15, 0.2, 0.2]],
+  "photon_index": [[1, 1, 1, 1, 1]]
+}

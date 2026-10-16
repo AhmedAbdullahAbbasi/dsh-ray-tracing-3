@@ -12,6 +12,10 @@ adds residual gas/H2, an explicitly renormalized experimental Wilms-budget
 material, and one-sided runtime thresholds. It is selected with `--materials
 declared --material-directory ...`; existing defaults remain available. See
 [material accounting](benchmarks/materials/README.md) for the composition contract.
+The [spectral-history milestone](benchmarks/materials/SPECTRAL_HISTORIES.md) adds
+time-dependent intrinsic spectra and reusable energy/sky/delay samples with
+photon-grouped Monte Carlo covariance. XSPEC gas checks were reported passing
+by the user; the original prepared-only XSPEC records remain historical.
 
 The output is physical observer fluence, not telescope counts. Effective
 area, PSF, exposure maps, detector redistribution, background, and counting

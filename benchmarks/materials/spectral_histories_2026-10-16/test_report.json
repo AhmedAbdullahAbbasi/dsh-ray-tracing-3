@@ -1,0 +1,14 @@
+{
+  "command": "python -m unittest discover -s tests -t .",
+  "test_count": 220,
+  "seconds": 165.786,
+  "passed": true,
+  "optional_mie_dependencies_enabled": true,
+  "fold_cli": {
+    "passed": true,
+    "histories_in_response": 1048576,
+    "fluence": 21.711265340671872,
+    "output_sha256": "6a3841375674c7fa3c1dc520dd8410eaa26ea60496c5526eced60beaa90c5aa5",
+    "source_sha256": "d3260c712eae895f169d53f8e47e5934e9dd201baa734b9c90220c7b20abda9d"
+  }
+}

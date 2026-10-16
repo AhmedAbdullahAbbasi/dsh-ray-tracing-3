@@ -1,0 +1,65 @@
+Replay: 131,072/4,194,304
+Replay: 262,144/4,194,304
+Replay: 393,216/4,194,304
+Replay: 524,288/4,194,304
+Replay: 655,360/4,194,304
+Replay: 786,432/4,194,304
+Replay: 917,504/4,194,304
+Replay: 1,048,576/4,194,304
+Replay: 1,179,648/4,194,304
+Replay: 1,310,720/4,194,304
+Replay: 1,441,792/4,194,304
+Replay: 1,572,864/4,194,304
+Replay: 1,703,936/4,194,304
+Replay: 1,835,008/4,194,304
+Replay: 1,966,080/4,194,304
+Replay: 2,097,152/4,194,304
+Replay: 2,228,224/4,194,304
+Replay: 2,359,296/4,194,304
+Replay: 2,490,368/4,194,304
+Replay: 2,621,440/4,194,304
+Replay: 2,752,512/4,194,304
+Replay: 2,883,584/4,194,304
+Replay: 3,014,656/4,194,304
+Replay: 3,145,728/4,194,304
+Replay: 3,276,800/4,194,304
+Replay: 3,407,872/4,194,304
+Replay: 3,538,944/4,194,304
+Replay: 3,670,016/4,194,304
+Replay: 3,801,088/4,194,304
+Replay: 3,932,160/4,194,304
+Replay: 4,063,232/4,194,304
+Replay: 4,194,304/4,194,304
+{
+  "reason": "Export was truncated after the passing in-memory comparison. Replayed identical proposal, seeds, cloud, material, launch and chunking; publishing now uses an atomic replacement.",
+  "histories": 4194304,
+  "seed": 20261016,
+  "chunk_size": 8192,
+  "max_interactions": 16,
+  "fluence_bit_identical": true,
+  "covariance_bit_identical": true,
+  "first_multiple_window_sums_match": true,
+  "unchanged_numeric_runtime_files_sha256": {
+    "geometry/clouds.py": "fb582dbfc7a7f7d33ce97e883312aff3582f6b80808ecb5735d16a537754f22f",
+    "geometry/coordinates.py": "65905d0e242f92c6f21a4f313846f3550ec53b05e7a8b2a2bf993d6226b4fc24",
+    "geometry/rays.py": "ab73865214664fbdca598b906105a01f28822f7c1468888237f99e070b4c5ec3",
+    "observer/scoring.py": "479708e00a76eb33c4b8cb5d8309132b54e4092145d45f4def4555b1609ac350",
+    "physics/dust.py": "0da4baac58893043086c63b28264edf27e33636f8a3d695264098d1f7a72bfd6",
+    "sources/histories.py": "001f05b3085b10d6ad201376cfc9a1056204506645e7e74d99a3038f58b1434a",
+    "sources/launch.py": "860de38cd95daf90b79bae459314729460018757f8731f3c56f16bb5dae594eb",
+    "sources/models.py": "a54b296338530686d3ffbc929f249129d2db3e604a49e6eb8fb4f9a254531798",
+    "sources/radial_launch.py": "df75a83cf6f838c7d65749ab95e04f7dd6d3d9b701cc78c7b03222601164da4d",
+    "transport/directions.py": "350e0cd6044d31bb0dd19e38877c917d59e0984aa1d9c11864a854cb17469e7a",
+    "transport/kernel.py": "55a4622286151c3b40e0cc2ce1a62705a956f20c4703d7eba1fef01a2e78da66"
+  },
+  "unchanged_estimator_function_ast": {
+    "SpectralResponse": true,
+    "FoldedSpectralResponse": true,
+    "response_from_events": true,
+    "fold_spectral_response": true,
+    "collect_spectral_response": true
+  },
+  "previous_archive_sha256": "ae875c3d53bc3069cc439932666d3dc5c6730316d0d263314900fee347390a69",
+  "recovered_archive_sha256": "483b645877ab4eefeb31e0d954dfd6bcb5c364f830b9e04a08f137d16030ffb5",
+  "response_archive_load_passed": true
+}

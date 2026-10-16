@@ -1,0 +1,28 @@
+{
+  "histories": 8192,
+  "npz_schema": 8,
+  "source_sha256": "d3260c712eae895f169d53f8e47e5934e9dd201baa734b9c90220c7b20abda9d",
+  "cell_shape": [
+    3,
+    5
+  ],
+  "transport_status_counts": [
+    0,
+    6865,
+    289,
+    1038,
+    0,
+    0,
+    0
+  ],
+  "scored_events": 523,
+  "binned_events": 523,
+  "binned_fluence": 11.43627142906189,
+  "fits_checksums_pass": true,
+  "products_sha256": {
+    "smoke.npz": "9bcbb96670f08a914b16a26411e35970083076b13456ee39decb798d7766b086",
+    "smoke.fits": "d255ce2695dfb46561fd87ccba9ab6075d34edf62f19e840e97751be38ec0b95"
+  },
+  "raw_products_in_git": false,
+  "reproduction": "python -m scripts.run_dsh_v1 --materials declared --material-directory dsh/data/materials/wd01_wilm_c50_si90_v1 --source-history benchmarks/materials/spectral_histories_2026-10-16/history.json --packets 8192 --chunk-size 1024 --max-interactions 32 --output outputs/spectral_history.npz"
+}

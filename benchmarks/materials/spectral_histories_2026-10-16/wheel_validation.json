@@ -1,0 +1,15 @@
+{
+  "wheel_name": "dsh_ray_tracing-0.1.0-py3-none-any.whl",
+  "wheel_sha256": "e2b946596756421f679036708f64a83939cc70a073d6e659e1db39e5d29dcf77",
+  "runtime_files_compared": 88,
+  "byte_identical": true,
+  "loaded_from_unpacked_wheel": true,
+  "miepython_installed": false,
+  "native_gas_backend_disabled": true,
+  "material_energy_nodes": 184,
+  "history_cell_shape": [
+    3,
+    5
+  ],
+  "folded_pilot_fluence": 21.711265340671872
+}

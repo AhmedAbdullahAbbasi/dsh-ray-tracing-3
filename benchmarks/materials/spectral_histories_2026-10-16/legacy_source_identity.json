@@ -1,0 +1,31 @@
+{
+  "baseline_commit": "54b1be840df7ba05096918fd41af5ca3feaf3f80",
+  "packets_each_case": 10000,
+  "seed": 786,
+  "checks": [
+    {
+      "case": "representative",
+      "source_arrays_bit_identical": true,
+      "packet_fields_bit_identical": true,
+      "packets_sha256": "f967567680222526fd2b591b2ec4878536ee7c89d780c67db2f5e7f362f1dabd"
+    },
+    {
+      "case": "constant_Gamma1",
+      "source_arrays_bit_identical": true,
+      "packet_fields_bit_identical": true,
+      "packets_sha256": "5efc0917bfe245fdbb40e55de1b7cc63a80d1e56ef163dda67c7abb5078cbf7f"
+    },
+    {
+      "case": "constant_Gamma1p7",
+      "source_arrays_bit_identical": true,
+      "packet_fields_bit_identical": true,
+      "packets_sha256": "ebfd1903583b811db9ef76e1497c81eb74fa7b8d8df85b3ed697ffe07c1e3ae0"
+    },
+    {
+      "case": "variable_brightness",
+      "source_arrays_bit_identical": true,
+      "packet_fields_bit_identical": true,
+      "packets_sha256": "1b7dbbe621099e18542968caee2a0ec9e7d80ece2f96034e38e77c4ae54761f0"
+    }
+  ]
+}

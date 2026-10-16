@@ -170,7 +170,13 @@ def build_powerlaw_band_source(
         or not np.all(np.diff(edges) > 0.0)
     ):
         raise ValueError("energy edges must be finite, positive, strictly increasing")
-    if gamma.ndim != 0 or not np.isfinite(gamma):
+    if gamma.ndim != 0:
+        from .histories import build_powerlaw_history_source
+
+        return build_powerlaw_history_source(
+            time_edges_s, photon_flux, energy_edges_kev, photon_index
+        )
+    if not np.isfinite(gamma):
         raise ValueError("photon_index must be one finite scalar")
     if flux.shape != (len(time_edges_s) - 1,):
         raise ValueError("photon_flux must have one value per source time interval")
@@ -310,11 +316,14 @@ def sample_tabulated_band_source(
     if source.energy_edges_kev is None:
         energy_kev = source.effective_energy_kev[band_index]
     else:
+        gamma = source.photon_index
+        if gamma.ndim == 2:
+            gamma = gamma[time_index, band_index]
         energy_kev = _sample_powerlaw_energy(
             key_energy,
             source.energy_edges_kev[band_index],
             source.energy_edges_kev[band_index + 1],
-            source.photon_index,
+            gamma,
             n_packets,
         )
     weight = jnp.full(
