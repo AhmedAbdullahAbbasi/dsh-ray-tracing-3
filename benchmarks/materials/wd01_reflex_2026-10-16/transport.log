@@ -1,0 +1,156 @@
+{
+  "wd01": {
+    "scattering_cm2_per_h": 2.0087027525893543e-24,
+    "absorption_cm2_per_h": 2.540355559663056e-24,
+    "central_direct_transmission": 0.9555286006253444,
+    "physical_angle_quantiles_arcsec": [
+      25.277657178292344,
+      75.32557419084512,
+      230.22183689865017
+    ]
+  },
+  "reflex": {
+    "scattering_cm2_per_h": 1.9772032213265226e-24,
+    "absorption_cm2_per_h": 2.4832589302222087e-24,
+    "central_direct_transmission": 0.9563755374012589,
+    "physical_angle_quantiles_arcsec": [
+      24.920802314202838,
+      74.76244182380098,
+      224.28739369519894
+    ]
+  }
+}
+seed=28611: 8,192/2,000,000, 3.9s, halo=7.445785e-05
+seed=28611: 212,992/2,000,000, 12.4s, halo=0.001960747
+seed=28611: 417,792/2,000,000, 20.5s, halo=0.003825521
+seed=28611: 622,592/2,000,000, 29.0s, halo=0.005703927
+seed=28611: 827,392/2,000,000, 37.2s, halo=0.00763327
+seed=28611: 1,032,192/2,000,000, 45.8s, halo=0.009525628
+seed=28611: 1,236,992/2,000,000, 54.7s, halo=0.01133236
+seed=28611: 1,441,792/2,000,000, 63.1s, halo=0.01318434
+seed=28611: 1,646,592/2,000,000, 71.5s, halo=0.01505505
+seed=28611: 1,851,392/2,000,000, 83.2s, halo=0.01693699
+seed=28611: 2,000,000/2,000,000, 89.5s, halo=0.01828664
+seed=28612: 8,192/2,000,000, 3.0s, halo=8.136629e-05
+seed=28612: 212,992/2,000,000, 11.4s, halo=0.001906687
+seed=28612: 417,792/2,000,000, 19.5s, halo=0.003740924
+seed=28612: 622,592/2,000,000, 27.9s, halo=0.005587726
+seed=28612: 827,392/2,000,000, 35.7s, halo=0.007490423
+seed=28612: 1,032,192/2,000,000, 43.7s, halo=0.009283442
+seed=28612: 1,236,992/2,000,000, 52.0s, halo=0.01115737
+seed=28612: 1,441,792/2,000,000, 60.7s, halo=0.01305481
+seed=28612: 1,646,592/2,000,000, 69.4s, halo=0.01492498
+seed=28612: 1,851,392/2,000,000, 77.6s, halo=0.0167894
+seed=28612: 2,000,000/2,000,000, 84.3s, halo=0.01815868
+seed=28613: 8,192/2,000,000, 2.8s, halo=7.557102e-05
+seed=28613: 212,992/2,000,000, 10.8s, halo=0.001939807
+seed=28613: 417,792/2,000,000, 18.7s, halo=0.003813208
+seed=28613: 622,592/2,000,000, 26.6s, halo=0.005657349
+seed=28613: 827,392/2,000,000, 34.5s, halo=0.007515786
+seed=28613: 1,032,192/2,000,000, 42.6s, halo=0.009411259
+seed=28613: 1,236,992/2,000,000, 50.7s, halo=0.01129213
+seed=28613: 1,441,792/2,000,000, 59.1s, halo=0.01318882
+seed=28613: 1,646,592/2,000,000, 67.4s, halo=0.01506061
+seed=28613: 1,851,392/2,000,000, 76.1s, halo=0.01695174
+seed=28613: 2,000,000/2,000,000, 82.2s, halo=0.01831156
+WARNING: Unexpected extra padding at the end of the file.  This padding may not be preserved when saving changes. [astropy.io.fits.header]
+WARNING: VerifyWarning: Keyword name 'HISTORIES' is greater than 8 characters or contains characters not allowed by the FITS standard; a HIERARCH card will be created. [astropy.io.fits.card]
+Saved comparison PNG/PDF, phase PNG/PDF, radial CSV and native FITS in benchmarks/materials/wd01_reflex_2026-10-16
+{
+  "comparison_kind": "different physical materials, fixed absolute normalization",
+  "numerical_quality_passed": true,
+  "numerical_quality_gates": {
+    "transport_complete": true,
+    "order_closure": true,
+    "sampling_sufficient": true,
+    "seed_consistency": true
+  },
+  "histories": 6000000,
+  "reference_halo_counts": 5976.0,
+  "wd01_halo_counts": 5992.022678970212,
+  "halo_ratio": 1.0026811711797543,
+  "halo_ratio_se": 0.013333879892133183,
+  "halo_difference_z": 0.20158960101489304,
+  "global_radial_chi2": 16.279930923655552,
+  "radial_degrees_of_freedom": 9,
+  "global_radial_pvalue": 0.061261069065824514,
+  "maximum_annulus_absolute_z": 2.238369823482597,
+  "aperture_relative_mc_se": 0.003084927781621854,
+  "seed_consistency_pvalue": 0.49320961287907816,
+  "source_camera_normalization": 328288.7495996549,
+  "fitted_parameters": 0,
+  "reference_direct_counts": 313691.0,
+  "wd01_direct_counts": 313689.2895060024,
+  "direct_difference_z": -0.0030588118722085942,
+  "multiple_to_first_ratio": 0.008390731564525663,
+  "order_fluences": [
+    0.018100417960435305,
+    0.00015111372050495033,
+    7.620278067813994e-07
+  ],
+  "transport_status_counts": [
+    0,
+    5645980,
+    211829,
+    142191,
+    0,
+    0,
+    0
+  ],
+  "annulus_reference_counts": [
+    933.0,
+    1460.0,
+    1299.0,
+    784.0,
+    693.0,
+    360.0,
+    244.0,
+    140.0,
+    63.0
+  ],
+  "annulus_wd01_counts": [
+    936.3488762175323,
+    1461.96336209023,
+    1356.9141339760838,
+    844.1767585660738,
+    637.2749324132377,
+    316.57483827830544,
+    236.91768309274028,
+    140.5576033508587,
+    61.29449098515027
+  ],
+  "annulus_ratio": [
+    1.003589363577205,
+    1.0013447685549521,
+    1.0445836289269312,
+    1.076756069599584,
+    0.9195886470609491,
+    0.8793745507730707,
+    0.9709741110358208,
+    1.0039828810775622,
+    0.9729284283357186
+  ],
+  "annulus_ratio_se": [
+    0.03375568040880088,
+    0.02693094029872184,
+    0.029796691146492343,
+    0.0395444871276162,
+    0.036000200032731855,
+    0.04769063391153395,
+    0.0641413126321155,
+    0.08709159399272869,
+    0.12597780315291243
+  ],
+  "annulus_difference_z": [
+    0.10669510763723547,
+    0.04999753950170645,
+    1.5591440466866249,
+    2.0809991323513604,
+    -2.0633563947444005,
+    -2.238369823482597,
+    -0.4401616631607576,
+    0.04590494080503189,
+    -0.20937212525571952
+  ],
+  "statistical_scope": "Approximate Gaussian radial diagnostic with observed RefleX multinomial covariance plus independent history-grouped DSH covariance. No geometry allowance added. This is not a same-material transport acceptance test."
+}

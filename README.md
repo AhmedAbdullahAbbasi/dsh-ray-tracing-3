@@ -16,6 +16,9 @@ The [spectral-history milestone](benchmarks/materials/SPECTRAL_HISTORIES.md) add
 time-dependent intrinsic spectra and reusable energy/sky/delay samples with
 photon-grouped Monte Carlo covariance. XSPEC gas checks were reported passing
 by the user; the original prepared-only XSPEC records remain historical.
+The [independent-material RefleX comparison](benchmarks/materials/WD01_REFLEX.md)
+runs the complete WD01/D03 material in the accepted benchmark geometry and
+automatically exports halo images, radial profiles and native-pixel FITS.
 
 The output is physical observer fluence, not telescope counts. Effective
 area, PSF, exposure maps, detector redistribution, background, and counting

@@ -1,0 +1,12 @@
+test_display_rebin_preserves_counts_and_orientation (tests.test_wd01_reflex_comparison.TestWD01ReflexComparison.test_display_rebin_preserves_counts_and_orientation) ... ok
+test_fits_has_native_grid_and_consistent_fluence_units (tests.test_wd01_reflex_comparison.TestWD01ReflexComparison.test_fits_has_native_grid_and_consistent_fluence_units) ... ok
+test_independent_seed_average_matches_pooled_history_covariance (tests.test_wd01_reflex_comparison.TestWD01ReflexComparison.test_independent_seed_average_matches_pooled_history_covariance) ... ok
+test_ratio_error_scales_reference_noise_by_actual_ratio (tests.test_wd01_reflex_comparison.TestWD01ReflexComparison.test_ratio_error_scales_reference_noise_by_actual_ratio) ... ok
+test_rejects_duplicate_seeds_and_unequal_sample_sizes (tests.test_wd01_reflex_comparison.TestWD01ReflexComparison.test_rejects_duplicate_seeds_and_unequal_sample_sizes) ... ok
+test_completed_replacement_has_all_arrays_and_no_temporary_file (tests.test_atomic_output.TestAtomicOutput.test_completed_replacement_has_all_arrays_and_no_temporary_file) ... ok
+test_interrupted_replacement_preserves_prior_archive (tests.test_atomic_output.TestAtomicOutput.test_interrupted_replacement_preserves_prior_archive) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.048s
+
+OK

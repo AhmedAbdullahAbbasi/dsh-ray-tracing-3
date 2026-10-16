@@ -10,7 +10,9 @@ the user subsequently reported the independent XSPEC-process checks passing.
 The [spectral-history milestone](SPECTRAL_HISTORIES.md) adds changing intrinsic
 spectra and validation of a reusable physical halo response. ZDA04 alternatives
 remain the next physics milestone. The description below documents the first
-milestone's contract.
+milestone's contract. The [independent-material RefleX comparison](WD01_REFLEX.md)
+now compares the complete WD01/D03 gas-plus-grain material against the existing
+4.9 keV RefleX image with unchanged absolute normalization.
 
 ## Definition and normalization
 

@@ -1,0 +1,462 @@
+{
+  "comparison_kind": "different physical materials, fixed absolute normalization",
+  "numerical_quality_passed": true,
+  "numerical_quality_gates": {
+    "transport_complete": true,
+    "order_closure": true,
+    "sampling_sufficient": true,
+    "seed_consistency": true
+  },
+  "histories": 6000000,
+  "reference_halo_counts": 5976.0,
+  "wd01_halo_counts": 5992.022678970212,
+  "halo_ratio": 1.0026811711797543,
+  "halo_ratio_se": 0.013333879892133183,
+  "halo_difference_z": 0.20158960101489304,
+  "global_radial_chi2": 16.279930923655552,
+  "radial_degrees_of_freedom": 9,
+  "global_radial_pvalue": 0.061261069065824514,
+  "maximum_annulus_absolute_z": 2.238369823482597,
+  "aperture_relative_mc_se": 0.003084927781621854,
+  "seed_consistency_pvalue": 0.49320961287907816,
+  "source_camera_normalization": 328288.7495996549,
+  "fitted_parameters": 0,
+  "reference_direct_counts": 313691.0,
+  "wd01_direct_counts": 313689.2895060024,
+  "direct_difference_z": -0.0030588118722085942,
+  "multiple_to_first_ratio": 0.008390731564525663,
+  "order_fluences": [
+    0.018100417960435305,
+    0.00015111372050495033,
+    7.620278067813994e-07
+  ],
+  "order_covariance": [
+    [
+      3.035870576639016e-09,
+      2.4908829272985006e-11,
+      1.3254497858626528e-13
+    ],
+    [
+      2.4908829272985006e-11,
+      8.319154686368863e-11,
+      4.989755701715493e-13
+    ],
+    [
+      1.3254497858626528e-13,
+      4.989755701715493e-13,
+      3.363200580798014e-13
+    ]
+  ],
+  "transport_status_counts": [
+    0,
+    5645980,
+    211829,
+    142191,
+    0,
+    0,
+    0
+  ],
+  "annulus_reference_counts": [
+    933.0,
+    1460.0,
+    1299.0,
+    784.0,
+    693.0,
+    360.0,
+    244.0,
+    140.0,
+    63.0
+  ],
+  "annulus_wd01_counts": [
+    936.3488762175323,
+    1461.96336209023,
+    1356.9141339760838,
+    844.1767585660738,
+    637.2749324132377,
+    316.57483827830544,
+    236.91768309274028,
+    140.5576033508587,
+    61.29449098515027
+  ],
+  "annulus_ratio": [
+    1.003589363577205,
+    1.0013447685549521,
+    1.0445836289269312,
+    1.076756069599584,
+    0.9195886470609491,
+    0.8793745507730707,
+    0.9709741110358208,
+    1.0039828810775622,
+    0.9729284283357186
+  ],
+  "annulus_ratio_se": [
+    0.03375568040880088,
+    0.02693094029872184,
+    0.029796691146492343,
+    0.0395444871276162,
+    0.036000200032731855,
+    0.04769063391153395,
+    0.0641413126321155,
+    0.08709159399272869,
+    0.12597780315291243
+  ],
+  "annulus_difference_z": [
+    0.10669510763723547,
+    0.04999753950170645,
+    1.5591440466866249,
+    2.0809991323513604,
+    -2.0633563947444005,
+    -2.238369823482597,
+    -0.4401616631607576,
+    0.04590494080503189,
+    -0.20937212525571952
+  ],
+  "statistical_scope": "Approximate Gaussian radial diagnostic with observed RefleX multinomial covariance plus independent history-grouped DSH covariance. No geometry allowance added. This is not a same-material transport acceptance test.",
+  "material": {
+    "directory_name": "wd01_wilm_c50_si90_v1",
+    "definition_sha256": "ae70e088497ae23d534b8fb1815eb1b157013e0e57dba2f8457d90dd91e61400",
+    "recipe": {
+      "schema_version": 1,
+      "normalization": "per H nucleus",
+      "mass_convention": "CIAAW-2024-abridged/CODATA-2022-u",
+      "material_id": "WD01-RV3.1-bC60-Xray-dab36f3c096b",
+      "abundances": {
+        "abundance_id": "xspec-wilm-2000",
+        "atoms_per_h": {
+          "Al": 2.14e-06,
+          "Ar": 2.57e-06,
+          "B": 0.0,
+          "Be": 0.0,
+          "C": 0.00024,
+          "Ca": 1.58e-06,
+          "Cl": 1.32e-07,
+          "Co": 8.32e-08,
+          "Cr": 3.24e-07,
+          "Cu": 0.0,
+          "F": 0.0,
+          "Fe": 2.69e-05,
+          "H": 1.0,
+          "He": 0.0977,
+          "K": 0.0,
+          "Li": 0.0,
+          "Mg": 2.51e-05,
+          "Mn": 2.19e-07,
+          "N": 7.59e-05,
+          "Na": 1.45e-06,
+          "Ne": 8.71e-05,
+          "Ni": 1.12e-06,
+          "O": 0.00049,
+          "P": 2.63e-07,
+          "S": 1.23e-05,
+          "Sc": 0.0,
+          "Si": 1.86e-05,
+          "Ti": 6.46e-08,
+          "V": 0.0,
+          "Zn": 0.0
+        },
+        "reference": "Wilms, Allen & McCray (2000); XSPEC abund wilm vector, https://heasarc.gsfc.nasa.gov/docs/software/xspec/manual/XSabund.html"
+      },
+      "grains": [
+        {
+          "component_id": "carbonaceous",
+          "stoichiometry": {
+            "C": 1.0
+          },
+          "density_g_cm3": 2.2,
+          "mass_per_h_g": 2.393368170815775e-27,
+          "size_distribution_id": "WD01-RV3.1-bC60-wd01_original",
+          "optical_constants_id": "Draine2003-carbonaceous-Xray-spheres-v1",
+          "reference": "Weingartner & Draine 2001, ApJ 548, 296; Table 1, R_V=3.1, b_C=6e-5, case A; https://arxiv.org/abs/astro-ph/0008146",
+          "size_parameters": {
+            "maximum_radius_um": 2.0,
+            "minimum_radius_um": 0.00035,
+            "normalization_scale": 0.4813853948538391
+          }
+        },
+        {
+          "component_id": "silicate",
+          "stoichiometry": {
+            "Fe": 1.0,
+            "Mg": 1.0,
+            "O": 4.0,
+            "Si": 1.0
+          },
+          "density_g_cm3": 3.8,
+          "mass_per_h_g": 4.787578135307148e-27,
+          "size_distribution_id": "WD01-RV3.1-bC60-wd01_original",
+          "optical_constants_id": "Draine2003-silicate-Xray-spheres-v1",
+          "reference": "Weingartner & Draine 2001, ApJ 548, 296; Table 1, R_V=3.1, b_C=6e-5, case A; https://arxiv.org/abs/astro-ph/0008146",
+          "size_parameters": {
+            "maximum_radius_um": 2.0,
+            "minimum_radius_um": 0.00035,
+            "normalization_scale": 0.3184324217049859
+          }
+        }
+      ],
+      "molecular_hydrogen_fraction": 0.2,
+      "scattering_method": "mie_adt",
+      "reference": "Weingartner & Draine 2001, ApJ 548, 296; Table 1, R_V=3.1, b_C=6e-5, case A; https://arxiv.org/abs/astro-ph/0008146"
+    },
+    "audit": {
+      "material_id": "WD01-RV3.1-bC60-Xray-dab36f3c096b",
+      "material_definition_sha256": "ae70e088497ae23d534b8fb1815eb1b157013e0e57dba2f8457d90dd91e61400",
+      "normalization": "per H nucleus",
+      "mass_convention": "CIAAW-2024-abridged/CODATA-2022-u",
+      "elements": {
+        "Al": {
+          "total_atoms_per_h": 2.14e-06,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 2.14e-06,
+          "gas_fraction": 1.0
+        },
+        "Ar": {
+          "total_atoms_per_h": 2.57e-06,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 2.57e-06,
+          "gas_fraction": 1.0
+        },
+        "B": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "Be": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "C": {
+          "total_atoms_per_h": 0.00024,
+          "grain_atoms_per_h": 0.00012000000000000003,
+          "gas_atoms_per_h": 0.00011999999999999998,
+          "gas_fraction": 0.4999999999999999
+        },
+        "Ca": {
+          "total_atoms_per_h": 1.58e-06,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 1.58e-06,
+          "gas_fraction": 1.0
+        },
+        "Cl": {
+          "total_atoms_per_h": 1.32e-07,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 1.32e-07,
+          "gas_fraction": 1.0
+        },
+        "Co": {
+          "total_atoms_per_h": 8.32e-08,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 8.32e-08,
+          "gas_fraction": 1.0
+        },
+        "Cr": {
+          "total_atoms_per_h": 3.24e-07,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 3.24e-07,
+          "gas_fraction": 1.0
+        },
+        "Cu": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "F": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "Fe": {
+          "total_atoms_per_h": 2.69e-05,
+          "grain_atoms_per_h": 1.6740000000000002e-05,
+          "gas_atoms_per_h": 1.0159999999999998e-05,
+          "gas_fraction": 0.37769516728624525
+        },
+        "H": {
+          "total_atoms_per_h": 1.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 1.0,
+          "gas_fraction": 1.0
+        },
+        "He": {
+          "total_atoms_per_h": 0.0977,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0977,
+          "gas_fraction": 1.0
+        },
+        "K": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "Li": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "Mg": {
+          "total_atoms_per_h": 2.51e-05,
+          "grain_atoms_per_h": 1.6740000000000002e-05,
+          "gas_atoms_per_h": 8.359999999999998e-06,
+          "gas_fraction": 0.3330677290836653
+        },
+        "Mn": {
+          "total_atoms_per_h": 2.19e-07,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 2.19e-07,
+          "gas_fraction": 1.0
+        },
+        "N": {
+          "total_atoms_per_h": 7.59e-05,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 7.59e-05,
+          "gas_fraction": 1.0
+        },
+        "Na": {
+          "total_atoms_per_h": 1.45e-06,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 1.45e-06,
+          "gas_fraction": 1.0
+        },
+        "Ne": {
+          "total_atoms_per_h": 8.71e-05,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 8.71e-05,
+          "gas_fraction": 1.0
+        },
+        "Ni": {
+          "total_atoms_per_h": 1.12e-06,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 1.12e-06,
+          "gas_fraction": 1.0
+        },
+        "O": {
+          "total_atoms_per_h": 0.00049,
+          "grain_atoms_per_h": 6.696000000000001e-05,
+          "gas_atoms_per_h": 0.00042303999999999996,
+          "gas_fraction": 0.8633469387755102
+        },
+        "P": {
+          "total_atoms_per_h": 2.63e-07,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 2.63e-07,
+          "gas_fraction": 1.0
+        },
+        "S": {
+          "total_atoms_per_h": 1.23e-05,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 1.23e-05,
+          "gas_fraction": 1.0
+        },
+        "Sc": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "Si": {
+          "total_atoms_per_h": 1.86e-05,
+          "grain_atoms_per_h": 1.6740000000000002e-05,
+          "gas_atoms_per_h": 1.8599999999999991e-06,
+          "gas_fraction": 0.09999999999999995
+        },
+        "Ti": {
+          "total_atoms_per_h": 6.46e-08,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 6.46e-08,
+          "gas_fraction": 1.0
+        },
+        "V": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        },
+        "Zn": {
+          "total_atoms_per_h": 0.0,
+          "grain_atoms_per_h": 0.0,
+          "gas_atoms_per_h": 0.0,
+          "gas_fraction": null
+        }
+      },
+      "dust_mass_per_h_g": 7.180946306122923e-27,
+      "gas_mass_per_h_g": 2.344139870032293e-24,
+      "total_mass_per_h_g": 2.351320816338416e-24,
+      "dust_to_gas_mass_ratio": 0.0030633608505724525,
+      "atomic_hydrogen_atoms_per_h": 0.8,
+      "molecular_hydrogen_molecules_per_h": 0.1,
+      "grain_hydrogen_atoms_per_h": 0.0
+    },
+    "scope": "Experimental WD01 shapes renormalized to the declared Wilms budget; not the nominal published WD01 extinction normalization. D03 graphite/MgFeSiO4 spheres, Mie totals and hybrid Mie/ADT phase; residual neutral atomic gas plus H2 plus Mie grain absorption once.",
+    "wd01": {
+      "scattering_cm2_per_h": 2.0087027525893543e-24,
+      "absorption_cm2_per_h": 2.540355559663056e-24,
+      "central_direct_transmission": 0.9555286006253444,
+      "physical_angle_quantiles_arcsec": [
+        25.277657178292344,
+        75.32557419084512,
+        230.22183689865017
+      ]
+    },
+    "reflex": {
+      "scattering_cm2_per_h": 1.9772032213265226e-24,
+      "absorption_cm2_per_h": 2.4832589302222087e-24,
+      "central_direct_transmission": 0.9563755374012589,
+      "physical_angle_quantiles_arcsec": [
+        24.920802314202838,
+        74.76244182380098,
+        224.28739369519894
+      ]
+    }
+  },
+  "config": {
+    "source_distance_kpc": 10.0,
+    "cloud_center_kpc": 5.0,
+    "cloud_thickness_pc": 30.0,
+    "cloud_radius_pc": 30.0,
+    "cloud_sky_cells": 16,
+    "nh_cm2": 1e+22,
+    "energy_kev": 4.9,
+    "source_fluence_ph_cm2": 1.0,
+    "image_half_width_arcsec": 150.0,
+    "pixel_arcsec": 5.0,
+    "camera_aperture_radius_pc": 0.1,
+    "reflex_photons": 100000000,
+    "source_cone_half_angle_deg": 1.0,
+    "camera_grid_side": 100,
+    "camera_spacing_pc": 0.2,
+    "packets_per_seed": 2000000,
+    "seeds": [
+      28611,
+      28612,
+      28613
+    ],
+    "chunk_size": 8192,
+    "max_interactions": 8,
+    "annulus_edges_arcsec": [
+      0,
+      15,
+      30,
+      45,
+      60,
+      80,
+      100,
+      125,
+      150,
+      215
+    ],
+    "maximum_aperture_relative_mc_se": 0.006,
+    "minimum_reflex_counts_per_annulus": 20,
+    "minimum_global_pvalue": 0.001,
+    "aperture_sigma_limit": 3.0,
+    "annulus_sigma_limit": 4.0,
+    "geometry_response_fraction_allowance": 0.003,
+    "reflex_dust_image": "reflex_adapter/evidence/reference_dust_e4p9.fits",
+    "reflex_all_image": "reflex_adapter/evidence/reference_allphotons_e4p9.fits"
+  }
+}

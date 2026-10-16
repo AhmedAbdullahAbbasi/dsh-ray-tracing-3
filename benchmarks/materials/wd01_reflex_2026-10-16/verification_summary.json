@@ -1,0 +1,13 @@
+{
+  "numerical_quality_passed": true,
+  "targeted_tests_passed": true,
+  "protected_reflex_files_unchanged": 63,
+  "npz_archive_crc_checks": true,
+  "fits_checksums_and_native_grid": true,
+  "image_radial_order_closure": true,
+  "radial_mc_covariance_positive_definite": true,
+  "same_runtime_reuse_exit_code": 0,
+  "energy_kev": 4.9,
+  "histories": 6000000,
+  "fitted_parameters": 0
+}
