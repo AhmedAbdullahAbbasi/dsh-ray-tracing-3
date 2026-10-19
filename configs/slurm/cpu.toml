@@ -1,0 +1,58 @@
+config_version = 1
+
+[run]
+name = "cluster_cpu"
+workflow = "simulate"
+
+[scene]
+kind = "example_four_cloud"
+source_distance_kpc = 10.0
+coordinates = "source_centered_offsets"
+
+[source]
+kind = "representative"
+time_edges_days = [0.0, 0.041666666666666664]
+effective_energy_kev = [3.3, 4.9, 6.9]
+band_flux = [[0.020, 0.012, 0.006]]
+
+[materials]
+kind = "table_pair"
+scattering_file = "../../dsh/data/newdust/mrn_rg_drude_v1.npz"
+absorption_file = "../../dsh/data/absorption/tbabs_wilm_vern_v1.npz"
+
+[execution]
+packets = 64
+chunk_size = 32
+max_interactions = 32
+seed = 2026
+device = "cpu"
+launch_sampler = "radial"
+
+[observer]
+sky_grid = "cloud"
+energy_edges_kev = [2.5, 4.1, 5.9, 7.9]
+
+[observer.arrival]
+kind = "uniform"
+start_days = 0.0
+stop_days = 60.0
+step_days = 10.0
+last_bin = "shorten"
+
+[output]
+directory = "../../outputs/cluster_cpu"
+formats = ["npz", "fits"]
+overwrite = false
+
+[plots]
+enabled = false
+
+# Set account, partition, and Python executable for your cluster before submission.
+[slurm]
+time = "01:00:00"
+memory = "16G"
+cpus_per_task = 4
+gpus = 0
+python = "python3"
+working_directory = "../.."
+log_directory = "../../logs"

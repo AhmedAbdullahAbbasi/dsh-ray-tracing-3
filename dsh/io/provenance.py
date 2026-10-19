@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import platform
 import subprocess
 from pathlib import Path
@@ -47,6 +48,16 @@ def runtime_identity():
     return {
         "simulation_git_head": git("rev-parse", "HEAD") or "unavailable",
         "simulation_git_dirty": git("status", "--porcelain") != "",
+        "slurm_environment": {
+            key: os.environ[key]
+            for key in (
+                "SLURM_JOB_ID",
+                "SLURM_JOB_PARTITION",
+                "SLURM_CPUS_PER_TASK",
+                "SLURM_JOB_NODELIST",
+            )
+            if key in os.environ
+        },
         "simulation_python": platform.python_version(),
         "simulation_numpy": np.__version__,
         "simulation_jax": jax.__version__,

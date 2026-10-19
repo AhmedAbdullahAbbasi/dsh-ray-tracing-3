@@ -30,13 +30,23 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Check or run one TOML-configured ideal-observer simulation."
     )
-    parser.add_argument("command", choices=("check", "run"))
+    parser.add_argument(
+        "command", choices=("check", "run", "slurm-plan", "slurm-submit")
+    )
     parser.add_argument(
         "config", help="TOML simulation file; relative input paths use its directory"
     )
     args = parser.parse_args(argv)
     try:
         config = load_run_config(args.config)
+        if args.command.startswith("slurm-"):
+            from .cluster import job_plan, submit_job
+
+            plan = job_plan(config)
+            if args.command == "slurm-plan":
+                print(json.dumps(plan, indent=2), flush=True)
+                return 0
+            return submit_job(config, plan)
         bootstrap(config.execution.device)
         from .build import build_run_plan
 

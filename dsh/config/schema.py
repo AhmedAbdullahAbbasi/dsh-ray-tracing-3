@@ -169,6 +169,21 @@ class LoggingConfig:
 
 
 @dataclass(frozen=True)
+class SlurmConfig:
+    partition: str = ""
+    account: str = ""
+    qos: str = ""
+    time: str = "01:00:00"
+    memory: str = "16G"
+    cpus_per_task: int = 4
+    gpus: int = 0
+    exclude: str = ""
+    python: str = "python3"
+    working_directory: Path | None = None
+    log_directory: Path | None = None
+
+
+@dataclass(frozen=True)
 class ResolvedRun:
     config_path: Path
     config_sha256: str
@@ -185,6 +200,7 @@ class ResolvedRun:
     logging: LoggingConfig = field(default_factory=LoggingConfig)
     config_version: int = 1
     workflow: str = "simulate"
+    slurm: SlurmConfig | None = None
 
     def to_dict(self):
         """JSON-ready effective settings, including expanded defaults."""

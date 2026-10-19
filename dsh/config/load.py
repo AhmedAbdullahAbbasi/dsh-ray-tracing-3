@@ -435,6 +435,7 @@ def load_run_config(path: str | Path) -> ResolvedRun:
         "output",
         "plots",
         "logging",
+        "slurm",
     }
     _table(
         data,
@@ -720,6 +721,13 @@ def load_run_config(path: str | Path) -> ResolvedRun:
         ),
         log_name,
     )
+    slurm_config = None
+    if "slurm" in data:
+        from ..cluster import parse_slurm
+
+        slurm_config = parse_slurm(
+            data["slurm"], base, execution_values.get("device", "cpu")
+        )
     config = ResolvedRun(
         config_path,
         hashlib.sha256(raw).hexdigest(),
@@ -735,6 +743,7 @@ def load_run_config(path: str | Path) -> ResolvedRun:
         plots_config,
         logging_config,
         workflow=workflow,
+        slurm=slurm_config,
     )
     validate_relationships(config)
     for path in input_paths(config):
