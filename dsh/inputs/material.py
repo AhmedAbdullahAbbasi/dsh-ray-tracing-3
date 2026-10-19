@@ -7,6 +7,7 @@ import numpy as np
 from ..physics.absorption import load_photoelectric_absorption_table
 from ..physics.material_grid import load_material_grid
 from ..physics.newdust import (
+    build_dust_physics_from_newdust,
     build_dust_physics_from_tables,
     load_newdust_scattering_table,
 )
@@ -49,13 +50,20 @@ def load_material(config):
         raise ValueError(
             "materials.grid_file: required by the selected tables' shared-grid declaration"
         )
-    physics = build_dust_physics_from_tables(scattering, absorption)
+    physics = (
+        build_dust_physics_from_tables(scattering, absorption)
+        if config.absorption_enabled
+        else build_dust_physics_from_newdust(
+            scattering, np.zeros_like(scattering.energy_kev)
+        )
+    )
     return (
         scattering,
         absorption,
         physics,
         {
             "kind": config.kind,
+            "absorption_enabled": config.absorption_enabled,
             "scattering": dict(scattering.metadata),
             "absorption": dict(absorption.metadata),
         },

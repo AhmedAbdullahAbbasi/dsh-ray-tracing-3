@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import errno
 import json
 import os
+import shutil
 import tempfile
 import time
 from pathlib import Path
@@ -45,18 +47,35 @@ def _json(path, value):
 
 
 def _publish(source, destination, overwrite):
-    if overwrite:
-        os.replace(source, destination)
-    else:
-        # Exclusive, atomic publication of a completed file. Both paths live
-        # on the same filesystem; an existing destination cannot be replaced.
-        os.link(source, destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        if overwrite:
+            os.replace(source, destination)
+        else:
+            os.link(source, destination)
+            source.unlink()
+    except OSError as error:
+        if error.errno != errno.EXDEV:
+            raise
+        with tempfile.TemporaryDirectory(
+            prefix=".dsh-publish-", dir=destination.parent
+        ) as temporary:
+            local = Path(temporary) / destination.name
+            shutil.copyfile(source, local)
+            _publish(local, destination, overwrite)
         source.unlink()
 
 
 def publish_run(plan):
     config = plan.config
-    validate_destinations(config)
+    mapping = plan.publication_paths
+
+    def validate():
+        validate_destinations(
+            config, publication_paths=mapping, extra_inputs=plan.extra_inputs
+        )
+
+    validate()
     verify_inputs(plan.input_hashes)
     directory = config.output.directory
     directory.mkdir(parents=True, exist_ok=True)
@@ -139,6 +158,9 @@ def publish_run(plan):
                     "configuration": config.to_dict(),
                     "input_sha256": plan.input_hashes,
                     "runtime": plan.metadata,
+                    "publication_paths": {
+                        key: str(value) for key, value in mapping.items()
+                    },
                     "input_hash_policy": "SHA256 of raw bytes, checked before and after loading and before publication; grid recipe checks separately normalize CRLF.",
                 },
             )
@@ -148,7 +170,7 @@ def publish_run(plan):
             _json(report_path, report)
             paths.append(report_path)
         verify_inputs(plan.input_hashes)
-        validate_destinations(config)
+        validate()
         # Marker is always last. An interrupted group publication has no
         # production success marker, even if some individual files exist.
         inventory = {
@@ -157,7 +179,11 @@ def publish_run(plan):
             for path in [Path(name)]
         }
         for path in paths:
-            _publish(path, directory / path.name, config.output.overwrite)
+            _publish(
+                path,
+                Path(mapping.get(path.name, directory / path.name)),
+                config.output.overwrite,
+            )
         if complete and not diagnostic:
             completed = stage / "complete.json"
             _json(
@@ -167,6 +193,11 @@ def publish_run(plan):
                     "run": config.name,
                     "config_sha256": config.config_sha256,
                     "output_sha256": inventory,
+                    "output_paths": {
+                        name: str(mapping[name])
+                        for name in inventory
+                        if name in mapping
+                    },
                 },
             )
             _publish(completed, marker, config.output.overwrite)

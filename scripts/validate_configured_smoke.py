@@ -78,6 +78,21 @@ def inspect_complete(directory):
         "configuration hashes differ",
     )
     inventory = complete["output_sha256"]
+    mapping = complete.get("output_paths", {})
+    require(set(mapping) <= set(inventory), "mapped output missing from inventory")
+    require(
+        mapping
+        == {
+            key: value
+            for key, value in resolved.get("publication_paths", {}).items()
+            if key in inventory
+        },
+        "publication layouts differ",
+    )
+
+    def location(filename):
+        return Path(mapping.get(filename, directory / filename))
+
     require(
         set(inventory) == set(report["output_inventory"]),
         "completion/report inventories differ",
@@ -88,7 +103,7 @@ def inspect_complete(directory):
             "invalid inventory filename",
         )
         require(
-            digest(directory / filename) == expected,
+            digest(location(filename)) == expected,
             f"output hash mismatch: {filename}",
         )
     require(
@@ -102,8 +117,8 @@ def inspect_complete(directory):
         "missing required physical products or provenance",
     )
     with (
-        np.load(directory / (name + ".npz"), allow_pickle=False) as data,
-        fits.open(directory / (name + ".fits")) as hdus,
+        np.load(location(name + ".npz"), allow_pickle=False) as data,
+        fits.open(location(name + ".fits")) as hdus,
     ):
         require(
             all(
@@ -213,7 +228,8 @@ def inspect_complete(directory):
             "binned fluence closure",
         )
         require(
-            str(data["material_tables"]) == config["materials"]["kind"],
+            str(data["material_tables"])
+            == resolved["runtime"].get("material_tables", config["materials"]["kind"]),
             "material selection differs",
         )
         if config["materials"]["kind"] == "declared_bundle":
@@ -224,20 +240,50 @@ def inspect_complete(directory):
         plots = config["plots"]
         if plots["enabled"]:
             for scale in plots["scales"]:
-                png = directory / ("intensity_" + scale + ".png")
-                require(
-                    png.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
-                    and png.stat().st_size > 64,
-                    f"invalid {scale} plot",
-                )
+                for stem in (
+                    ("intensity_", "scored_events_")
+                    if plots.get("save_count_plots", False)
+                    else ("intensity_",)
+                ):
+                    png = location(stem + scale + ".png")
+                    require(
+                        png.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
+                        and png.stat().st_size > 64,
+                        f"invalid {stem}{scale} plot",
+                    )
         if plots["save_scored_event_map"]:
             start, stop = 0, expected_shape[0]
             if plots["epoch_days"]:
                 declared = config["observer"]["arrival"]["edges_days"]
                 start, stop = [declared.index(day) for day in plots["epoch_days"]]
+            first, end = 0, expected_shape[1]
+            if plots["energy_selection"] == "nearest":
+                edges = data["energy_edges_kev"]
+                centers = 0.5 * (edges[:-1] + edges[1:])
+                if len(data["source_energy_kev"]) == len(centers) and (
+                    not data["source_energy_edges_kev"].size
+                    or np.array_equal(data["source_energy_edges_kev"], edges)
+                ):
+                    centers = data["source_energy_kev"]
+                first = int(np.argmin(np.abs(centers - plots["energy_kev"])))
+                end = first + 1
+            xl, xr, yl, yr = 0, expected_shape[3], 0, expected_shape[2]
+            if plots["crop"] == "centered":
+                half = plots["fov_arcsec"] / 2
+                x, y = data["sky_x_edges_arcsec"], data["sky_y_edges_arcsec"]
+                xl, xr = (
+                    np.searchsorted(x, -half),
+                    np.searchsorted(x, half, side="right") - 1,
+                )
+                yl, yr = (
+                    np.searchsorted(y, -half),
+                    np.searchsorted(y, half, side="right") - 1,
+                )
             matching(
-                np.load(directory / "scored_mc_events.npy", allow_pickle=False),
-                data["event_count"][start:stop].sum(axis=(0, 1)),
+                np.load(location("scored_mc_events.npy"), allow_pickle=False),
+                data["event_count"][start:stop, first:end, yl:yr, xl:xr].sum(
+                    axis=(0, 1)
+                ),
                 "scored event map",
                 rtol=0,
             )

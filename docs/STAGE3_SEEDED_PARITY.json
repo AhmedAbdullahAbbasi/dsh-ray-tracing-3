@@ -1,0 +1,44 @@
+[
+  {
+    "case": "cli-flare",
+    "sampled_packets_exact": true,
+    "launch_cloud_physics_bins_exact": true,
+    "all_products_and_diagnostics_exact": true
+  },
+  {
+    "case": "cli-decay",
+    "sampled_packets_exact": true,
+    "launch_cloud_physics_bins_exact": true,
+    "all_products_and_diagnostics_exact": true
+  },
+  {
+    "case": "cli-powerlaw",
+    "sampled_packets_exact": true,
+    "launch_cloud_physics_bins_exact": true,
+    "all_products_and_diagnostics_exact": true
+  },
+  {
+    "case": "cli-history",
+    "sampled_packets_exact": true,
+    "launch_cloud_physics_bins_exact": true,
+    "all_products_and_diagnostics_exact": true
+  },
+  {
+    "case": "root-custom",
+    "sampled_packets_exact": true,
+    "launch_cloud_physics_bins_exact": true,
+    "all_products_and_diagnostics_exact": true
+  },
+  {
+    "case": "root-flux",
+    "sampled_packets_exact": true,
+    "launch_cloud_physics_bins_exact": true,
+    "all_products_and_diagnostics_exact": true
+  },
+  {
+    "case": "root-reflex",
+    "sampled_packets_exact": true,
+    "launch_cloud_physics_bins_exact": true,
+    "all_products_and_diagnostics_exact": true
+  }
+]

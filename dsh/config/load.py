@@ -179,18 +179,44 @@ def output_paths(config):
             directory / (prefix + "intensity_" + scale + ".png")
             for scale in config.plots.scales
         ]
+        if config.plots.save_count_plots:
+            paths += [
+                directory / (prefix + "scored_events_" + scale + ".png")
+                for scale in config.plots.scales
+            ]
     if config.plots.save_scored_event_map:
         paths.append(directory / (prefix + "scored_mc_events.npy"))
     return tuple(paths)
 
 
-def validate_destinations(config):
-    inputs = input_paths(config)
-    outputs = output_paths(config)
+def validate_destinations(config, *, publication_paths=None, extra_inputs=()):
+    inputs = input_paths(config) + tuple(Path(p).resolve() for p in extra_inputs)
+    declared = output_paths(config)
+    mapping = publication_paths or {}
+    if set(mapping) & {
+        "original.toml",
+        "resolved.json",
+        "report.json",
+        "complete.json",
+    }:
+        raise ConfigError("output: provenance files must stay in the run directory")
+    if set(mapping) - {p.name for p in declared}:
+        raise ConfigError("output: publication mapping contains an unknown product")
+    outputs = [Path(mapping.get(p.name, p)).resolve() for p in declared]
     resolved = [path.resolve() for path in outputs]
     if len(set(resolved)) != len(resolved):
         raise ConfigError("output: derived output paths collide")
     for output in outputs:
+        for parent in output.parents:
+            if parent.exists():
+                if not parent.is_dir():
+                    field = (
+                        "output.directory"
+                        if output.parent == config.output.directory
+                        else "output.publication_paths"
+                    )
+                    raise ConfigError(f"{field}: parent is not a directory: {parent}")
+                break
         for source in inputs:
             if output.resolve() == source or (
                 output.exists() and source.exists() and os.path.samefile(output, source)
@@ -227,8 +253,20 @@ def _source(data, base):
     )
     common = {"kind"}
     mode_fields = SOURCE_FIELDS
-    required = mode_fields[kind] - {"photon_index", "baseline_band_flux", "flux_scale"}
-    _table(data, f"source (kind={kind})", common | mode_fields[kind], common | required)
+    selected = mode_fields[kind]
+    if kind == "flux_table":
+        spectral = _choice(
+            data.get("spectral_mode"),
+            "source.spectral_mode",
+            ("band_powerlaw", "representative"),
+        )
+        selected = selected - (
+            {"effective_energy_kev"}
+            if spectral == "band_powerlaw"
+            else {"energy_edges_kev", "photon_index"}
+        )
+    required = selected - {"photon_index", "baseline_band_flux", "flux_scale"}
+    _table(data, f"source (kind={kind})", common | selected, common | required)
     values = {"kind": kind}
     for name, value in data.items():
         field_name = "source." + name
@@ -275,12 +313,12 @@ def _source(data, base):
             choices = {
                 "column_numbering": ("one_based_full_table",),
                 "time_format": ("mjd",),
-                "time_scale": ("UTC", "TT", "TDB", "TAI"),
+                "time_scale": ("UTC", "TT", "TDB", "TAI", "unspecified"),
                 "interval_policy": ("hold_until_next",),
                 "missing_data": ("error",),
                 "flux_convention": ("unabsorbed observer-equivalent",),
                 "flux_unit": ("ph cm^-2 s^-1",),
-                "spectral_mode": ("band_powerlaw",),
+                "spectral_mode": ("band_powerlaw", "representative"),
             }
             values[name] = _choice(value, field_name, choices[name])
     source = SourceConfig(**values)
@@ -368,6 +406,14 @@ def validate_relationships(config):
             raise ConfigError(
                 "plots.epoch_days: must select at least one complete observer bin"
             )
+    if (config.plots.energy_selection == "nearest") != (
+        config.plots.energy_kev is not None
+    ):
+        raise ConfigError(
+            "plots.energy_kev: required only for energy_selection=nearest"
+        )
+    if (config.plots.crop == "centered") != (config.plots.fov_arcsec is not None):
+        raise ConfigError("plots.fov_arcsec: required only for crop=centered")
 
 
 def load_run_config(path: str | Path) -> ResolvedRun:
@@ -409,10 +455,49 @@ def load_run_config(path: str | Path) -> ResolvedRun:
     scene = _table(
         data["scene"],
         "scene",
-        {"kind", "cloud_file", "source_distance_kpc", "coordinates"},
+        {f.name for f in fields(SceneConfig)},
         {"kind", "source_distance_kpc"},
     )
-    kind = _choice(scene["kind"], "scene.kind", ("fits", "example_four_cloud"))
+    kind = _choice(
+        scene["kind"], "scene.kind", ("fits", "example_four_cloud", "uniform_disc")
+    )
+    disc_fields = {f.name for f in fields(SceneConfig)} - {
+        "kind",
+        "cloud_file",
+        "source_distance_kpc",
+        "coordinates",
+    }
+    disc_values = {}
+    if kind == "uniform_disc":
+        _table(
+            scene,
+            "scene",
+            {"kind", "source_distance_kpc", "coordinates"} | disc_fields,
+            {"kind", "source_distance_kpc"} | disc_fields,
+        )
+        for key in disc_fields:
+            if key.startswith("grid_"):
+                values = _vector(scene[key], "scene." + key)
+                if len(values) != 3 or values[2] <= 0 or values[1] <= values[0]:
+                    raise ConfigError(
+                        f"scene.{key}: expected [start, exclusive_stop, positive_step]"
+                    )
+                count = (values[1] - values[0]) / values[2]
+                if not math.isfinite(count) or count <= 1 or count > 1_000_000:
+                    raise ConfigError(f"scene.{key}: requires 2 to one million centers")
+                disc_values[key] = values
+            else:
+                disc_values[key] = _number(
+                    scene[key],
+                    "scene." + key,
+                    minimum=0
+                    if key
+                    in {"disc_radius_arcsec", "disc_thickness_kpc", "disc_n_h_cm3"}
+                    else None,
+                    strictly=key in {"disc_radius_arcsec", "disc_thickness_kpc"},
+                )
+    elif set(scene) & disc_fields:
+        raise ConfigError("scene: disc settings require kind=uniform_disc")
     if (kind == "fits") != ("cloud_file" in scene):
         raise ConfigError("scene.cloud_file: required only for scene.kind=fits")
     scene_config = SceneConfig(
@@ -431,6 +516,7 @@ def load_run_config(path: str | Path) -> ResolvedRun:
             "scene.coordinates",
             ("source_centered_offsets",),
         ),
+        **disc_values,
     )
     if not isinstance(data["source"], dict):
         raise ConfigError("source: expected a TOML table")
@@ -438,7 +524,7 @@ def load_run_config(path: str | Path) -> ResolvedRun:
     material = _table(
         data["materials"],
         "materials",
-        {"kind", "directory", "scattering_file", "absorption_file", "grid_file"},
+        {f.name for f in fields(MaterialConfig)},
         {"kind"},
     )
     kind = _choice(
@@ -447,18 +533,20 @@ def load_run_config(path: str | Path) -> ResolvedRun:
     selected = (
         {"directory"}
         if kind == "declared_bundle"
-        else {"scattering_file", "absorption_file", "grid_file"}
+        else {"scattering_file", "absorption_file", "grid_file", "absorption_enabled"}
     )
     _table(
         material,
         "materials",
         selected | {"kind"},
-        (selected - {"grid_file"}) | {"kind"},
+        (selected - {"grid_file", "absorption_enabled"}) | {"kind"},
     )
     material_config = MaterialConfig(
         kind,
         **{
-            key: _path(value, "materials." + key, base, directory=key == "directory")
+            key: _boolean(value, "materials.absorption_enabled")
+            if key == "absorption_enabled"
+            else _path(value, "materials." + key, base, directory=key == "directory")
             for key, value in material.items()
             if key != "kind"
         },
@@ -585,7 +673,12 @@ def load_run_config(path: str | Path) -> ResolvedRun:
     plots = _table(data.get("plots", {}), "plots", {f.name for f in fields(PlotConfig)})
     plot_values = {}
     for key, value in plots.items():
-        if key in {"enabled", "save_scored_event_map"}:
+        if key in {
+            "enabled",
+            "save_scored_event_map",
+            "save_count_plots",
+            "density_per_kev",
+        }:
             plot_values[key] = _boolean(value, "plots." + key)
         elif key == "dpi":
             plot_values[key] = _integer(value, "plots.dpi", maximum=1200)
@@ -603,12 +696,15 @@ def load_run_config(path: str | Path) -> ResolvedRun:
             plot_values[key] = tuple(
                 _choice(x, "plots.scales", ("log", "linear")) for x in value
             )
+        elif key in {"energy_kev", "fov_arcsec"}:
+            plot_values[key] = _number(value, "plots." + key, minimum=0, strictly=True)
         else:
-            plot_values[key] = _choice(
-                value,
-                "plots." + key,
-                ("all",) if key == "energy_selection" else ("full",),
-            )
+            choices = {
+                "energy_selection": ("all", "nearest"),
+                "crop": ("full", "centered"),
+                "quantity": ("intensity", "fluence"),
+            }
+            plot_values[key] = _choice(value, "plots." + key, choices[key])
     plots_config = PlotConfig(**plot_values)
     logging = _table(
         data.get("logging", {}), "logging", {"progress_every_chunks", "file"}

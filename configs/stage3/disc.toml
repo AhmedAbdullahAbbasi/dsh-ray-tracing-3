@@ -1,0 +1,64 @@
+config_version = 1
+
+[run]
+name = "disc"
+workflow = "simulate"
+
+[scene]
+kind = "uniform_disc"
+grid_x_arcsec = [-100.0, 110.0, 20.0]
+grid_y_arcsec = [-100.0, 110.0, 20.0]
+grid_z_kpc = [2.0, 6.0, 1.0]
+disc_center_x_arcsec = 0.0
+disc_center_y_arcsec = 0.0
+disc_center_z_kpc = 3.5
+disc_radius_arcsec = 80.0
+disc_thickness_kpc = 2.0
+disc_n_h_cm3 = 1.0
+source_distance_kpc = 10.0
+coordinates = "source_centered_offsets"
+
+[source]
+kind = "representative"
+time_edges_days = [0.0, 0.041666666666666664]
+effective_energy_kev = [3.3, 4.9, 6.9]
+band_flux = [[0.020, 0.012, 0.006]]
+
+[materials]
+kind = "table_pair"
+scattering_file = "../../dsh/data/newdust/mrn_rg_drude_v1.npz"
+absorption_file = "../../dsh/data/absorption/tbabs_wilm_vern_v1.npz"
+
+[execution]
+packets = 64
+chunk_size = 32
+max_interactions = 32
+seed = 2026
+device = "cpu"
+launch_sampler = "radial"
+
+[observer]
+sky_grid = "cloud"
+energy_edges_kev = [2.5, 4.1, 5.9, 7.9]
+
+[observer.arrival]
+kind = "explicit"
+edges_days = [0.0, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0]
+
+[output]
+directory = "../../outputs/stage3_disc"
+formats = ["npz", "fits"]
+overwrite = false
+
+[plots]
+enabled = true
+scales = ["log", "linear"]
+epoch_days = [0.0, 10.0]
+energy_selection = "nearest"
+energy_kev = 4.9
+crop = "centered"
+fov_arcsec = 120.0
+quantity = "intensity"
+density_per_kev = false
+save_count_plots = true
+save_scored_event_map = true

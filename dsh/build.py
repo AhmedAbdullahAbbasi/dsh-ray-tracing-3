@@ -1,11 +1,16 @@
 """Build a numerical plan without transport, plotting or output publication."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import jax
 import numpy as np
 
-from .config.load import ConfigError, input_paths, validate_relationships
+from .config.load import (
+    ConfigError,
+    input_paths,
+    validate_destinations,
+    validate_relationships,
+)
 from .examples import DAY_S
 from .inputs.material import load_material
 from .inputs.scene import load_scene
@@ -27,6 +32,8 @@ class RunPlan:
     input_hashes: dict
     metadata: dict
     summary: dict
+    publication_paths: dict = field(default_factory=dict)
+    extra_inputs: tuple = ()
 
 
 def _load_input(label, loader, settings):
@@ -44,8 +51,11 @@ def _load_input(label, loader, settings):
         raise ConfigError(f"{label}: {error}") from error
 
 
-def build_run_plan(config):
+def build_run_plan(config, *, publication_paths=None, extra_inputs=()):
     validate_relationships(config)
+    validate_destinations(
+        config, publication_paths=publication_paths, extra_inputs=extra_inputs
+    )
     expected_backend = "cpu" if config.execution.device == "cpu" else "gpu"
     try:
         actual_backend = jax.default_backend()
@@ -57,7 +67,7 @@ def build_run_plan(config):
         raise ValueError(
             f"execution.device: requested {expected_backend}, got {actual_backend}; restart with the configured command"
         )
-    hashes = hash_files(input_paths(config))
+    hashes = hash_files((*input_paths(config), *extra_inputs))
     if hashes[str(config.config_path)] != config.config_sha256:
         raise ValueError("configuration file changed after parsing")
     scattering, absorption, physics, material_metadata = _load_input(
@@ -123,6 +133,11 @@ def build_run_plan(config):
         _import_fits()
     if config.plots.enabled:
         import matplotlib  # noqa: F401
+    from .plots import plot_selection
+
+    plot_selection(
+        config.plots, bins, source, declared_days=config.observer.arrival.edges_days
+    )
     launch = (
         build_radial_cloud_launch_geometry(cloud, physics)
         if config.execution.launch_sampler == "radial"
@@ -194,5 +209,15 @@ def build_run_plan(config):
     }
     verify_inputs(hashes)
     return RunPlan(
-        config, source, cloud, physics, launch, bins, hashes, metadata, summary
+        config,
+        source,
+        cloud,
+        physics,
+        launch,
+        bins,
+        hashes,
+        metadata,
+        summary,
+        publication_paths or {},
+        tuple(extra_inputs),
     )

@@ -92,9 +92,14 @@ def load_source(config):
         times = (
             np.r_[relative_days, relative_days[-1] + config.last_interval_days] * DAY_S
         )
-        source = build_spectral_history_source(
-            times, config.energy_edges_kev, flux, config.photon_index
-        )
+        if config.spectral_mode == "representative":
+            source = build_tabulated_band_source(
+                times, flux, config.effective_energy_kev
+            )
+        else:
+            source = build_spectral_history_source(
+                times, config.energy_edges_kev, flux, config.photon_index
+            )
         metadata.update(
             source_epoch=f"MJD {config.epoch_mjd:.12g}",
             source_time_scale=config.time_scale,

@@ -1,49 +1,14 @@
-"""Run the first complete Version-1 ideal-observer DSH simulation locally.
-
-The output is physical Monte Carlo fluence, not detector counts.  No PSF,
-effective area, exposure map, energy redistribution, background, or Poisson
-realization is applied.
-"""
+"""Compatibility CLI: translate old flags to the shared configured runner."""
 
 from __future__ import annotations
 
 import argparse
-import platform
-import subprocess
+import os
+import sys
 from pathlib import Path
 
-import jax
-import numpy as np
-from jax import random
 
-from .examples import (
-    DAY_S,
-    build_synthetic_four_cloud_scene,
-    build_v1_decay_source,
-    build_v1_test_source,
-)
-from .geometry.clouds import centers_to_edges, cloud_from_loaded_fits
-from .io.fits_output import write_ideal_observer_fits
-from .io.npz_output import write_ideal_observer_npz
-from .observer.binning import build_observer_bin_geometry
-from .physics.absorption import load_photoelectric_absorption_table
-from .physics.materials import load_2_10_material_tables
-from .physics.newdust import (
-    build_dust_physics_from_tables,
-    load_newdust_scattering_table,
-)
-from .physics.wd01_ism import load_wd01_ism
-from .pipeline import (
-    TRANSPORT_STATUS_LABELS,
-    run_tabulated_source_to_observer_chunked,
-)
-from .sources.histories import load_spectral_history
-from .sources.launch import build_cloud_launch_geometry
-from .sources.models import build_powerlaw_band_source
-from .sources.radial_launch import build_radial_cloud_launch_geometry
-
-
-def parse_arguments():
+def parse_arguments(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--cloud-fits",
@@ -146,341 +111,44 @@ def parse_arguments():
         type=Path,
         help="FITS path; defaults to the NPZ output path with suffix .fits",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--device",
+        choices=("cpu", "gpu"),
+        help="backend; otherwise follows an explicit JAX environment or defaults to CPU",
+    )
+    parser.add_argument(
+        "--check", action="store_true", help="validate without transport or outputs"
+    )
+    return parser.parse_args(argv)
 
 
 def _arrival_edges(arrival_days, time_bin_days, explicit_edges_days=None):
-    if explicit_edges_days is not None:
-        edges = np.asarray(explicit_edges_days, dtype=np.float64)
-        if (
-            edges.ndim != 1
-            or edges.size < 2
-            or not np.all(np.isfinite(edges))
-            or edges[0] != 0.0
-            or not np.all(np.diff(edges) > 0.0)
-        ):
-            raise ValueError(
-                "arrival-time-edges-days must start at zero and be finite, "
-                "strictly increasing values"
-            )
-        return edges * DAY_S
-    if not np.isfinite(arrival_days) or arrival_days <= 0.0:
-        raise ValueError("arrival_days must be finite and positive")
-    if not np.isfinite(time_bin_days) or time_bin_days <= 0.0:
-        raise ValueError("time_bin_days must be finite and positive")
-    n_bins = int(np.ceil(arrival_days / time_bin_days))
-    return np.linspace(0.0, arrival_days * DAY_S, n_bins + 1)
+    # Kept for callers of this historical helper; the implementation is shared.
+    from .compat import legacy_arrival_edges
+
+    return legacy_arrival_edges(arrival_days, time_bin_days, explicit_edges_days)
 
 
-def _report_progress(completed, total):
-    print(
-        f"\rCompleted packets: {completed:,} / {total:,}",
-        end="\n" if completed == total else "",
-        flush=True,
-    )
-
-
-def main():
-    args = parse_arguments()
-    fits_output = (
-        args.fits_output
-        if args.fits_output is not None
-        else args.output.with_suffix(".fits")
-    )
+def main(argv=None):
+    args = parse_arguments(argv)
     try:
-        import astropy  # noqa: F401
-    except ImportError as error:
-        raise SystemExit(
-            "FITS output requires Astropy. Install it before this run with "
-            "'python -m pip install astropy'."
-        ) from error
+        from .command import bootstrap
+        from .compat import run_cli
 
-    definition = None
-    if args.material_directory is not None and args.materials != "declared":
-        raise ValueError("--material-directory requires --materials declared")
-    if args.materials == "declared":
-        if args.material_directory is None:
-            raise ValueError("--materials declared requires --material-directory")
-        definition, scattering, _, absorption, physics = load_wd01_ism(
-            args.material_directory
+        device = (
+            args.device
+            or os.environ.get("JAX_PLATFORM_NAME")
+            or os.environ.get("JAX_PLATFORMS", "cpu").split(",")[0]
         )
-    elif args.materials == "2-10":
-        scattering, absorption, physics = load_2_10_material_tables()
-    else:
-        scattering = load_newdust_scattering_table()
-        absorption = load_photoelectric_absorption_table()
-        physics = build_dust_physics_from_tables(scattering, absorption)
-    hard_state = args.source_spectrum == "hard-state-powerlaw"
-    history_metadata = {}
-    history_mode = args.source_history is not None
-    if history_mode:
-        if args.source_model != "constant-flare":
-            raise ValueError("--source-history supplies its own time history")
-        if args.materials not in ("2-10", "declared"):
-            raise ValueError("--source-history requires --materials 2-10 or declared")
-        source, history_metadata = load_spectral_history(args.source_history)
-        energy_edges_kev = np.asarray(source.energy_edges_kev)
-        if (
-            energy_edges_kev[0] < scattering.energy_kev[0]
-            or energy_edges_kev[-1] > scattering.energy_kev[-1]
-        ):
-            raise ValueError("spectral history extends outside material energy support")
-    elif hard_state:
-        if args.materials not in ("2-10", "declared"):
-            raise ValueError(
-                "hard-state-powerlaw requires --materials 2-10 or declared"
-            )
-        if args.source_model != "constant-flare":
-            raise ValueError("hard-state-powerlaw currently supports constant-flare")
-        if (
-            not np.isfinite(args.total_2_10_photon_flux)
-            or args.total_2_10_photon_flux <= 0
-        ):
-            raise ValueError("total 2–10 photon flux must be finite and positive")
-        if not np.isfinite(args.photon_index):
-            raise ValueError("photon index must be finite")
-        energy_edges_kev = np.asarray([2.0, 4.0, 6.0, 10.0], dtype=np.float64)
-        if (
-            scattering.energy_kev[0] > energy_edges_kev[0]
-            or scattering.energy_kev[-1] < energy_edges_kev[-1]
-        ):
-            raise ValueError("material tables do not span 2–10 keV")
-        source = build_powerlaw_band_source(
-            [0.0, 3600.0],
-            [args.total_2_10_photon_flux],
-            energy_edges_kev,
-            args.photon_index,
-        )
-    else:
-        source_energies = np.asarray([3.3, 4.9, 6.9], dtype=np.float64)
-        if not np.all(np.isin(source_energies, scattering.energy_kev)):
-            raise ValueError("material tables must include all source-band energies")
-
-    if args.cloud_fits is None:
-        cloud = build_synthetic_four_cloud_scene(args.source_distance_kpc)
-        cloud_description = "built-in four-cloud synthetic scene"
-    else:
-        from .io.cloud_fits import load_cube
-
-        cloud = cloud_from_loaded_fits(
-            load_cube(args.cloud_fits),
-            source_distance_kpc=args.source_distance_kpc,
-        )
-        cloud_description = str(args.cloud_fits)
-
-    if not hard_state and not history_mode:
-        if args.source_model == "constant-flare":
-            source = build_v1_test_source(
-                source_energies,
-                band_flux=args.peak_band_fluxes,
-            )
-        else:
-            source = build_v1_decay_source(
-                source_energies,
-                peak_band_flux=args.peak_band_fluxes,
-                baseline_band_flux=args.baseline_band_fluxes,
-                decay_time_days=args.decay_time_days,
-                decay_start_days=args.decay_start_days,
-                decay_duration_days=args.decay_duration_days,
-                source_time_bin_days=args.source_time_bin_days,
-            )
-        energy_edges_kev = centers_to_edges(source_energies)
-    arrival_edges_s = _arrival_edges(
-        args.arrival_days, args.time_bin_days, args.arrival_time_edges_days
-    )
-    if float(np.asarray(source.time_edges_s)[-1]) >= arrival_edges_s[-1]:
-        raise ValueError(
-            "arrival_days must extend beyond the final source-emission time "
-            "to leave room for dust-scattering delays"
-        )
-    launch_geometry = (
-        build_radial_cloud_launch_geometry(cloud, physics)
-        if args.launch_sampler == "radial"
-        else build_cloud_launch_geometry(cloud)
-    )
-    print(f"Source launch sampler: {args.launch_sampler}")
-    bin_geometry = build_observer_bin_geometry(
-        sky_x_edges_arcsec=np.asarray(cloud.x_edges_arcsec),
-        sky_y_edges_arcsec=np.asarray(cloud.y_edges_arcsec),
-        energy_edges_kev=energy_edges_kev,
-        arrival_time_edges_s=arrival_edges_s,
-    )
-
-    print(f"JAX backend: {jax.default_backend()}")
-    print(f"Material tables: {args.materials} ({scattering.energy_kev.size} nodes)")
-    if history_mode:
-        print(
-            f"Source spectrum: intrinsic spectral history; {source.band_flux.shape[0]} time intervals; "
-            f"{source.band_flux.shape[1]} continuous energy bands"
-        )
-    elif hard_state:
-        print(
-            "Source spectrum: continuous 2–10 keV power law; "
-            f"photon index={args.photon_index:g}; "
-            f"total photon flux={args.total_2_10_photon_flux:.7g} ph cm^-2 s^-1"
-        )
-    else:
-        print("Source spectrum: three representative energies 3.3/4.9/6.9 keV")
-    print(f"Devices: {jax.devices()}")
-    print(f"Cloud: {cloud_description}")
-    print(f"Cloud shape (z, y, x): {tuple(cloud.delta_nh_cm2.shape)}")
-    print(f"Packets: {args.packets:,} in chunks of {args.chunk_size:,}")
-    if history_mode:
-        print(f"Input source: {args.source_history}")
-        print(
-            f"  epoch: {history_metadata['source_epoch']}; "
-            f"time scale: {history_metadata['source_time_scale']}"
-        )
-    elif args.source_model == "constant-flare":
-        print("Input source: constant one-hour unabsorbed observer-equivalent flare")
-    else:
-        print("Input source: unabsorbed observer-equivalent exponential decay")
-        print(
-            "  post-peak interval: "
-            f"{args.decay_start_days:g}--"
-            f"{args.decay_start_days + args.decay_duration_days:g} days; "
-            f"tau={args.decay_time_days:g} days; "
-            f"source bins={args.source_time_bin_days:g} days"
-        )
-    for index, flux in enumerate(np.asarray(source.band_flux)[0]):
-        if hard_state or history_mode:
-            label = f"{energy_edges_kev[index]:g}–{energy_edges_kev[index + 1]:g} keV"
-        else:
-            label = f"{source_energies[index]:.1f} keV"
-        description = "first interval" if history_mode else "peak"
-        print(f"  {label} {description}: {float(flux):.7g} ph cm^-2 s^-1")
-    print(
-        f"  {'first interval' if history_mode else 'peak'} total: "
-        f"{float(np.sum(np.asarray(source.band_flux)[0])):.7g} ph cm^-2 s^-1; "
-        f"simulated fluence={float(np.asarray(source.total_fluence)):.7g} "
-        "ph cm^-2"
-    )
-    print("Starting ideal-observer simulation...")
-    result = run_tabulated_source_to_observer_chunked(
-        random.PRNGKey(args.seed),
-        source,
-        launch_geometry,
-        cloud,
-        physics,
-        bin_geometry,
-        total_packets=args.packets,
-        chunk_size=args.chunk_size,
-        max_interactions=args.max_interactions,
-        progress_callback=_report_progress,
-    )
-
-    product_arrays = {
-        field: np.asarray(getattr(result.products, field))
-        for field in result.products._fields
-    }
-    diagnostic_arrays = {
-        field: np.asarray(getattr(result.diagnostics, field))
-        for field in result.diagnostics._fields
-    }
-    status_count = diagnostic_arrays["transport_status_count"]
-    print("Transport terminal states:")
-    for label, count in zip(TRANSPORT_STATUS_LABELS, status_count, strict=True):
-        print(f"  {label}: {int(count):,}")
-    print(
-        "Analog interactions/scatterings: "
-        f"{int(diagnostic_arrays['analog_interaction_count']):,} / "
-        f"{int(diagnostic_arrays['analog_scattering_count']):,}"
-    )
-    print(
-        "Scored/binned observer events: "
-        f"{int(diagnostic_arrays['scored_observer_event_count']):,} / "
-        f"{int(product_arrays['binned_event_count']):,}"
-    )
-    print(
-        "Scored/binned observer fluence [ph cm^-2]: "
-        f"{float(diagnostic_arrays['scored_observer_fluence']):.7g} / "
-        f"{float(product_arrays['binned_weight_observer_fluence']):.7g}"
-    )
-    print("Out-of-range observer events (marginal diagnostics):")
-    print(
-        "  sky / energy / arrival time: "
-        f"{int(product_arrays['outside_sky_event_count']):,} / "
-        f"{int(product_arrays['outside_energy_event_count']):,} / "
-        f"{int(product_arrays['outside_arrival_time_event_count']):,}"
-    )
-
-    decay_mode = args.source_model == "exponential-decay"
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"], text=True, capture_output=True, check=False
-    )
-    dirty = subprocess.run(
-        ["git", "status", "--porcelain"], text=True, capture_output=True, check=False
-    )
-    run_metadata = {
-        "simulation_git_head": head.stdout.strip()
-        if head.returncode == 0
-        else "unavailable",
-        "simulation_git_dirty": bool(dirty.stdout.strip())
-        if dirty.returncode == 0
-        else True,
-        "simulation_python": platform.python_version(),
-        "simulation_numpy": np.__version__,
-        "simulation_jax": jax.__version__,
-        "material_tables": args.materials,
-        "launch_sampler": args.launch_sampler,
-        "source_spectrum": "spectral-history" if history_mode else args.source_spectrum,
-        "source_photon_index": args.photon_index if hard_state else None,
-        "scattering_table_sha256": scattering.metadata["table_sha256"],
-        "absorption_table_sha256": absorption.metadata["table_sha256"],
-        "material_definition_sha256": definition.sha256
-        if definition is not None
-        else "unspecified",
-        "packets": args.packets,
-        "chunk_size": args.chunk_size,
-        "max_interactions": args.max_interactions,
-        "seed": args.seed,
-        "cloud_description": cloud_description,
-        "source_model": "spectral-history" if history_mode else args.source_model,
-        "peak_band_fluxes": np.asarray(source.band_flux)[0],
-        "baseline_band_fluxes": np.zeros(source.band_flux.shape[1])
-        if hard_state or history_mode
-        else args.baseline_band_fluxes,
-        "decay_time_days": args.decay_time_days if decay_mode else None,
-        "decay_start_days": args.decay_start_days if decay_mode else None,
-        "decay_duration_days": args.decay_duration_days if decay_mode else None,
-        "source_time_bin_days": args.source_time_bin_days if decay_mode else None,
-        **history_metadata,
-    }
-    output_path = write_ideal_observer_npz(
-        args.output,
-        result,
-        bin_geometry,
-        source,
-        cloud,
-        physics,
-        launch_geometry,
-        run_metadata=run_metadata,
-    )
-    print(f"Saved: {output_path.resolve()}")
-    write_ideal_observer_fits(
-        fits_output,
-        result,
-        bin_geometry,
-        source,
-        cloud,
-        physics,
-        launch_geometry,
-        run_metadata=run_metadata,
-    )
-    print(f"Saved: {fits_output.resolve()}")
-
-    numerical_failures = int(status_count[0] + status_count[4:].sum())
-    if numerical_failures:
-        print(
-            "WARNING: numerical-limit or invalid-input terminal states are "
-            f"nonzero ({numerical_failures:,}); inspect the status counts."
-        )
-    if float(product_arrays["unbinned_weight_observer_fluence"]) > 0.0:
-        print(
-            "WARNING: some scored observer fluence lies outside the requested "
-            "sky/energy/arrival-time bins."
-        )
+        device = "gpu" if device == "cuda" else device
+        if device not in {"cpu", "gpu"}:
+            raise ValueError("--device: specify cpu or gpu for this JAX environment")
+        bootstrap(device)
+        return run_cli(args, device)
+    except (ValueError, OSError, ImportError, RuntimeError) as error:
+        print(f"dsh-v1: {error}", file=sys.stderr)
+        return 2
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

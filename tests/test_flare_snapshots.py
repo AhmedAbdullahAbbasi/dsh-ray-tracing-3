@@ -61,7 +61,7 @@ class TestHardStateCli(unittest.TestCase):
             with (
                 patch("sys.argv", argv),
                 patch(
-                    "dsh.cli.run_tabulated_source_to_observer_chunked",
+                    "dsh.run.run_tabulated_source_to_observer_chunked",
                     side_effect=check_simulation_inputs,
                 ),
                 self.assertRaises(StopBeforeSimulation),

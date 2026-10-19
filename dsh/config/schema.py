@@ -44,6 +44,7 @@ SOURCE_FIELDS = {
         "flux_scale",
         "spectral_mode",
         "energy_edges_kev",
+        "effective_energy_kev",
         "photon_index",
     },
 }
@@ -55,6 +56,15 @@ class SceneConfig:
     source_distance_kpc: float
     cloud_file: Path | None = None
     coordinates: str = "source_centered_offsets"
+    grid_x_arcsec: tuple[float, ...] = ()
+    grid_y_arcsec: tuple[float, ...] = ()
+    grid_z_kpc: tuple[float, ...] = ()
+    disc_center_x_arcsec: float = 0.0
+    disc_center_y_arcsec: float = 0.0
+    disc_center_z_kpc: float = 5.0
+    disc_radius_arcsec: float = 80.0
+    disc_thickness_kpc: float = 0.3
+    disc_n_h_cm3: float = 10.0
 
 
 @dataclass(frozen=True)
@@ -93,6 +103,7 @@ class MaterialConfig:
     scattering_file: Path | None = None
     absorption_file: Path | None = None
     grid_file: Path | None = None
+    absorption_enabled: bool = True
 
 
 @dataclass(frozen=True)
@@ -144,6 +155,11 @@ class PlotConfig:
     crop: str = "full"
     save_scored_event_map: bool = False
     dpi: int = 200
+    energy_kev: float | None = None
+    fov_arcsec: float | None = None
+    quantity: str = "intensity"
+    density_per_kev: bool = True
+    save_count_plots: bool = False
 
 
 @dataclass(frozen=True)
@@ -185,7 +201,24 @@ class ResolvedRun:
         data = asdict(self)
         del data["config_bytes"]
         active_source = {"kind"} | SOURCE_FIELDS[self.source.kind]
+        if self.source.kind == "flux_table":
+            active_source = active_source - (
+                {"effective_energy_kev"}
+                if self.source.spectral_mode == "band_powerlaw"
+                else {"energy_edges_kev", "photon_index"}
+            )
         data["source"] = {
             key: value for key, value in data["source"].items() if key in active_source
         }
+        if self.scene.kind != "uniform_disc":
+            active_scene = {"kind", "source_distance_kpc", "coordinates"}
+            if self.scene.kind == "fits":
+                active_scene.add("cloud_file")
+            data["scene"] = {
+                key: value
+                for key, value in data["scene"].items()
+                if key in active_scene
+            }
+        if self.materials.kind == "declared_bundle":
+            data["materials"].pop("absorption_enabled")
         return convert(data)
