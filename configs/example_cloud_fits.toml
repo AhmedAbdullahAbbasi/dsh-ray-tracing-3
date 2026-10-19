@@ -1,0 +1,49 @@
+# Runnable synthetic integration example; 64 packets do not establish convergence.
+# All source fluxes are intrinsic observer-equivalent ph cm^-2 s^-1.
+config_version = 1
+
+[run]
+name = "example_cloud_fits"
+
+[scene]
+kind = "fits"
+cloud_file = "data/example_cloud.fits"
+source_distance_kpc = 10.0
+coordinates = "source_centered_offsets"
+
+[source]
+kind = "representative"
+time_edges_days = [0.0, 0.041666666666666664]
+effective_energy_kev = [3.3, 4.9, 6.9]
+band_flux = [[0.020, 0.012, 0.006]]
+
+[materials]
+kind = "table_pair"
+scattering_file = "../dsh/data/newdust/mrn_rg_drude_v1.npz"
+absorption_file = "../dsh/data/absorption/tbabs_wilm_vern_v1.npz"
+
+[execution]
+packets = 64
+chunk_size = 32
+max_interactions = 32
+seed = 2026
+device = "cpu"
+launch_sampler = "radial"
+
+[observer]
+energy_edges_kev = [2.5, 4.1, 5.9, 7.9]
+
+[observer.arrival]
+kind = "explicit"
+edges_days = [0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0]
+
+[output]
+directory = "../outputs/example_cloud_fits"
+formats = ["npz", "fits"]
+overwrite = false
+
+[plots]
+enabled = true
+scales = ["log", "linear"]
+epoch_days = [0.0, 20.0]
+save_scored_event_map = true

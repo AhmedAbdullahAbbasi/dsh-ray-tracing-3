@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import jax
 import numpy as np
 
-from .config.load import input_paths
+from .config.load import ConfigError, input_paths, validate_relationships
 from .examples import DAY_S
 from .inputs.material import load_material
 from .inputs.scene import load_scene
@@ -29,7 +29,23 @@ class RunPlan:
     summary: dict
 
 
+def _load_input(label, loader, settings):
+    """Attach the owning TOML section to errors from existing file adapters."""
+    try:
+        return loader(settings)
+    except (
+        ValueError,
+        OSError,
+        KeyError,
+        TypeError,
+        IndexError,
+        OverflowError,
+    ) as error:
+        raise ConfigError(f"{label}: {error}") from error
+
+
 def build_run_plan(config):
+    validate_relationships(config)
     expected_backend = "cpu" if config.execution.device == "cpu" else "gpu"
     try:
         actual_backend = jax.default_backend()
@@ -44,9 +60,21 @@ def build_run_plan(config):
     hashes = hash_files(input_paths(config))
     if hashes[str(config.config_path)] != config.config_sha256:
         raise ValueError("configuration file changed after parsing")
-    scattering, absorption, physics, material_metadata = load_material(config.materials)
-    source, source_metadata = load_source(config.source)
-    cloud = load_scene(config.scene)
+    scattering, absorption, physics, material_metadata = _load_input(
+        "materials", load_material, config.materials
+    )
+    source, source_metadata = _load_input(
+        f"source.file ({config.source.file})" if config.source.file else "source",
+        load_source,
+        config.source,
+    )
+    cloud = _load_input(
+        f"scene.cloud_file ({config.scene.cloud_file})"
+        if config.scene.cloud_file
+        else "scene",
+        load_scene,
+        config.scene,
+    )
     energies = np.asarray(
         source.energy_edges_kev
         if source.energy_edges_kev is not None
@@ -89,15 +117,6 @@ def build_run_plan(config):
     ):
         if not np.all(np.diff(np.asarray(getattr(bins, name))) > 0):
             raise ValueError(f"observer.{name}: edges collapse at JAX precision")
-    if config.plots.epoch_days:
-        for edge in config.plots.epoch_days:
-            if not any(
-                np.isclose(edge, x, rtol=0, atol=1e-9)
-                for x in config.observer.arrival.edges_days
-            ):
-                raise ValueError(
-                    "plots.epoch_days: epoch bounds must align with stored observer bins"
-                )
     if "fits" in config.output.formats:
         from .io.fits_output import _import_fits
 

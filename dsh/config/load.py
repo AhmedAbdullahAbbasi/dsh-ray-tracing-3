@@ -7,6 +7,7 @@ import math
 import os
 import re
 from dataclasses import fields
+from difflib import get_close_matches
 from pathlib import Path
 
 from .schema import (
@@ -40,14 +41,26 @@ def _table(value, name, allowed, required=()):
     unknown = set(value) - set(allowed)
     missing = set(required) - set(value)
     if unknown:
-        raise ConfigError(f"{name}: unknown or irrelevant fields {sorted(unknown)}")
+        hints = []
+        for key in sorted(unknown):
+            matches = get_close_matches(key, sorted(allowed), n=1, cutoff=0.75)
+            if matches:
+                hints.append(f"{key!r}: did you mean {matches[0]!r}?")
+        detail = "; " + "; ".join(hints) if hints else ""
+        raise ConfigError(
+            f"{name}: unknown or irrelevant fields {sorted(unknown)}{detail}"
+        )
     if missing:
         raise ConfigError(f"{name}: missing fields {sorted(missing)}")
     return value
 
 
 def _number(value, name, *, minimum=None, strictly=False):
-    if type(value) not in (int, float) or not math.isfinite(value):
+    try:
+        finite = type(value) in (int, float) and math.isfinite(value)
+    except OverflowError:
+        finite = False
+    if not finite:
         raise ConfigError(f"{name}: expected a finite number")
     if minimum is not None and (value <= minimum if strictly else value < minimum):
         raise ConfigError(f"{name}: must be {'>' if strictly else '>='} {minimum}")
@@ -96,12 +109,15 @@ def _path(value, name, base, *, directory=False, output=False):
         re.match(r"^[A-Za-z]:[\\/]", value) or value.startswith("\\\\")
     ):
         raise ConfigError(f"{name}: Windows absolute paths require a Windows host")
-    candidate = Path(value).expanduser()
-    candidate = (
-        (base / candidate).resolve()
-        if not candidate.is_absolute()
-        else candidate.resolve()
-    )
+    try:
+        candidate = Path(value).expanduser()
+        candidate = (
+            (base / candidate).resolve()
+            if not candidate.is_absolute()
+            else candidate.resolve()
+        )
+    except (OSError, ValueError, RuntimeError) as error:
+        raise ConfigError(f"{name}: invalid path: {error}") from error
     if not output and not (candidate.is_dir() if directory else candidate.is_file()):
         raise ConfigError(
             f"{name}: {'directory' if directory else 'file'} not found: {candidate}"
@@ -181,9 +197,19 @@ def validate_destinations(config):
             ):
                 raise ConfigError(f"output: would overwrite input {source}")
         if output.exists() and (not config.output.overwrite or not output.is_file()):
-            raise ConfigError(f"output: destination exists: {output}")
+            raise ConfigError(
+                f"output: destination exists: {output}; choose another output.directory "
+                "or explicitly set output.overwrite = true"
+            )
     if config.output.directory.exists() and not config.output.directory.is_dir():
         raise ConfigError("output.directory: must be a directory")
+    for parent in config.output.directory.parents:
+        if parent.exists():
+            if not parent.is_dir():
+                raise ConfigError(
+                    f"output.directory: parent is not a directory: {parent}"
+                )
+            break
 
 
 def _source(data, base):
@@ -202,7 +228,7 @@ def _source(data, base):
     common = {"kind"}
     mode_fields = SOURCE_FIELDS
     required = mode_fields[kind] - {"photon_index", "baseline_band_flux", "flux_scale"}
-    _table(data, "source", common | mode_fields[kind], common | required)
+    _table(data, f"source (kind={kind})", common | mode_fields[kind], common | required)
     values = {"kind": kind}
     for name, value in data.items():
         field_name = "source." + name
@@ -284,7 +310,64 @@ def _source(data, base):
             raise ConfigError(
                 "source.flux_columns: distinct from time_column, with one column per band"
             )
+        if source.last_interval_days > source.max_interval_days:
+            raise ConfigError(
+                "source.last_interval_days: must be <= source.max_interval_days"
+            )
+    if source.band_flux and not any(x > 0 for row in source.band_flux for x in row):
+        raise ConfigError("source.band_flux: at least one cell must have positive flux")
+    if source.photon_flux and not any(x > 0 for x in source.photon_flux):
+        raise ConfigError(
+            "source.photon_flux: at least one interval must have positive flux"
+        )
+    if kind == "exponential_decay":
+        baseline = source.baseline_band_flux or (0.0,) * nband
+        if any(a < b for a, b in zip(source.peak_band_flux, baseline, strict=True)):
+            raise ConfigError(
+                "source.peak_band_flux: must be >= source.baseline_band_flux"
+            )
+        if not any(x > 0 for x in source.peak_band_flux):
+            raise ConfigError(
+                "source.peak_band_flux: at least one band must have positive flux"
+            )
     return source
+
+
+def validate_relationships(config):
+    """Reject host-only conflicts before importing a numerical backend."""
+    source, observer = config.source, config.observer
+    energies = source.energy_edges_kev or source.effective_energy_kev
+    if energies and (
+        observer.energy_edges_kev[0] > min(energies)
+        or observer.energy_edges_kev[-1] < max(energies)
+    ):
+        raise ConfigError(
+            "observer.energy_edges_kev: must cover the full source energy support"
+        )
+    if (
+        source.time_edges_days
+        and observer.arrival.edges_days[-1] <= source.time_edges_days[-1]
+    ):
+        raise ConfigError(
+            "observer.arrival: must extend beyond the final source emission time"
+        )
+    if config.plots.epoch_days:
+        indices = []
+        for edge in config.plots.epoch_days:
+            matches = [
+                i
+                for i, x in enumerate(observer.arrival.edges_days)
+                if math.isclose(edge, x, rel_tol=0, abs_tol=1e-9)
+            ]
+            if len(matches) != 1:
+                raise ConfigError(
+                    "plots.epoch_days: each bound must align unambiguously with one observer bin edge"
+                )
+            indices.append(matches[0])
+        if indices[1] <= indices[0]:
+            raise ConfigError(
+                "plots.epoch_days: must select at least one complete observer bin"
+            )
 
 
 def load_run_config(path: str | Path) -> ResolvedRun:
@@ -450,11 +533,12 @@ def load_run_config(path: str | Path) -> ResolvedRun:
             "observer.arrival.last_bin",
             ("shorten",),
         )
-        count = math.ceil((stop - start) / step)
-        if count > 1_000_000:
+        ratio = (stop - start) / step
+        if not math.isfinite(ratio) or ratio > 1_000_000:
             raise ConfigError(
                 "observer.arrival: more than one million bins; use a larger step"
             )
+        count = math.ceil(ratio)
         interior = tuple(start + i * step for i in range(count))
         if len(interior) > 1 and math.isclose(
             interior[-1], stop, rel_tol=0, abs_tol=8 * math.ulp(stop)
@@ -556,6 +640,7 @@ def load_run_config(path: str | Path) -> ResolvedRun:
         logging_config,
         workflow=workflow,
     )
+    validate_relationships(config)
     for path in input_paths(config):
         if not path.is_file():
             raise ConfigError(f"inputs: required input or sidecar not found: {path}")

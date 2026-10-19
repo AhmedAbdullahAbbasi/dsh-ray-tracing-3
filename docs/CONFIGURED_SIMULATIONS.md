@@ -80,6 +80,58 @@ Relative paths use the configuration's directory, not the current shell
 directory. Home expansion is supported; environment expansion is rejected.
 Use forward slashes or TOML literal strings for Windows paths.
 
+## Runnable configuration examples (Stage 2)
+
+All seven files below work directly from the checkout. They use synthetic
+inputs and 64 CPU packets. Each selects a separate output directory; no Python
+settings need editing. The five `example_*.toml` files also save log/linear
+intensity plots for days 0–20 and the corresponding scored-event map.
+
+| Configuration in `configs/` | Source / scene | Input contract demonstrated |
+| --- | --- | --- |
+| `smoke_legacy.toml` | Representative energies / four-cloud scene | Three material nodes, explicitly integrated band fluxes |
+| `smoke_wd01.toml` | Continuous power law / four-cloud scene | One broad-band flux split by the existing source builder |
+| `example_band_powerlaw.toml` | Per-band power law / four-cloud scene | Independent band fluxes in two time intervals |
+| `example_exponential.toml` | Post-peak exponential / four-cloud scene | Peak, baseline, decay time and exact time-cell averages |
+| `example_history.toml` | Spectral-history JSON / four-cloud scene | File-owned epoch, units, band fluxes and per-cell slopes |
+| `example_flux_table.toml` | MJD text flux table / four-cloud scene | Explicit full-table columns and gap/final-interval policies |
+| `example_cloud_fits.toml` | Representative energies / native FITS | Source-centered sky offsets and column-per-voxel geometry |
+
+For example, from `C:\Users\suuser\Desktop\dsh-simulation-config`:
+
+```powershell
+.\.venv\Scripts\python.exe -m dsh.command check configs/example_flux_table.toml
+.\.venv\Scripts\python.exe -m dsh.command run configs/example_flux_table.toml
+```
+
+`configs/data/README.md` describes the small committed input fixtures. Replace
+file selections and physical settings in a copied TOML to define another run.
+Do not reinterpret the synthetic fixture epoch or columns as real MAXI data.
+For a real FITS cube, all radial cell edges must be within the selected source
+distance, sky axes must already be centered on the source sightline, and
+voxel values must be hydrogen column increments in cm^-2.
+
+Stage 2 rejects zero-flux inline sources, peaks below their baselines,
+inconsistent source/observer support, excessive uniform-bin counts, invalid
+plot epochs and final flux intervals longer than the gap limit before loading
+the numerical runtime. File content, material coverage and runtime precision
+checks still belong to `check`. Adapter errors identify `source.file`,
+`scene.cloud_file` or `materials`; likely key typos include a spelling hint.
+
+Run the portable Stage 2 acceptance check with:
+
+```powershell
+.\.venv\Scripts\python.exe scripts/validate_configuration_examples.py
+```
+
+This runs the focused tests, copies all seven examples to fresh session
+directories, executes `check` and `run` from a different directory containing
+spaces, and independently checks physical outputs, hashes, moments, units,
+FITS checksums and plots. It prints a compact `stage2_report.zip` under
+`outputs/configuration-stage2/<session>/`. Full NPZ/FITS/event arrays stay in
+the corresponding local `products` directories. The report records the actual
+platform; Linux evidence is not Windows evidence.
+
 ### Source alternatives
 
 `kind = "representative"` uses `time_edges_days`, `effective_energy_kev` and

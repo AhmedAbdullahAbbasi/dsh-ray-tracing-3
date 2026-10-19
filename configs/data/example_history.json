@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "flux_convention": "unabsorbed observer-equivalent",
+  "units": {
+    "time": "s",
+    "energy": "keV",
+    "band_flux": "ph cm^-2 s^-1"
+  },
+  "epoch": "MJD 60000 (synthetic)",
+  "time_scale": "TT",
+  "time_edges_s": [
+    0,
+    43200,
+    86400
+  ],
+  "energy_edges_kev": [
+    2,
+    4,
+    6,
+    10
+  ],
+  "band_flux": [
+    [
+      0.02,
+      0.012,
+      0.006
+    ],
+    [
+      0.01,
+      0.006,
+      0.003
+    ]
+  ],
+  "photon_index": [
+    [
+      1.7,
+      2.0,
+      2.2
+    ],
+    [
+      2.0,
+      2.1,
+      2.3
+    ]
+  ]
+}

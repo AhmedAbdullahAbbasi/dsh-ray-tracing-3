@@ -1,0 +1,46 @@
+# Runnable synthetic integration example; 64 packets do not establish convergence.
+# All source fluxes are intrinsic observer-equivalent ph cm^-2 s^-1.
+config_version = 1
+
+[run]
+name = "example_history"
+
+[scene]
+kind = "example_four_cloud"
+source_distance_kpc = 10.0
+coordinates = "source_centered_offsets"
+
+[source]
+# The JSON owns its epoch, time scale, units and per-cell photon indices.
+kind = "spectral_history"
+file = "data/example_history.json"
+
+[materials]
+kind = "declared_bundle"
+directory = "../dsh/data/materials/wd01_wilm_c50_si90_v1"
+
+[execution]
+packets = 64
+chunk_size = 32
+max_interactions = 32
+seed = 2026
+device = "cpu"
+launch_sampler = "radial"
+
+[observer]
+energy_edges_kev = [2.0, 4.0, 6.0, 10.0]
+
+[observer.arrival]
+kind = "explicit"
+edges_days = [0.0, 10.0, 20.0, 30.0, 40.0, 50.0, 60.0]
+
+[output]
+directory = "../outputs/example_history"
+formats = ["npz", "fits"]
+overwrite = false
+
+[plots]
+enabled = true
+scales = ["log", "linear"]
+epoch_days = [0.0, 20.0]
+save_scored_event_map = true

@@ -57,6 +57,10 @@ def load_source(config):
         metadata.update(history_metadata)
     elif config.kind == "flux_table":
         table = np.loadtxt(config.file, ndmin=2)
+        if table.size == 0 or table.shape[0] == 0:
+            raise ValueError(
+                "source.file: flux table must contain at least one data row"
+            )
         columns = (config.time_column, *config.flux_columns)
         if max(columns) > table.shape[1]:
             raise ValueError(
@@ -64,6 +68,10 @@ def load_source(config):
             )
         mjd = table[:, config.time_column - 1]
         flux = table[:, np.asarray(config.flux_columns) - 1] * config.flux_scale
+        if not np.all(np.isfinite(flux)) or np.any(flux < 0):
+            raise ValueError(
+                "source.flux_columns: selected fluxes must be finite and nonnegative"
+            )
         # Subtract epoch in host float64 BEFORE casting relative seconds to JAX.
         relative_days = mjd - config.epoch_mjd
         if (
