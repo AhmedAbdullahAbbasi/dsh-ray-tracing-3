@@ -1,0 +1,56 @@
+"""Configuration-first entry point: choose the backend before numerical imports."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+
+from .config import ConfigError, load_run_config
+
+
+def bootstrap(device):
+    platform = "cpu" if device == "cpu" else "cuda"
+    if "jax" in sys.modules:
+        import jax
+
+        actual = jax.default_backend()
+        expected = "cpu" if device == "cpu" else "gpu"
+        if actual != expected:
+            raise ConfigError(
+                f"execution.device: JAX already uses {actual}; restart before selecting {device}"
+            )
+    else:
+        os.environ["JAX_PLATFORMS"] = platform
+        os.environ["JAX_PLATFORM_NAME"] = device
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Check or run one TOML-configured ideal-observer simulation."
+    )
+    parser.add_argument("command", choices=("check", "run"))
+    parser.add_argument(
+        "config", help="TOML simulation file; relative input paths use its directory"
+    )
+    args = parser.parse_args(argv)
+    try:
+        config = load_run_config(args.config)
+        bootstrap(config.execution.device)
+        from .build import build_run_plan
+
+        plan = build_run_plan(config)
+        print(json.dumps(plan.summary, indent=2, allow_nan=False), flush=True)
+        if args.command == "check":
+            return 0
+        from .run import publish_run
+
+        return publish_run(plan)
+    except (ConfigError, ValueError, OSError, ImportError, RuntimeError) as error:
+        print(f"dsh: {error}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

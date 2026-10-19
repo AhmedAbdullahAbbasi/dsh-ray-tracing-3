@@ -162,5 +162,8 @@ def write_ideal_observer_npz(
     for name in ("source_history_sha256", "source_epoch", "source_time_scale"):
         if name in metadata:
             payload[name] = np.asarray(metadata[name])
+    for name in ("config_sha256", "numerical_complete", "diagnostic_only"):
+        if name in metadata:
+            payload[name] = np.asarray(metadata[name])
     atomic_savez_compressed(output_path, **payload)
     return output_path

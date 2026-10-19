@@ -1,0 +1,563 @@
+"""Strict TOML validation with standard-library-only imports on Python 3.11+."""
+
+from __future__ import annotations
+
+import hashlib
+import math
+import os
+import re
+from dataclasses import fields
+from pathlib import Path
+
+from .schema import (
+    SOURCE_FIELDS,
+    ArrivalConfig,
+    ExecutionConfig,
+    LoggingConfig,
+    MaterialConfig,
+    ObserverConfig,
+    OutputConfig,
+    PlotConfig,
+    QualityConfig,
+    ResolvedRun,
+    SceneConfig,
+    SourceConfig,
+)
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python 3.10
+    import tomli as tomllib
+
+
+class ConfigError(ValueError):
+    """An invalid setting, identified by its configuration field."""
+
+
+def _table(value, name, allowed, required=()):
+    if not isinstance(value, dict):
+        raise ConfigError(f"{name}: expected a TOML table")
+    unknown = set(value) - set(allowed)
+    missing = set(required) - set(value)
+    if unknown:
+        raise ConfigError(f"{name}: unknown or irrelevant fields {sorted(unknown)}")
+    if missing:
+        raise ConfigError(f"{name}: missing fields {sorted(missing)}")
+    return value
+
+
+def _number(value, name, *, minimum=None, strictly=False):
+    if type(value) not in (int, float) or not math.isfinite(value):
+        raise ConfigError(f"{name}: expected a finite number")
+    if minimum is not None and (value <= minimum if strictly else value < minimum):
+        raise ConfigError(f"{name}: must be {'>' if strictly else '>='} {minimum}")
+    return float(value)
+
+
+def _integer(value, name, minimum=1, maximum=None):
+    if (
+        type(value) is not int
+        or value < minimum
+        or (maximum is not None and value > maximum)
+    ):
+        raise ConfigError(
+            f"{name}: expected an integer in [{minimum}, {maximum or 'inf'}]"
+        )
+    return value
+
+
+def _boolean(value, name):
+    if type(value) is not bool:
+        raise ConfigError(f"{name}: expected true or false")
+    return value
+
+
+def _choice(value, name, choices):
+    if not isinstance(value, str) or value not in choices:
+        raise ConfigError(f"{name}: expected one of {tuple(choices)}")
+    return value
+
+
+def _vector(value, name, *, minimum=None, edges=False):
+    if not isinstance(value, list) or len(value) < (2 if edges else 1):
+        raise ConfigError(f"{name}: expected a nonempty numeric array")
+    result = tuple(_number(x, name, minimum=minimum) for x in value)
+    if edges and any(b <= a for a, b in zip(result[:-1], result[1:], strict=True)):
+        raise ConfigError(f"{name}: edges must increase strictly")
+    return result
+
+
+def _path(value, name, base, *, directory=False, output=False):
+    if not isinstance(value, str) or not value.strip():
+        raise ConfigError(f"{name}: expected a nonempty path")
+    if "$" in value or re.search(r"%[^%]+%", value):
+        raise ConfigError(f"{name}: environment-variable expansion is unsupported")
+    if os.name != "nt" and (
+        re.match(r"^[A-Za-z]:[\\/]", value) or value.startswith("\\\\")
+    ):
+        raise ConfigError(f"{name}: Windows absolute paths require a Windows host")
+    candidate = Path(value).expanduser()
+    candidate = (
+        (base / candidate).resolve()
+        if not candidate.is_absolute()
+        else candidate.resolve()
+    )
+    if not output and not (candidate.is_dir() if directory else candidate.is_file()):
+        raise ConfigError(
+            f"{name}: {'directory' if directory else 'file'} not found: {candidate}"
+        )
+    return candidate
+
+
+def input_paths(config):
+    """Exact files loaded by the selected adapters, including sidecars."""
+    paths = [config.config_path]
+    paths += [p for p in (config.scene.cloud_file, config.source.file) if p is not None]
+    material = config.materials
+    if material.kind == "declared_bundle":
+        paths.append(material.directory / "material_definition.json")
+        for stem in (
+            "scattering",
+            "atomic_gas",
+            "molecular_hydrogen",
+            "grains",
+            "total_absorption",
+        ):
+            paths += [
+                material.directory / (stem + suffix) for suffix in (".npz", ".json")
+            ]
+        # These describe the producer recipe rather than runtime arrays, but
+        # preserve them when present as part of the selected bundle identity.
+        paths += [
+            material.directory / name
+            for name in ("recipe.json", "abundance_audit.json")
+            if (material.directory / name).is_file()
+        ]
+    else:
+        for path in (material.scattering_file, material.absorption_file):
+            paths += [path, path.with_suffix(".json")]
+        if material.grid_file:
+            paths.append(material.grid_file)
+    return tuple(dict.fromkeys(p.resolve() for p in paths))
+
+
+def output_paths(config):
+    directory = config.output.directory
+    prefix = "diagnostic_" if config.quality.allow_incomplete else ""
+    paths = [
+        directory / (prefix + config.name + "." + kind)
+        for kind in config.output.formats
+    ]
+    paths += [
+        directory / name
+        for name in (
+            "original.toml",
+            "resolved.json",
+            "report.json",
+            "complete.json",
+            config.logging.file,
+        )
+    ]
+    if config.plots.enabled:
+        paths += [
+            directory / (prefix + "intensity_" + scale + ".png")
+            for scale in config.plots.scales
+        ]
+    if config.plots.save_scored_event_map:
+        paths.append(directory / (prefix + "scored_mc_events.npy"))
+    return tuple(paths)
+
+
+def validate_destinations(config):
+    inputs = input_paths(config)
+    outputs = output_paths(config)
+    resolved = [path.resolve() for path in outputs]
+    if len(set(resolved)) != len(resolved):
+        raise ConfigError("output: derived output paths collide")
+    for output in outputs:
+        for source in inputs:
+            if output.resolve() == source or (
+                output.exists() and source.exists() and os.path.samefile(output, source)
+            ):
+                raise ConfigError(f"output: would overwrite input {source}")
+        if output.exists() and (not config.output.overwrite or not output.is_file()):
+            raise ConfigError(f"output: destination exists: {output}")
+    if config.output.directory.exists() and not config.output.directory.is_dir():
+        raise ConfigError("output.directory: must be a directory")
+
+
+def _source(data, base):
+    kind = _choice(
+        data.get("kind"),
+        "source.kind",
+        (
+            "spectral_history",
+            "flux_table",
+            "representative",
+            "band_powerlaw",
+            "powerlaw",
+            "exponential_decay",
+        ),
+    )
+    common = {"kind"}
+    mode_fields = SOURCE_FIELDS
+    required = mode_fields[kind] - {"photon_index", "baseline_band_flux", "flux_scale"}
+    _table(data, "source", common | mode_fields[kind], common | required)
+    values = {"kind": kind}
+    for name, value in data.items():
+        field_name = "source." + name
+        if name == "kind":
+            continue
+        if name == "file":
+            values[name] = _path(value, field_name, base)
+        elif name in {
+            "time_edges_days",
+            "energy_edges_kev",
+            "effective_energy_kev",
+            "photon_flux",
+            "peak_band_flux",
+            "baseline_band_flux",
+        }:
+            values[name] = _vector(
+                value,
+                field_name,
+                minimum=0,
+                edges=name in {"time_edges_days", "energy_edges_kev"},
+            )
+            if "energy" in name and min(values[name]) <= 0:
+                raise ConfigError(f"{field_name}: energies must be positive")
+        elif name == "band_flux":
+            if not isinstance(value, list) or not value:
+                raise ConfigError(f"{field_name}: expected an array of rows")
+            values[name] = tuple(_vector(row, field_name, minimum=0) for row in value)
+        elif name == "time_column":
+            values[name] = _integer(value, field_name)
+        elif name == "flux_columns":
+            if not isinstance(value, list) or not value:
+                raise ConfigError(f"{field_name}: expected column numbers")
+            values[name] = tuple(_integer(x, field_name) for x in value)
+        elif name in {"photon_index", "epoch_mjd"}:
+            values[name] = _number(value, field_name)
+        elif name in {
+            "decay_time_days",
+            "last_interval_days",
+            "max_interval_days",
+            "flux_scale",
+        }:
+            values[name] = _number(value, field_name, minimum=0, strictly=True)
+        else:
+            choices = {
+                "column_numbering": ("one_based_full_table",),
+                "time_format": ("mjd",),
+                "time_scale": ("UTC", "TT", "TDB", "TAI"),
+                "interval_policy": ("hold_until_next",),
+                "missing_data": ("error",),
+                "flux_convention": ("unabsorbed observer-equivalent",),
+                "flux_unit": ("ph cm^-2 s^-1",),
+                "spectral_mode": ("band_powerlaw",),
+            }
+            values[name] = _choice(value, field_name, choices[name])
+    source = SourceConfig(**values)
+    nband = (
+        len(source.energy_edges_kev) - 1
+        if source.energy_edges_kev
+        else len(source.effective_energy_kev)
+    )
+    ntime = len(source.time_edges_days) - 1
+    if source.band_flux and (
+        len(source.band_flux) != ntime
+        or any(len(row) != nband for row in source.band_flux)
+    ):
+        raise ConfigError(
+            "source.band_flux: expected (number of time intervals, number of bands)"
+        )
+    if source.photon_flux and len(source.photon_flux) != ntime:
+        raise ConfigError("source.photon_flux: expected one flux per time interval")
+    if kind == "exponential_decay" and (
+        len(source.peak_band_flux) != nband
+        or (source.baseline_band_flux and len(source.baseline_band_flux) != nband)
+    ):
+        raise ConfigError("source: decay flux vectors must match effective energies")
+    if kind == "flux_table":
+        columns = (source.time_column, *source.flux_columns)
+        if len(set(columns)) != len(columns) or len(source.flux_columns) != nband:
+            raise ConfigError(
+                "source.flux_columns: distinct from time_column, with one column per band"
+            )
+    return source
+
+
+def load_run_config(path: str | Path) -> ResolvedRun:
+    config_path = Path(path).expanduser().resolve()
+    try:
+        raw = config_path.read_bytes()
+        data = tomllib.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeError, tomllib.TOMLDecodeError) as error:
+        raise ConfigError(f"{config_path}: {error}") from error
+    allowed = {
+        "config_version",
+        "run",
+        "scene",
+        "source",
+        "materials",
+        "execution",
+        "observer",
+        "quality",
+        "output",
+        "plots",
+        "logging",
+    }
+    _table(
+        data,
+        "config",
+        allowed,
+        {"config_version", "run", "scene", "source", "materials", "observer", "output"},
+    )
+    if type(data["config_version"]) is not int or data["config_version"] != 1:
+        raise ConfigError("config_version: only integer version 1 is supported")
+    run = _table(data["run"], "run", {"name", "workflow"}, {"name"})
+    name = run["name"]
+    if not isinstance(name, str) or not re.fullmatch(
+        r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}", name
+    ):
+        raise ConfigError("run.name: use 1–80 letters, numbers, underscores or hyphens")
+    workflow = _choice(run.get("workflow", "simulate"), "run.workflow", ("simulate",))
+    base = config_path.parent
+    scene = _table(
+        data["scene"],
+        "scene",
+        {"kind", "cloud_file", "source_distance_kpc", "coordinates"},
+        {"kind", "source_distance_kpc"},
+    )
+    kind = _choice(scene["kind"], "scene.kind", ("fits", "example_four_cloud"))
+    if (kind == "fits") != ("cloud_file" in scene):
+        raise ConfigError("scene.cloud_file: required only for scene.kind=fits")
+    scene_config = SceneConfig(
+        kind,
+        _number(
+            scene["source_distance_kpc"],
+            "scene.source_distance_kpc",
+            minimum=0,
+            strictly=True,
+        ),
+        _path(scene["cloud_file"], "scene.cloud_file", base)
+        if kind == "fits"
+        else None,
+        _choice(
+            scene.get("coordinates", "source_centered_offsets"),
+            "scene.coordinates",
+            ("source_centered_offsets",),
+        ),
+    )
+    if not isinstance(data["source"], dict):
+        raise ConfigError("source: expected a TOML table")
+    source = _source(data["source"], base)
+    material = _table(
+        data["materials"],
+        "materials",
+        {"kind", "directory", "scattering_file", "absorption_file", "grid_file"},
+        {"kind"},
+    )
+    kind = _choice(
+        material["kind"], "materials.kind", ("table_pair", "declared_bundle")
+    )
+    selected = (
+        {"directory"}
+        if kind == "declared_bundle"
+        else {"scattering_file", "absorption_file", "grid_file"}
+    )
+    _table(
+        material,
+        "materials",
+        selected | {"kind"},
+        (selected - {"grid_file"}) | {"kind"},
+    )
+    material_config = MaterialConfig(
+        kind,
+        **{
+            key: _path(value, "materials." + key, base, directory=key == "directory")
+            for key, value in material.items()
+            if key != "kind"
+        },
+    )
+    execution = _table(
+        data.get("execution", {}),
+        "execution",
+        {f.name for f in fields(ExecutionConfig)},
+    )
+    execution_values = {}
+    for key, value in execution.items():
+        if key == "device":
+            execution_values[key] = _choice(value, "execution.device", ("cpu", "gpu"))
+        elif key == "launch_sampler":
+            execution_values[key] = _choice(
+                value, "execution.launch_sampler", ("radial", "rectangular")
+            )
+        else:
+            execution_values[key] = _integer(
+                value,
+                "execution." + key,
+                minimum=0 if key == "seed" else 1,
+                maximum=2**32 - 1 if key == "seed" else None,
+            )
+    observer = _table(
+        data["observer"],
+        "observer",
+        {"sky_grid", "energy_edges_kev", "arrival"},
+        {"energy_edges_kev", "arrival"},
+    )
+    arrival = _table(
+        observer["arrival"],
+        "observer.arrival",
+        {"kind", "edges_days", "start_days", "stop_days", "step_days", "last_bin"},
+        {"kind"},
+    )
+    arrival_kind = _choice(
+        arrival["kind"], "observer.arrival.kind", ("explicit", "uniform")
+    )
+    if arrival_kind == "explicit":
+        _table(
+            arrival, "observer.arrival", {"kind", "edges_days"}, {"kind", "edges_days"}
+        )
+        arrival_config = ArrivalConfig(
+            arrival_kind,
+            _vector(
+                arrival["edges_days"],
+                "observer.arrival.edges_days",
+                minimum=0,
+                edges=True,
+            ),
+        )
+    else:
+        _table(
+            arrival,
+            "observer.arrival",
+            {"kind", "start_days", "stop_days", "step_days", "last_bin"},
+            {"kind", "start_days", "stop_days", "step_days"},
+        )
+        start = _number(arrival["start_days"], "observer.arrival.start_days", minimum=0)
+        stop = _number(
+            arrival["stop_days"],
+            "observer.arrival.stop_days",
+            minimum=start,
+            strictly=True,
+        )
+        step = _number(
+            arrival["step_days"], "observer.arrival.step_days", minimum=0, strictly=True
+        )
+        last = _choice(
+            arrival.get("last_bin", "shorten"),
+            "observer.arrival.last_bin",
+            ("shorten",),
+        )
+        count = math.ceil((stop - start) / step)
+        if count > 1_000_000:
+            raise ConfigError(
+                "observer.arrival: more than one million bins; use a larger step"
+            )
+        interior = tuple(start + i * step for i in range(count))
+        if len(interior) > 1 and math.isclose(
+            interior[-1], stop, rel_tol=0, abs_tol=8 * math.ulp(stop)
+        ):
+            interior = interior[:-1]
+        edges = interior + (stop,)
+        arrival_config = ArrivalConfig(arrival_kind, edges, start, stop, step, last)
+    if arrival_config.edges_days[0] != 0:
+        raise ConfigError(
+            "observer.arrival: initial configured interface requires bins beginning at zero"
+        )
+    energies = _vector(
+        observer["energy_edges_kev"], "observer.energy_edges_kev", minimum=0, edges=True
+    )
+    if energies[0] <= 0:
+        raise ConfigError("observer.energy_edges_kev: must be positive")
+    observer_config = ObserverConfig(
+        energies,
+        arrival_config,
+        _choice(observer.get("sky_grid", "cloud"), "observer.sky_grid", ("cloud",)),
+    )
+    quality = _table(
+        data.get("quality", {}), "quality", {f.name for f in fields(QualityConfig)}
+    )
+    quality_config = QualityConfig(
+        **{key: _boolean(value, "quality." + key) for key, value in quality.items()}
+    )
+    output = _table(
+        data["output"], "output", {"directory", "formats", "overwrite"}, {"directory"}
+    )
+    formats = output.get("formats", ["npz", "fits"])
+    if (
+        not isinstance(formats, list)
+        or not formats
+        or len({str(x) for x in formats}) != len(formats)
+    ):
+        raise ConfigError("output.formats: expected a nonempty list without duplicates")
+    formats = tuple(_choice(x, "output.formats", ("npz", "fits")) for x in formats)
+    output_config = OutputConfig(
+        _path(output["directory"], "output.directory", base, output=True),
+        formats,
+        _boolean(output.get("overwrite", False), "output.overwrite"),
+    )
+    plots = _table(data.get("plots", {}), "plots", {f.name for f in fields(PlotConfig)})
+    plot_values = {}
+    for key, value in plots.items():
+        if key in {"enabled", "save_scored_event_map"}:
+            plot_values[key] = _boolean(value, "plots." + key)
+        elif key == "dpi":
+            plot_values[key] = _integer(value, "plots.dpi", maximum=1200)
+        elif key == "epoch_days":
+            plot_values[key] = _vector(value, "plots.epoch_days", minimum=0, edges=True)
+            if len(plot_values[key]) != 2:
+                raise ConfigError("plots.epoch_days: expected exactly [start, stop]")
+        elif key == "scales":
+            if (
+                not isinstance(value, list)
+                or not value
+                or len({str(x) for x in value}) != len(value)
+            ):
+                raise ConfigError("plots.scales: expected a nonempty unique list")
+            plot_values[key] = tuple(
+                _choice(x, "plots.scales", ("log", "linear")) for x in value
+            )
+        else:
+            plot_values[key] = _choice(
+                value,
+                "plots." + key,
+                ("all",) if key == "energy_selection" else ("full",),
+            )
+    plots_config = PlotConfig(**plot_values)
+    logging = _table(
+        data.get("logging", {}), "logging", {"progress_every_chunks", "file"}
+    )
+    log_name = logging.get("file", "run.log")
+    if not isinstance(log_name, str) or not re.fullmatch(
+        r"[A-Za-z0-9_-]+\.log", log_name
+    ):
+        raise ConfigError("logging.file: expected a simple filename ending in .log")
+    logging_config = LoggingConfig(
+        _integer(
+            logging.get("progress_every_chunks", 5), "logging.progress_every_chunks"
+        ),
+        log_name,
+    )
+    config = ResolvedRun(
+        config_path,
+        hashlib.sha256(raw).hexdigest(),
+        raw,
+        name,
+        scene_config,
+        source,
+        material_config,
+        observer_config,
+        output_config,
+        ExecutionConfig(**execution_values),
+        quality_config,
+        plots_config,
+        logging_config,
+        workflow=workflow,
+    )
+    for path in input_paths(config):
+        if not path.is_file():
+            raise ConfigError(f"inputs: required input or sidecar not found: {path}")
+    validate_destinations(config)
+    return config

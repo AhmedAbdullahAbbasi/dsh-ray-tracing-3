@@ -311,6 +311,10 @@ def write_ideal_observer_fits(
     )
     _add_linear_spatial_wcs(primary.header, bin_geometry)
     metadata = dict(run_metadata or {})
+    if "config_sha256" in metadata:
+        primary.header["CFGSHA"] = str(metadata["config_sha256"])
+        primary.header["NUMCOMP"] = bool(metadata["numerical_complete"])
+        primary.header["DIAGONLY"] = bool(metadata["diagnostic_only"])
     primary.header["GITHEAD"] = str(metadata.get("simulation_git_head", "unavailable"))
     primary.header["GITDIRTY"] = bool(metadata.get("simulation_git_dirty", True))
     primary.header["PYVER"] = str(metadata.get("simulation_python", "unavailable"))
