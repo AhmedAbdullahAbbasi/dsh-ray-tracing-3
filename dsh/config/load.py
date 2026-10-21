@@ -127,6 +127,12 @@ def _path(value, name, base, *, directory=False, output=False):
 
 def input_paths(config):
     """Exact files loaded by the selected adapters, including sidecars."""
+    if config.workflow == "response_fold":
+        return tuple(
+            p
+            for p in (config.config_path, config.source.file, config.response.file)
+            if p is not None
+        )
     paths = [config.config_path]
     paths += [p for p in (config.scene.cloud_file, config.source.file) if p is not None]
     material = config.materials
@@ -416,43 +422,7 @@ def validate_relationships(config):
         raise ConfigError("plots.fov_arcsec: required only for crop=centered")
 
 
-def load_run_config(path: str | Path) -> ResolvedRun:
-    config_path = Path(path).expanduser().resolve()
-    try:
-        raw = config_path.read_bytes()
-        data = tomllib.loads(raw.decode("utf-8"))
-    except (OSError, UnicodeError, tomllib.TOMLDecodeError) as error:
-        raise ConfigError(f"{config_path}: {error}") from error
-    allowed = {
-        "config_version",
-        "run",
-        "scene",
-        "source",
-        "materials",
-        "execution",
-        "observer",
-        "quality",
-        "output",
-        "plots",
-        "logging",
-        "slurm",
-    }
-    _table(
-        data,
-        "config",
-        allowed,
-        {"config_version", "run", "scene", "source", "materials", "observer", "output"},
-    )
-    if type(data["config_version"]) is not int or data["config_version"] != 1:
-        raise ConfigError("config_version: only integer version 1 is supported")
-    run = _table(data["run"], "run", {"name", "workflow"}, {"name"})
-    name = run["name"]
-    if not isinstance(name, str) or not re.fullmatch(
-        r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}", name
-    ):
-        raise ConfigError("run.name: use 1–80 letters, numbers, underscores or hyphens")
-    workflow = _choice(run.get("workflow", "simulate"), "run.workflow", ("simulate",))
-    base = config_path.parent
+def parse_scene(data, base):
     scene = _table(
         data["scene"],
         "scene",
@@ -519,9 +489,10 @@ def load_run_config(path: str | Path) -> ResolvedRun:
         ),
         **disc_values,
     )
-    if not isinstance(data["source"], dict):
-        raise ConfigError("source: expected a TOML table")
-    source = _source(data["source"], base)
+    return scene_config
+
+
+def parse_material(data, base):
     material = _table(
         data["materials"],
         "materials",
@@ -552,6 +523,10 @@ def load_run_config(path: str | Path) -> ResolvedRun:
             if key != "kind"
         },
     )
+    return material_config
+
+
+def parse_execution(data, base):
     execution = _table(
         data.get("execution", {}),
         "execution",
@@ -572,6 +547,59 @@ def load_run_config(path: str | Path) -> ResolvedRun:
                 minimum=0 if key == "seed" else 1,
                 maximum=2**32 - 1 if key == "seed" else None,
             )
+    return execution_values
+
+
+def load_run_config(path: str | Path):
+    config_path = Path(path).expanduser().resolve()
+    try:
+        raw = config_path.read_bytes()
+        data = tomllib.loads(raw.decode("utf-8"))
+    except (OSError, UnicodeError, tomllib.TOMLDecodeError) as error:
+        raise ConfigError(f"{config_path}: {error}") from error
+    if isinstance(data.get("run"), dict) and data["run"].get("workflow") in {
+        "response_collect",
+        "response_fold",
+    }:
+        from .response import load_response_config
+
+        return load_response_config(data, config_path, raw)
+    allowed = {
+        "config_version",
+        "run",
+        "scene",
+        "source",
+        "materials",
+        "execution",
+        "observer",
+        "quality",
+        "output",
+        "plots",
+        "logging",
+        "slurm",
+    }
+    _table(
+        data,
+        "config",
+        allowed,
+        {"config_version", "run", "scene", "source", "materials", "observer", "output"},
+    )
+    if type(data["config_version"]) is not int or data["config_version"] != 1:
+        raise ConfigError("config_version: only integer version 1 is supported")
+    run = _table(data["run"], "run", {"name", "workflow"}, {"name"})
+    name = run["name"]
+    if not isinstance(name, str) or not re.fullmatch(
+        r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}", name
+    ):
+        raise ConfigError("run.name: use 1–80 letters, numbers, underscores or hyphens")
+    workflow = _choice(run.get("workflow", "simulate"), "run.workflow", ("simulate",))
+    base = config_path.parent
+    scene_config = parse_scene(data, base)
+    if not isinstance(data["source"], dict):
+        raise ConfigError("source: expected a TOML table")
+    source = _source(data["source"], base)
+    material_config = parse_material(data, base)
+    execution_values = parse_execution(data, base)
     observer = _table(
         data["observer"],
         "observer",

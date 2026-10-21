@@ -1,0 +1,27 @@
+# Tiny integration example; increase packets for scientific convergence.
+config_version = 1
+[run]
+name = "response_collect"
+workflow = "response_collect"
+[scene]
+kind = "example_four_cloud"
+source_distance_kpc = 10.0
+[source]
+kind = "powerlaw"
+time_edges_days = [0.0, 0.041666666666666664]
+energy_edges_kev = [2.0, 4.0, 6.0, 10.0]
+photon_flux = [0.038]
+photon_index = 1.7
+[materials]
+kind = "declared_bundle"
+directory = "../../dsh/data/materials/wd01_wilm_c50_si90_v1"
+[execution]
+device = "cpu"
+packets = 64
+chunk_size = 32
+max_interactions = 32
+seed = 2026
+launch_sampler = "radial"
+[output]
+directory = "../../outputs/response_collect"
+overwrite = false

@@ -1,0 +1,22 @@
+# Run collect.toml first, or select an existing schema-1 physical response.
+config_version = 1
+[run]
+name = "response_fold"
+workflow = "response_fold"
+[source]
+kind = "spectral_history"
+file = "../data/example_history.json"
+[response]
+file = "../../outputs/response_collect/response_collect.npz"
+covariance = true
+history_block_size = 2048
+# scattering_orders = [1]  # omit to include all archived orders
+[observer]
+arrival_time_edges_days = [0.0, 1.0, 10.0, 30.0, 60.0]
+energy_edges_kev = [2.0, 4.0, 6.0, 10.0]
+radial_edges_arcsec = [0.0, 50.0, 100.0, 300.0, 1000.0]
+[execution]
+device = "cpu"
+[output]
+directory = "../../outputs/response_fold"
+overwrite = false

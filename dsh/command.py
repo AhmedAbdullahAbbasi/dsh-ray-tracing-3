@@ -28,13 +28,13 @@ def bootstrap(device):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description="Check or run one TOML-configured ideal-observer simulation."
+        description="Check or run a TOML-configured simulation or physical halo response."
     )
     parser.add_argument(
         "command", choices=("check", "run", "slurm-plan", "slurm-submit")
     )
     parser.add_argument(
-        "config", help="TOML simulation file; relative input paths use its directory"
+        "config", help="TOML run file; relative input paths use its directory"
     )
     args = parser.parse_args(argv)
     try:
@@ -48,6 +48,12 @@ def main(argv=None):
                 return 0
             return submit_job(config, plan)
         bootstrap(config.execution.device)
+        if config.workflow in {"response_collect", "response_fold"}:
+            from .response_run import build_response_plan, publish_response_run
+
+            plan = build_response_plan(config)
+            print(json.dumps(plan.summary, indent=2, allow_nan=False), flush=True)
+            return 0 if args.command == "check" else publish_response_run(plan)
         from .build import build_run_plan
 
         plan = build_run_plan(config)
