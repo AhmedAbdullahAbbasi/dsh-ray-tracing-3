@@ -21,8 +21,8 @@ from dsh.cli import parse_arguments
 from dsh.command import bootstrap
 from dsh.compat import _toml, cli_translation, root_translation, run_root
 from dsh.config import ConfigError, load_run_config
+from dsh.io.publication import publish_file
 from dsh.plots import plot_arrays
-from dsh.run import _publish
 from tests.config_fixtures import ROOT, config_text, write_config
 
 
@@ -281,8 +281,8 @@ class LegacyRunnerTests(unittest.TestCase):
                 raise OSError(errno.EXDEV, "cross-device link")
             return original(src, dst)
 
-        with patch("dsh.run.os.replace", side_effect=replace):
-            _publish(source, target, True)
+        with patch("dsh.io.publication.os.replace", side_effect=replace):
+            publish_file(source, target, True)
         self.assertEqual(target.read_bytes(), b"complete bytes")
         self.assertFalse(source.exists())
         self.assertEqual(len(calls), 2)

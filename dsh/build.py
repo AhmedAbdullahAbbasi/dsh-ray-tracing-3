@@ -2,16 +2,15 @@
 
 from dataclasses import dataclass, field
 
-import jax
 import numpy as np
 
 from .config.load import (
-    ConfigError,
     input_paths,
     validate_destinations,
     validate_relationships,
 )
 from .examples import DAY_S
+from .inputs.common import check_backend, load_input
 from .inputs.material import load_material
 from .inputs.scene import load_scene
 from .inputs.source import load_source
@@ -36,49 +35,24 @@ class RunPlan:
     extra_inputs: tuple = ()
 
 
-def _load_input(label, loader, settings):
-    """Attach the owning TOML section to errors from existing file adapters."""
-    try:
-        return loader(settings)
-    except (
-        ValueError,
-        OSError,
-        KeyError,
-        TypeError,
-        IndexError,
-        OverflowError,
-    ) as error:
-        raise ConfigError(f"{label}: {error}") from error
-
-
 def build_run_plan(config, *, publication_paths=None, extra_inputs=()):
     validate_relationships(config)
     validate_destinations(
         config, publication_paths=publication_paths, extra_inputs=extra_inputs
     )
-    expected_backend = "cpu" if config.execution.device == "cpu" else "gpu"
-    try:
-        actual_backend = jax.default_backend()
-    except RuntimeError as error:
-        raise ValueError(
-            f"execution.device={config.execution.device}: requested JAX backend is unavailable: {error}"
-        ) from error
-    if actual_backend != expected_backend:
-        raise ValueError(
-            f"execution.device: requested {expected_backend}, got {actual_backend}; restart with the configured command"
-        )
+    actual_backend = check_backend(config.execution.device)
     hashes = hash_files((*input_paths(config), *extra_inputs))
     if hashes[str(config.config_path)] != config.config_sha256:
         raise ValueError("configuration file changed after parsing")
-    scattering, absorption, physics, material_metadata = _load_input(
+    scattering, absorption, physics, material_metadata = load_input(
         "materials", load_material, config.materials
     )
-    source, source_metadata = _load_input(
+    source, source_metadata = load_input(
         f"source.file ({config.source.file})" if config.source.file else "source",
         load_source,
         config.source,
     )
-    cloud = _load_input(
+    cloud = load_input(
         f"scene.cloud_file ({config.scene.cloud_file})"
         if config.scene.cloud_file
         else "scene",

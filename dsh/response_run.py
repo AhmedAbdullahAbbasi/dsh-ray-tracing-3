@@ -3,27 +3,25 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from dataclasses import dataclass
-from pathlib import Path
 
 import jax
 import numpy as np
 
-from .build import _load_input
 from .config.load import input_paths, validate_destinations
+from .inputs.common import check_backend, load_input
 from .inputs.material import load_material
 from .inputs.scene import load_scene
 from .inputs.source import load_source
 from .io.atomic import atomic_savez_compressed
 from .io.provenance import hash_files, runtime_identity, verify_inputs
+from .io.publication import publish_outputs, staged_run, write_run_records
 from .observer.response import (
     fold_spectral_response,
     load_spectral_response,
     write_spectral_response,
 )
 from .observer.response_transport import collect_spectral_response
-from .run import _json, _publish
 from .sources.launch import build_cloud_launch_geometry
 from .sources.radial_launch import build_radial_cloud_launch_geometry
 
@@ -47,13 +45,11 @@ class ResponsePlan:
 
 def build_response_plan(config):
     validate_destinations(config)
-    expected = "cpu" if config.execution.device == "cpu" else "gpu"
-    if jax.default_backend() != expected:
-        raise ValueError("execution.device: restart with the configured backend")
+    check_backend(config.execution.device)
     hashes = hash_files(input_paths(config))
     if hashes[str(config.config_path)] != config.config_sha256:
         raise ValueError("configuration file changed after parsing")
-    source, source_metadata = _load_input("source", load_source, config.source)
+    source, source_metadata = load_input("source", load_source, config.source)
     if source.energy_edges_kev is None or source.photon_index is None:
         raise ValueError("source: response workflows require a continuous spectrum")
     metadata = {
@@ -73,10 +69,10 @@ def build_response_plan(config):
             raise ValueError(
                 "source: response proposal requires one interval and strictly positive flux in every band"
             )
-        _, _, physics, material = _load_input(
+        _, _, physics, material = load_input(
             "materials", load_material, config.materials
         )
-        cloud = _load_input("scene", load_scene, config.scene)
+        cloud = load_input("scene", load_scene, config.scene)
         bounds = np.asarray(source.energy_edges_kev)
         if bounds[0] < float(physics.energy_kev[0]) or bounds[-1] > float(
             physics.energy_kev[-1]
@@ -104,7 +100,7 @@ def build_response_plan(config):
             launch=launch,
         )
     else:
-        archive = _load_input(
+        archive = load_input(
             "response.file", load_spectral_response, config.response.file
         )
         bounds = np.asarray(source.energy_edges_kev)
@@ -179,14 +175,8 @@ def execute_response_plan(plan, progress=None):
 
 def publish_response_run(plan):
     config = plan.config
-    validate_destinations(config)
-    verify_inputs(plan.input_hashes)
     directory = config.output.directory
-    directory.mkdir(parents=True, exist_ok=True)
-    if config.output.overwrite:
-        (directory / "complete.json").unlink(missing_ok=True)
-    with tempfile.TemporaryDirectory(prefix=".dsh-response-", dir=directory) as temp:
-        stage = Path(temp)
+    with staged_run(config, plan.input_hashes) as stage:
         complete = True
         message = None
         log_path = stage / "run.log"
@@ -242,50 +232,24 @@ def publish_response_run(plan):
                     payload["covariance"] = result.covariance
                 atomic_savez_compressed(product, **payload)
             paths.append(product)
-        original = stage / "original.toml"
-        original.write_bytes(config.config_bytes)
-        resolved = stage / "resolved.json"
-        _json(
-            resolved,
-            {
-                "manifest_version": 1,
-                "configuration": config.to_dict(),
-                "input_sha256": plan.input_hashes,
-                "runtime": plan.metadata,
-            },
-        )
-        paths += [original, resolved]
-        report = stage / "report.json"
-        _json(
+        report = {
+            "report_version": 1,
+            "workflow": config.workflow,
+            "status": "complete" if complete else "incomplete",
+            "numerical_complete": complete,
+            "error": message,
+            "config_sha256": config.config_sha256,
+        }
+        paths = write_run_records(
+            stage,
+            config,
+            plan.input_hashes,
+            plan.metadata,
             report,
-            {
-                "report_version": 1,
-                "workflow": config.workflow,
-                "status": "complete" if complete else "incomplete",
-                "numerical_complete": complete,
-                "error": message,
-                "config_sha256": config.config_sha256,
-                "output_inventory": [p.name for p in paths] + ["report.json"],
-            },
+            paths,
+            log_path=log_path,
         )
-        paths.append(report)
-        verify_inputs(plan.input_hashes)
-        validate_destinations(config)
-        inventory = {Path(k).name: v for k, v in hash_files(paths).items()}
-        for path in paths:
-            _publish(path, directory / path.name, config.output.overwrite)
-        if complete:
-            marker = stage / "complete.json"
-            _json(
-                marker,
-                {
-                    "completion_manifest_version": 1,
-                    "run": config.name,
-                    "config_sha256": config.config_sha256,
-                    "output_sha256": inventory,
-                },
-            )
-            _publish(marker, directory / marker.name, config.output.overwrite)
+        publish_outputs(stage, config, plan.input_hashes, paths, complete=complete)
     print(
         f"Response {'complete' if complete else 'incomplete'}; products: {directory}",
         flush=True,
