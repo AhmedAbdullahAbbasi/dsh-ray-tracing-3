@@ -139,6 +139,9 @@ def main(argv=None):
                         JAX_PLATFORMS="cpu",
                         JAX_ENABLE_X64=flag,
                         PYTHONIOENCODING="utf-8",
+                        PYTHONPATH=str(repo)
+                        + os.pathsep
+                        + os.environ.get("PYTHONPATH", ""),
                     ),
                     stdout=stream,
                     stderr=subprocess.STDOUT,
