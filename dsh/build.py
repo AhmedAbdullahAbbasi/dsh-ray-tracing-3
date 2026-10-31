@@ -11,6 +11,7 @@ from .config.load import (
 )
 from .examples import DAY_S
 from .inputs.common import check_backend, load_input
+from .inputs.compton import check_compton_source_support, load_compton
 from .inputs.material import load_material
 from .inputs.scene import load_scene
 from .inputs.source import load_source
@@ -33,6 +34,7 @@ class RunPlan:
     summary: dict
     publication_paths: dict = field(default_factory=dict)
     extra_inputs: tuple = ()
+    compton: object = None
 
 
 def build_run_plan(config, *, publication_paths=None, extra_inputs=()):
@@ -47,11 +49,24 @@ def build_run_plan(config, *, publication_paths=None, extra_inputs=()):
     scattering, absorption, physics, material_metadata = load_input(
         "materials", load_material, config.materials
     )
+    compton, compton_metadata = load_input(
+        "compton",
+        lambda settings: load_compton(
+            settings,
+            config.materials,
+            scattering,
+            absorption,
+            physics,
+            material_metadata,
+        ),
+        config.compton,
+    )
     source, source_metadata = load_input(
         f"source.file ({config.source.file})" if config.source.file else "source",
         load_source,
         config.source,
     )
+    check_compton_source_support(source, compton, config.compton)
     cloud = load_input(
         f"scene.cloud_file ({config.scene.cloud_file})"
         if config.scene.cloud_file
@@ -181,6 +196,10 @@ def build_run_plan(config, *, publication_paths=None, extra_inputs=()):
         "product_array_lower_bound_bytes": int(np.prod(shape)) * 8 * 5,
         "memory_estimate_note": "Product arrays only; excludes cloud, phase tables, histories, compilation and transient buffers.",
     }
+    if compton is not None:
+        metadata["compton"] = compton_metadata
+        summary["compton"] = compton_metadata
+        summary["product_array_lower_bound_bytes"] *= 4
     verify_inputs(hashes)
     return RunPlan(
         config,
@@ -194,4 +213,5 @@ def build_run_plan(config, *, publication_paths=None, extra_inputs=()):
         summary,
         publication_paths or {},
         tuple(extra_inputs),
+        compton,
     )

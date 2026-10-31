@@ -6,9 +6,10 @@ from .pipeline import TRANSPORT_STATUS_LABELS
 
 
 def evaluate_quality(result, requested_packets):
+    labels = getattr(result, "status_labels", TRANSPORT_STATUS_LABELS)
     counts = np.asarray(result.diagnostics.transport_status_count)
     valid_counts = (
-        counts.shape == (len(TRANSPORT_STATUS_LABELS),)
+        counts.shape == (len(labels),)
         and np.all(np.isfinite(counts))
         and np.all(counts >= 0)
     )
@@ -23,14 +24,13 @@ def evaluate_quality(result, requested_packets):
         np.all(np.isfinite(np.asarray(value)))
         for value in (*result.products, *result.diagnostics)
     )
-    return {
+    report = {
         "numerical_complete": bool(accounting_ok and failures == 0 and finite_products),
         "packet_accounting_ok": accounting_ok,
         "finite_products": bool(finite_products),
         "numerical_failure_histories": failures,
         "terminal_counts": {
-            name: int(value)
-            for name, value in zip(TRANSPORT_STATUS_LABELS, counts, strict=True)
+            name: int(value) for name, value in zip(labels, counts, strict=True)
         }
         if valid_counts
         else {},
@@ -42,3 +42,38 @@ def evaluate_quality(result, requested_packets):
         "window_losses_are_numerical_failures": False,
         "sampling_status": "Monte Carlo convergence is not established by numerical completion.",
     }
+    if hasattr(result, "inelastic_diagnostics"):
+        extra = result.inelastic_diagnostics
+        finite = all(
+            np.all(np.isfinite(np.asarray(value)))
+            for group in result.components
+            for value in group
+        ) and all(np.isfinite(value) for value in extra)
+        energy_ok = bool(extra.max_energy_closure_error_kev < 2e-5)
+        unsupported = int(
+            extra.unsupported_observer_escape_count
+            + extra.unsupported_observer_phase_count
+        )
+        component_ok = all(
+            int(group.history_count) == requested_packets for group in result.components
+        ) and np.allclose(
+            result.products.total_fluence,
+            sum(group.total_fluence for group in result.components[1:]),
+            rtol=5e-6,
+            atol=1e-20,
+        )
+        report.update(
+            compton_diagnostics={
+                name: int(value) if "count" in name else float(value)
+                for name, value in zip(extra._fields, extra, strict=True)
+            },
+            energy_accounting_ok=energy_ok,
+            component_accounting_ok=bool(component_ok),
+            unsupported_observer_events=unsupported,
+            analog_energy_sum_convention="unweighted simulated photons; not an isotropic-source calorimetric estimate",
+        )
+        report["finite_products"] &= bool(finite)
+        report["numerical_complete"] &= bool(
+            finite and energy_ok and component_ok and unsupported == 0
+        )
+    return report

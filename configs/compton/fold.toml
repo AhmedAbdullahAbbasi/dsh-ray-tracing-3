@@ -1,0 +1,22 @@
+# Run collect.toml first. This is a physical halo response, without a detector.
+config_version = 1
+[run]
+name = "cold_compton_fold"
+workflow = "response_fold"
+[source]
+kind = "band_powerlaw"
+time_edges_days = [0.0, 0.01, 0.03]
+energy_edges_kev = [3.3, 4.0, 6.0, 8.0]
+band_flux = [[0.015, 0.01, 0.005], [0.004, 0.003, 0.001]]
+photon_index = 2.1
+[response]
+file = "../../outputs/cold_compton_response/cold_compton_response.npz"
+covariance = true
+history_block_size = 256
+[observer]
+arrival_time_edges_days = [0.0, 1.0, 100.0, 100000000.0]
+energy_edges_kev = [2.0, 3.25, 3.35, 4.8, 5.0, 6.8, 7.0, 10.0]
+radial_edges_arcsec = [0.0, 250.0, 500.0, 1100.0]
+[output]
+directory = "../../outputs/cold_compton_fold"
+overwrite = false

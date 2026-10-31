@@ -13,6 +13,7 @@ from pathlib import Path
 from .schema import (
     SOURCE_FIELDS,
     ArrivalConfig,
+    ComptonConfig,
     ExecutionConfig,
     LoggingConfig,
     MaterialConfig,
@@ -160,6 +161,13 @@ def input_paths(config):
             paths += [path, path.with_suffix(".json")]
         if material.grid_file:
             paths.append(material.grid_file)
+    if config.compton.kind == "external_table":
+        paths.append(config.compton.file)
+    elif config.compton.kind == "cold_material":
+        paths.append(
+            Path(__file__).resolve().parents[1]
+            / "data/materials/cold_compton_v1/scattering_functions.json"
+        )
     return tuple(dict.fromkeys(p.resolve() for p in paths))
 
 
@@ -526,6 +534,51 @@ def parse_material(data, base):
     return material_config
 
 
+def parse_compton(data, base):
+    values = _table(
+        data.get("compton", {}),
+        "compton",
+        {"kind", "file", "grain_electrons", "energy_cutoff_kev"},
+    )
+    kind = _choice(
+        values.get("kind", "disabled"),
+        "compton.kind",
+        ("disabled", "cold_material", "external_table"),
+    )
+    selected = {"kind"}
+    if kind != "disabled":
+        selected |= {
+            "energy_cutoff_kev",
+            "grain_electrons" if kind == "cold_material" else "file",
+        }
+    _table(values, "compton", selected, selected - {"kind"})
+    if kind == "disabled":
+        return ComptonConfig()
+    cutoff = _number(
+        values["energy_cutoff_kev"],
+        "compton.energy_cutoff_kev",
+        minimum=0,
+        strictly=True,
+    )
+    if kind == "cold_material":
+        if data["materials"]["kind"] != "declared_bundle":
+            raise ConfigError(
+                "compton.kind: cold_material requires materials.kind=declared_bundle"
+            )
+        return ComptonConfig(
+            kind,
+            grain_electrons=_choice(
+                values["grain_electrons"],
+                "compton.grain_electrons",
+                ("omit", "atomic_incoherent"),
+            ),
+            energy_cutoff_kev=cutoff,
+        )
+    return ComptonConfig(
+        kind, file=_path(values["file"], "compton.file", base), energy_cutoff_kev=cutoff
+    )
+
+
 def parse_execution(data, base):
     execution = _table(
         data.get("execution", {}),
@@ -570,6 +623,7 @@ def load_run_config(path: str | Path):
         "scene",
         "source",
         "materials",
+        "compton",
         "execution",
         "observer",
         "quality",
@@ -772,6 +826,7 @@ def load_run_config(path: str | Path):
         logging_config,
         workflow=workflow,
         slurm=slurm_config,
+        compton=parse_compton(data, base),
     )
     validate_relationships(config)
     for path in input_paths(config):

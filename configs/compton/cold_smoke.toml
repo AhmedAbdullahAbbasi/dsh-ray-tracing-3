@@ -1,0 +1,44 @@
+# Core-to-production integration example; increase packets for science runs.
+config_version = 1
+[run]
+name = "cold_compton_smoke"
+[scene]
+kind = "uniform_disc"
+source_distance_kpc = 10.0
+grid_x_arcsec = [-500.0, 501.0, 500.0]
+grid_y_arcsec = [-500.0, 501.0, 500.0]
+grid_z_kpc = [4.0, 6.1, 2.0]
+disc_center_x_arcsec = 0.0
+disc_center_y_arcsec = 0.0
+disc_center_z_kpc = 5.0
+disc_radius_arcsec = 1000.0
+disc_thickness_kpc = 4.0
+disc_n_h_cm3 = 40.5
+[source]
+kind = "representative"
+time_edges_days = [0.0, 0.01]
+effective_energy_kev = [3.3, 4.9, 6.9]
+band_flux = [[0.02, 0.012, 0.006]]
+[materials]
+kind = "declared_bundle"
+directory = "../../dsh/data/materials/wd01_wilm_c50_si90_v1"
+[compton]
+kind = "cold_material"
+grain_electrons = "atomic_incoherent"
+energy_cutoff_kev = 2.0
+[execution]
+packets = 4096
+chunk_size = 256
+max_interactions = 24
+seed = 2049
+device = "cpu"
+launch_sampler = "rectangular"
+[observer]
+energy_edges_kev = [2.0, 3.25, 3.35, 4.8, 5.0, 6.8, 7.0, 10.0]
+[observer.arrival]
+kind = "explicit"
+edges_days = [0.0, 1.0, 100.0, 100000000.0]
+[output]
+directory = "../../outputs/cold_compton_smoke"
+formats = ["npz", "fits"]
+overwrite = false

@@ -16,12 +16,14 @@ from .load import (
     _table,
     _vector,
     input_paths,
+    parse_compton,
     parse_execution,
     parse_material,
     parse_scene,
     validate_destinations,
 )
 from .schema import (
+    ComptonConfig,
     ExecutionConfig,
     LoggingConfig,
     OutputConfig,
@@ -59,6 +61,7 @@ class ResponseRun:
     quality: QualityConfig = field(default_factory=QualityConfig)
     plots: PlotConfig = field(default_factory=PlotConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
+    compton: ComptonConfig = field(default_factory=ComptonConfig)
 
     def to_dict(self):
         def convert(value):
@@ -78,12 +81,14 @@ class ResponseRun:
 def load_response_config(data, path, raw):
     collect = data["run"]["workflow"] == "response_collect"
     common = {"config_version", "run", "source", "output", "execution", "slurm"}
-    selected = {"scene", "materials"} if collect else {"response", "observer"}
+    selected = (
+        {"scene", "materials", "compton"} if collect else {"response", "observer"}
+    )
     _table(
         data,
         "config",
         common | selected,
-        {"config_version", "run", "source", "output"} | selected,
+        {"config_version", "run", "source", "output"} | (selected - {"compton"}),
     )
     if type(data["config_version"]) is not int or data["config_version"] != 1:
         raise ConfigError("config_version: only integer version 1 is supported")
@@ -184,6 +189,7 @@ def load_response_config(data, path, raw):
         parse_scene(data, base) if collect else None,
         parse_material(data, base) if collect else None,
         slurm,
+        compton=parse_compton(data, base) if collect else ComptonConfig(),
     )
     for file in input_paths(config):
         if not file.is_file():

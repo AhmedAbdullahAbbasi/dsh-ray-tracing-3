@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import jax
 import numpy as np
 
 from .config.load import input_paths, validate_destinations
 from .inputs.common import check_backend, load_input
+from .inputs.compton import check_compton_source_support, load_compton
 from .inputs.material import load_material
 from .inputs.scene import load_scene
 from .inputs.source import load_source
@@ -41,6 +42,7 @@ class ResponsePlan:
     cloud: object = None
     physics: object = None
     launch: object = None
+    compton: object = None
 
 
 def build_response_plan(config):
@@ -69,9 +71,17 @@ def build_response_plan(config):
             raise ValueError(
                 "source: response proposal requires one interval and strictly positive flux in every band"
             )
-        _, _, physics, material = load_input(
+        scattering, absorption, physics, material = load_input(
             "materials", load_material, config.materials
         )
+        compton, compton_metadata = load_input(
+            "compton",
+            lambda settings: load_compton(
+                settings, config.materials, scattering, absorption, physics, material
+            ),
+            config.compton,
+        )
+        check_compton_source_support(source, compton, config.compton)
         cloud = load_input("scene", load_scene, config.scene)
         bounds = np.asarray(source.energy_edges_kev)
         if bounds[0] < float(physics.energy_kev[0]) or bounds[-1] > float(
@@ -84,10 +94,13 @@ def build_response_plan(config):
             else build_cloud_launch_geometry(cloud)
         )
         metadata["material_identity"] = material
+        if compton is not None:
+            metadata["compton"] = compton_metadata
+            summary["compton"] = compton_metadata
         summary.update(
             packets=config.execution.packets,
             proposal_energy_support_kev=[float(bounds[0]), float(bounds[-1])],
-            archive_schema_version=1,
+            archive_schema_version=1 if compton is None else 2,
         )
         plan = ResponsePlan(
             config,
@@ -98,6 +111,7 @@ def build_response_plan(config):
             cloud=cloud,
             physics=physics,
             launch=launch,
+            compton=compton,
         )
     else:
         archive = load_input(
@@ -149,6 +163,14 @@ def execute_response_plan(plan, progress=None):
             max_interactions=settings.max_interactions,
             seed=settings.seed,
             progress=progress,
+            **(
+                {
+                    "compton": plan.compton,
+                    "energy_cutoff_kev": config.compton.energy_cutoff_kev,
+                }
+                if plan.compton is not None
+                else {}
+            ),
         )
         response.provenance["configured_run"] = plan.metadata
         response.provenance["input_sha256"] = plan.input_hashes
@@ -164,11 +186,35 @@ def execute_response_plan(plan, progress=None):
         covariance=settings.covariance,
         history_block_size=settings.history_block_size,
     )
+    if hasattr(plan.archive, "source_energy_kev"):
+        components = {
+            name: fold_spectral_response(
+                plan.archive,
+                plan.source,
+                np.asarray(settings.arrival_time_edges_days) * 86400,
+                settings.energy_edges_kev,
+                settings.radial_edges_arcsec,
+                scattering_orders=settings.scattering_orders,
+                covariance=False,
+                history_block_size=settings.history_block_size,
+                component=code,
+            )
+            for code, name in ((1, "dust_only"), (2, "compton_only"), (3, "mixed"))
+        }
+        result = replace(result, components=components)
 
     values = (result.fluence, result.standard_error, result.covariance)
     if any(value is not None and not np.all(np.isfinite(value)) for value in values):
         raise IncompleteResponse(
             "response_fold: nonfinite folded values or uncertainty"
+        )
+    if result.components is not None and any(
+        not np.isfinite(value).all()
+        for group in result.components.values()
+        for value in (group.fluence, group.standard_error)
+    ):
+        raise IncompleteResponse(
+            "response_fold: nonfinite component values or uncertainty"
         )
     return result
 
@@ -179,6 +225,7 @@ def publish_response_run(plan):
     with staged_run(config, plan.input_hashes) as stage:
         complete = True
         message = None
+        failure_diagnostics = None
         log_path = stage / "run.log"
         with log_path.open("w", encoding="utf-8") as log:
             log.write(json.dumps(plan.summary, allow_nan=False) + "\n")
@@ -202,6 +249,7 @@ def publish_response_run(plan):
                     raise
                 complete = False
                 message = str(error)
+                failure_diagnostics = getattr(error, "diagnostics", None)
         paths = [log_path]
         if complete:
             product = stage / (config.name + ".npz")
@@ -228,6 +276,18 @@ def publish_response_run(plan):
                         json.dumps(metadata, sort_keys=True, allow_nan=False)
                     ),
                 }
+                if result.components is not None:
+                    metadata.update(
+                        schema_version=2,
+                        energy_convention="source spectral density at initial energy; bins at observed outgoing energy",
+                        component_uncertainty="photon grouped within each component; total covariance includes cross-component terms",
+                    )
+                    payload["metadata_json"] = np.asarray(
+                        json.dumps(metadata, sort_keys=True, allow_nan=False)
+                    )
+                    for name, group in result.components.items():
+                        payload[name + "__fluence"] = group.fluence
+                        payload[name + "__standard_error"] = group.standard_error
                 if result.covariance is not None:
                     payload["covariance"] = result.covariance
                 atomic_savez_compressed(product, **payload)
@@ -240,6 +300,8 @@ def publish_response_run(plan):
             "error": message,
             "config_sha256": config.config_sha256,
         }
+        if failure_diagnostics is not None:
+            report["compton_diagnostics"] = failure_diagnostics
         paths = write_run_records(
             stage,
             config,

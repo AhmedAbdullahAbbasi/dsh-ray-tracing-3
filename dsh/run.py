@@ -21,6 +21,23 @@ def execute_plan(plan, *, progress_callback=None):
     """Numerical API: return products, with no file creation or plotting."""
     verify_inputs(plan.input_hashes)
     execution = plan.config.execution
+    if plan.compton is not None:
+        from .inelastic_pipeline import run_inelastic_source_chunked
+
+        return run_inelastic_source_chunked(
+            random.PRNGKey(execution.seed),
+            plan.source,
+            plan.launch,
+            plan.cloud,
+            plan.physics,
+            plan.compton,
+            plan.bins,
+            total_packets=execution.packets,
+            chunk_size=execution.chunk_size,
+            max_interactions=execution.max_interactions,
+            energy_cutoff_kev=plan.config.compton.energy_cutoff_kev,
+            progress_callback=progress_callback,
+        )
     return run_tabulated_source_to_observer_chunked(
         random.PRNGKey(execution.seed),
         plan.source,
@@ -103,6 +120,7 @@ def publish_run(plan):
                     plan.physics,
                     plan.launch,
                     run_metadata=metadata,
+                    **({"compton": plan.compton} if plan.compton is not None else {}),
                 )
                 paths.append(path)
             paths += save_plots(plan, result, stage, prefix)

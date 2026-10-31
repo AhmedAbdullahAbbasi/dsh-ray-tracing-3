@@ -243,7 +243,8 @@ def _diagnostics_table_hdu(fits, result: IdealObserverSimulationResult):
 
 def _status_table_hdu(fits, result: IdealObserverSimulationResult):
     counts = np.asarray(result.diagnostics.transport_status_count, dtype=np.int64)
-    width = max(len(label) for label in TRANSPORT_STATUS_LABELS)
+    labels = getattr(result, "status_labels", TRANSPORT_STATUS_LABELS)
+    width = max(len(label) for label in labels)
     return fits.BinTableHDU.from_columns(
         [
             fits.Column(
@@ -254,7 +255,7 @@ def _status_table_hdu(fits, result: IdealObserverSimulationResult):
             fits.Column(
                 name="STATUS",
                 format=f"{width}A",
-                array=np.asarray(TRANSPORT_STATUS_LABELS),
+                array=np.asarray(labels),
             ),
             fits.Column(name="COUNT", format="K", array=counts),
         ],
@@ -273,6 +274,7 @@ def write_ideal_observer_fits(
     *,
     run_metadata: Mapping[str, object] | None = None,
     overwrite: bool = True,
+    compton=None,
 ):
     """Write images, 4D cubes, physical inputs, and diagnostics to FITS.
 
@@ -523,5 +525,9 @@ def write_ideal_observer_fits(
                 ),
             ]
         )
+    if compton is not None:
+        from .inelastic_output import append_inelastic_fits
+
+        append_inelastic_fits(fits, hdus, result, compton, bin_geometry, metadata)
     fits.HDUList(hdus).writeto(output_path, overwrite=overwrite, checksum=True)
     return output_path

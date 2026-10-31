@@ -181,6 +181,7 @@ class FoldedSpectralResponse:
     standard_error: np.ndarray
     covariance: np.ndarray | None
     n_histories: int
+    components: dict | None = None
 
 
 def fold_spectral_response(
@@ -193,6 +194,7 @@ def fold_spectral_response(
     scattering_orders=None,
     covariance=True,
     history_block_size=2048,
+    component=None,
 ):
     """Integrate a history exactly in time at each response sample's energy.
 
@@ -234,6 +236,15 @@ def fold_spectral_response(
 
     ebin, rbin = bin_index(energies, response.energy_kev), bin_index(radii, radius)
     selected = (ebin >= 0) & (ebin < shape[1]) & (rbin >= 0) & (rbin < shape[2])
+    if component is not None:
+        if type(component) is not int or component not in (1, 2, 3):
+            raise ValueError(
+                "component must be 1 (dust-only), 2 (Compton-only), or 3 (mixed)"
+            )
+        selected &= (
+            getattr(response, "component", np.ones_like(response.scattering_order))
+            == component
+        )
     if scattering_orders is not None:
         orders = np.asarray(scattering_orders)
         if orders.ndim != 1 or orders.dtype.kind not in "iu" or np.any(orders < 1):
@@ -253,7 +264,7 @@ def fold_spectral_response(
         for t in range(shape[0]):
             integrated = integrated_spectral_density(
                 source,
-                response.energy_kev[block],
+                getattr(response, "source_energy_kev", response.energy_kev)[block],
                 times[t] - response.delay_s[block],
                 times[t + 1] - response.delay_s[block],
             )
@@ -278,13 +289,23 @@ def fold_spectral_response(
 def write_spectral_response(path, response):
     """Save exact samples, declared units, provenance, and a content checksum."""
     arrays = {key: getattr(response, key) for key in _ARRAYS}
+    inelastic = hasattr(response, "source_energy_kev")
+    if inelastic:
+        from .inelastic_response import (
+            INELASTIC_RESPONSE_ARRAYS,
+            INELASTIC_RESPONSE_CONVENTION,
+        )
+
+        arrays = {key: getattr(response, key) for key in INELASTIC_RESPONSE_ARRAYS}
     metadata = {
-        "schema_version": 1,
+        "schema_version": 2 if inelastic else 1,
         "n_histories": response.n_histories,
         "energy_support_kev": response.energy_support_kev,
         "provenance": response.provenance,
         "weight_units": "keV",
-        "convention": "elastic halo G/(N*q(E)); extinction included",
+        "convention": INELASTIC_RESPONSE_CONVENTION
+        if inelastic
+        else "elastic halo G/(N*q(E)); extinction included",
         "arrays_sha256": array_fingerprint(arrays),
     }
     text = json.dumps(metadata, sort_keys=True, separators=(",", ":"), allow_nan=False)
@@ -301,22 +322,39 @@ def write_spectral_response(path, response):
 def load_spectral_response(path):
     """Load without pickle, checking checksum, units, schema, and invariants."""
     with np.load(path, allow_pickle=False) as data:
-        if set(data.files) != set(_ARRAYS) | {"metadata_json", "metadata_sha256"}:
+        if not {"metadata_json", "metadata_sha256"} <= set(data.files):
             raise ValueError("unexpected response fields")
         text = str(data["metadata_json"])
         if hashlib.sha256(text.encode()).hexdigest() != str(data["metadata_sha256"]):
             raise ValueError("response metadata checksum mismatch")
         metadata = json.loads(text)
-        arrays = {key: data[key] for key in _ARRAYS}
+        schema = metadata["schema_version"]
+        array_names, response_class = _ARRAYS, SpectralResponse
+        convention = "elastic halo G/(N*q(E)); extinction included"
+        if schema == 2:
+            from .inelastic_response import (
+                INELASTIC_RESPONSE_ARRAYS,
+                INELASTIC_RESPONSE_CONVENTION,
+                InelasticSpectralResponse,
+            )
+
+            array_names, response_class = (
+                INELASTIC_RESPONSE_ARRAYS,
+                InelasticSpectralResponse,
+            )
+            convention = INELASTIC_RESPONSE_CONVENTION
+        if set(data.files) != set(array_names) | {"metadata_json", "metadata_sha256"}:
+            raise ValueError("unexpected response fields")
+        arrays = {key: data[key] for key in array_names}
         if (
-            metadata["schema_version"] != 1
+            schema not in (1, 2)
             or metadata["weight_units"] != "keV"
-            or metadata["convention"] != "elastic halo G/(N*q(E)); extinction included"
+            or metadata["convention"] != convention
         ):
             raise ValueError("unsupported response schema, units, or convention")
         if array_fingerprint(arrays) != metadata["arrays_sha256"]:
             raise ValueError("response array checksum mismatch")
-        return SpectralResponse(
+        return response_class(
             **arrays,
             n_histories=metadata["n_histories"],
             energy_support_kev=tuple(metadata["energy_support_kev"]),

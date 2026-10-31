@@ -36,6 +36,7 @@ def write_ideal_observer_npz(
     launch_geometry: SourceLaunchGeometry,
     *,
     run_metadata: Mapping[str, object],
+    compton=None,
 ) -> Path:
     """Write observer products, inputs, physics tables, and run metadata."""
 
@@ -50,7 +51,9 @@ def write_ideal_observer_npz(
         energy_edges_kev=np.asarray(bin_geometry.energy_edges_kev),
         arrival_time_edges_s=np.asarray(bin_geometry.arrival_time_edges_s),
         sky_pixel_solid_angle_sr=np.asarray(bin_geometry.sky_pixel_solid_angle_sr),
-        transport_status_labels=np.asarray(TRANSPORT_STATUS_LABELS),
+        transport_status_labels=np.asarray(
+            getattr(result, "status_labels", TRANSPORT_STATUS_LABELS)
+        ),
         source_energy_kev=np.asarray(source.effective_energy_kev),
         source_energy_edges_kev=(
             np.asarray(source.energy_edges_kev)
@@ -165,5 +168,9 @@ def write_ideal_observer_npz(
     for name in ("config_sha256", "numerical_complete", "diagnostic_only"):
         if name in metadata:
             payload[name] = np.asarray(metadata[name])
+    if compton is not None:
+        from .inelastic_output import inelastic_payload
+
+        payload.update(inelastic_payload(result, compton, metadata))
     atomic_savez_compressed(output_path, **payload)
     return output_path

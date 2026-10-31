@@ -16,7 +16,7 @@ from .response import SpectralResponse, array_fingerprint, response_from_events
 from .scoring import score_peeloff_events
 
 
-def response_provenance(cloud, physics, launch_geometry):
+def response_provenance(cloud, physics, launch_geometry, compton=None):
     """Fingerprint actual arrays and the runtime files used to collect samples."""
     root = Path(__file__).resolve().parents[1]
     files = (
@@ -35,6 +35,14 @@ def response_provenance(cloud, physics, launch_geometry):
         "observer/response.py",
         "observer/response_transport.py",
     )
+    if compton is not None:
+        files += (
+            "physics/compton.py",
+            "physics/cold_compton.py",
+            "transport/inelastic.py",
+            "observer/inelastic.py",
+            "observer/inelastic_response.py",
+        )
     hashes = {
         name: hashlib.sha256((root / name).read_bytes()).hexdigest() for name in files
     }
@@ -51,7 +59,14 @@ def response_provenance(cloud, physics, launch_geometry):
 
     return {
         "cloud_sha256": array_fingerprint(arrays(cloud)),
-        "material_sha256": array_fingerprint(arrays(physics)),
+        "material_sha256": array_fingerprint(
+            arrays(physics)
+            if compton is None
+            else {
+                **arrays(physics),
+                **{"compton_" + key: value for key, value in arrays(compton).items()},
+            }
+        ),
         "launch_sha256": array_fingerprint(arrays(launch_geometry)),
         "runtime_sha256": digest.hexdigest(),
         "runtime_files_sha256": hashes,
@@ -72,6 +87,8 @@ def collect_spectral_response(
     max_interactions=32,
     seed=20261016,
     progress=None,
+    compton=None,
+    energy_cutoff_kev=None,
 ):
     """Sample independent proposal histories; reject any incomplete transport.
 
@@ -96,7 +113,21 @@ def collect_spectral_response(
         physics.energy_kev[-1]
     ):
         raise ValueError("proposal lies outside material energy support")
-    provenance = response_provenance(cloud, physics, launch_geometry)
+    provenance = response_provenance(cloud, physics, launch_geometry, compton)
+    if compton is not None:
+        if (
+            energy_cutoff_kev is None
+            or not np.isfinite(energy_cutoff_kev)
+            or energy_cutoff_kev <= 0
+        ):
+            raise ValueError(
+                "Compton response requires an explicit positive energy cutoff"
+            )
+        if bounds[0] < max(float(compton.energy_kev[0]), energy_cutoff_kev) or bounds[
+            -1
+        ] > float(compton.energy_kev[-1]):
+            raise ValueError("proposal lies outside Compton support or below cutoff")
+        provenance["energy_cutoff_kev"] = float(energy_cutoff_kev)
     provenance.update(
         {
             "seed": seed,
@@ -112,14 +143,37 @@ def collect_spectral_response(
         source_key, launch_key, transport_key = random.split(key, 3)
         packets = sample_tabulated_band_source(source_key, proposal, n)
         launched = sample_source_launches(launch_key, packets, launch_geometry)
-        transported = transport_photon_batch(
+        if compton is None:
+            transport = transport_photon_batch
+            extra = {}
+        else:
+            from ..transport.inelastic import transport_inelastic_batch
+
+            transport = transport_inelastic_batch
+            extra = {"compton": compton, "energy_cutoff_kev": energy_cutoff_kev}
+        transported = transport(
             transport_key,
             launched.position_pc,
             launched.momentum_kev,
             cloud,
             physics,
             max_interactions=max_interactions,
+            **extra,
         )
+        if compton is not None:
+            from .inelastic import score_inelastic_peeloff
+
+            return (
+                packets,
+                transported.status,
+                score_inelastic_peeloff(launched, transported, cloud, physics, compton),
+                {
+                    "cutoff_energy_sum_kev": transported.cutoff_energy_kev.sum(),
+                    "unsupported_energy_sum_kev": transported.unsupported_energy_kev.sum(),
+                    "recoil_energy_sum_kev": transported.recoil_energy_kev.sum(),
+                    "absorbed_energy_sum_kev": transported.absorbed_energy_kev.sum(),
+                },
+            )
         return (
             packets,
             transported.status,
@@ -133,24 +187,9 @@ def collect_spectral_response(
     if counts[-1] == 1:
         counts[-2:] = [counts[-2] + 1]
     parts = []
-    statuses = np.zeros(7, dtype=np.int64)
-    offset = 0
-    for index, count in enumerate(counts):
-        packets, status, events = compiled(
-            random.fold_in(random.PRNGKey(seed), index), n=count
-        )
-        statuses += np.bincount(np.asarray(status), minlength=7)
-        part = response_from_events(
-            events, packets, proposal, status, provenance=provenance
-        )
-        # response_from_events uses this batch's count. Convert to the global
-        # estimator before concatenating; zero-score histories still count.
-        parts.append((part, offset, count / n_packets))
-        offset += count
-        if progress is not None:
-            progress(offset, n_packets)
-    fields = {}
-    for name in (
+    statuses = np.zeros(7 if compton is None else 9, dtype=np.int64)
+    response_builder, response_class = response_from_events, SpectralResponse
+    array_names = (
         "energy_kev",
         "delay_s",
         "sky_x_arcsec",
@@ -158,7 +197,66 @@ def collect_spectral_response(
         "scattering_order",
         "history_index",
         "weight_kev",
-    ):
+    )
+    if compton is not None:
+        from .inelastic_response import (
+            INELASTIC_RESPONSE_ARRAYS,
+            InelasticSpectralResponse,
+            inelastic_response_from_events,
+        )
+
+        response_builder, response_class = (
+            inelastic_response_from_events,
+            InelasticSpectralResponse,
+        )
+        array_names = INELASTIC_RESPONSE_ARRAYS
+    offset = 0
+    energy_diagnostics = {}
+    for index, count in enumerate(counts):
+        batch_result = compiled(random.fold_in(random.PRNGKey(seed), index), n=count)
+        packets, status, events = batch_result[:3]
+        if compton is not None:
+            for name, value in batch_result[3].items():
+                energy_diagnostics[name] = energy_diagnostics.get(name, 0.0) + float(
+                    value
+                )
+        statuses += np.bincount(np.asarray(status), minlength=len(statuses))
+        try:
+            part = response_builder(
+                events, packets, proposal, status, provenance=provenance
+            )
+        except ValueError as error:
+            if (
+                compton is None
+                or str(error)
+                != "response requires completed, uncapped, valid histories"
+            ):
+                raise
+            from .inelastic_response import IncompleteInelasticResponse
+
+            raise IncompleteInelasticResponse(
+                {
+                    "evaluated_histories": offset + count,
+                    "requested_histories": n_packets,
+                    "terminal_status_counts": statuses.tolist(),
+                    "current_batch_unsupported_escape_count": int(
+                        np.asarray(events.unsupported_escape).sum()
+                    ),
+                    "current_batch_unsupported_phase_count": int(
+                        np.asarray(events.unsupported_phase).sum()
+                    ),
+                    "analog_energy_sum_convention": "unweighted simulated photons; partial run",
+                    **energy_diagnostics,
+                }
+            ) from error
+        # response_from_events uses this batch's count. Convert to the global
+        # estimator before concatenating; zero-score histories still count.
+        parts.append((part, offset, count / n_packets))
+        offset += count
+        if progress is not None:
+            progress(offset, n_packets)
+    fields = {}
+    for name in array_names:
         fields[name] = np.concatenate(
             [
                 getattr(part, name) + start
@@ -170,7 +268,10 @@ def collect_spectral_response(
             ]
         )
     provenance["transport_status_counts"] = statuses.tolist()
-    return SpectralResponse(
+    if compton is not None:
+        provenance["analog_energy_diagnostics"] = energy_diagnostics
+        provenance["analog_energy_sum_convention"] = "unweighted simulated photons"
+    return response_class(
         **fields,
         n_histories=n_packets,
         energy_support_kev=(float(bounds[0]), float(bounds[-1])),

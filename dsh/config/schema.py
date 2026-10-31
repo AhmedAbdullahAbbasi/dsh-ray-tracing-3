@@ -107,6 +107,18 @@ class MaterialConfig:
 
 
 @dataclass(frozen=True)
+class ComptonConfig:
+    kind: str = "disabled"
+    grain_electrons: str | None = None
+    file: Path | None = None
+    energy_cutoff_kev: float | None = None
+
+    @property
+    def enabled(self):
+        return self.kind != "disabled"
+
+
+@dataclass(frozen=True)
 class ExecutionConfig:
     packets: int = 4096
     chunk_size: int = 256
@@ -201,6 +213,7 @@ class ResolvedRun:
     config_version: int = 1
     workflow: str = "simulate"
     slurm: SlurmConfig | None = None
+    compton: ComptonConfig = field(default_factory=ComptonConfig)
 
     def to_dict(self):
         """JSON-ready effective settings, including expanded defaults."""
