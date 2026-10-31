@@ -1,0 +1,19 @@
+{
+  "reference_executable_sha256": "b451b81854fbecdb99f292d3a661ea85ab1b417a25e5907d565f4318f34c788c",
+  "reference_evidence_files_verified": 16,
+  "composition": "wilm, molecular nuclei fraction=0.2, Fe dust fraction=0.691",
+  "grain_electrons": "omit",
+  "reflex_initialization_scale_relative_to_barn_to_mb": 1.0195979722863813,
+  "maximum_opacity_relative_difference_matching_native_energy_interpolation": 0.003941213703371416,
+  "maximum_opacity_relative_difference_continuous_physics": 0.01754746830987064,
+  "maximum_raw_effective_opacity_relative_difference": 0.019961854090986386,
+  "native_interpolation_opacity_within_0p5_percent": true,
+  "reflex_photon_histories_launched": 2000000,
+  "angular_selected_photons": 10282,
+  "ks_distance_to_free_kn": 0.009267105798617614,
+  "ks_distance_to_bound_h": 0.12866239786489042,
+  "maximum_stationary_recoil_difference_ev": 7.202310371212661e-06,
+  "reflex_angular_equivalence": false,
+  "angular_discrepancy_demonstrated": true,
+  "interpretation": "Opacity scale and energy interpolation are accounted for diagnostically; the physical table is never rescaled. Supplied RefleX angular sampler follows KN rather than the bound KN*S law. Full RefleX equivalence is not established."
+}

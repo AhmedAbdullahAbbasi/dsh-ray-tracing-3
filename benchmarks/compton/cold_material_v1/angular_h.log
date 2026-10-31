@@ -1,0 +1,42 @@
++------------------------------------------------------------------------------+
+
+RefleX 3.0
+
+Reference: S. Paltani & C. Ricci, 2017, A&A 607, A31
+Please cite this paper if you use RefleX in a publication
+https://www.astro.unige.ch/reflex/
+
++------------------------------------------------------------------------------+
+--> VERBOSE: set to: 0
+--> PERCENT: OFF
+--> RANDOM: Seed set to: 428901
+--> NPHOTS: Number of photons set to: 2000000
+--> THREAD: Number of threads set to: 1
+--> PHYSICS: Compton scattering turned ON
+--> PHYSICS: Rayleigh scattering turned OFF
+--> PHYSICS: Fluorescence turned OFF
+--> PHYSICS: Photoelectric absorption turned OFF
+--> PHYSICS: Dust photo-electric absorption turned OFF
+--> PHYSICS: Dust scattering turned OFF
+--> TEMPERATURE: Medium set to COLD
+--> EMSPEC: Monoenergetic at energy 4.900000e+03 eV
+--> EGEN : Create photon between 4.000000e+03 and 6.000000e+03 eV
+--> ECUT : Minimum propagation energy set to 1.000000e+02 eV
+--> LENGTH: Using Centimeter
+--> EMGEOM: Point source at (0.000000e+00,0.000000e+00,0.000000e+00) around (0.00,0.00)deg with 0.50deg opening
+--> MATTER: composition set to wilm
+--> METALLICITY: set to 0.000000
+--> ELEMENT: Abundance of Element 2 set to 0.000000
+--> H2FRACTION: set to: 0.000000
+--> DENSITY: 2.694400e+53 atoms per light-second^3
+--> OBJECT: World with radius 6.671282e-11
+--> OBJECT: Computing new cross-sections
+--> done
+--> OBJECT: Sphere CONTROL at (0.000000e+00,0.000000e+00,0.000000e+00) and radius 3.335641e-11
+--> FIELDS: directive set to: 100000100111000000
+--> EVENTS: Output file name set to: angular_h.fits
+--> EVENTS: Adding output constraint: COMPTON == 1
+--> Initializing atomic layers. done
+--> Starting simulation...
+==> 2000000 photons have been computed
+--> Simulation finished.

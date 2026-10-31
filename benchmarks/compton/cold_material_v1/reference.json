@@ -1,0 +1,42 @@
+{
+  "executable_sha256": "b451b81854fbecdb99f292d3a661ea85ab1b417a25e5907d565f4318f34c788c",
+  "reflex_version": "3.0 Linux x86_64 glibc2.17 supplied by user",
+  "capture_date": "2026-11-01",
+  "total_initialization_multiplier_from_barns": 1.0195979722863812e-06,
+  "legacy_scale_relative_to_barn_to_mb": 1.0195979722863813,
+  "scale_evidence": "init_ph at 0x407a90 multiplies CS_inc and CS_coh by binary double 1.0195979722863812e-6 at 0x419780; pure-H exact-node controls independently recover the same factor. This is an executable behavior, not a fitted correction to the DSH model.",
+  "energy_lookup": "For requested E<10 keV, runtime index=floor(1000E) refers to DUMP node(index+1)eV. At 10keV index=9999. Row and evaluated energy retained separately.",
+  "angular_scope": "Thin sphere, source pencil along +Z, NH=1e22, E=4.9keV, 2e6 histories, COMPTON==1 exit selection. Other scattering and absorption disabled. Residual escape-survival angular bias bounded by small optical depth (~0.005).",
+  "angular_initial_seed": 428901,
+  "angular_escaping_selected_photons": 10282,
+  "angular_conclusion": "Supplied executable directions agree with uncorrected KN; bound KN*S gives different distribution. Not an angular acceptance target for the physical bound provider.",
+  "archive_scope": "Selected independent reference products. RefleX executable is not redistributed.",
+  "source_sha256": {
+    "wilm_h2_02_dust0691.fits": "895eea4c3f4d84c727062c17393ba8353adeba2ae862675920ebacc0d8a05f54",
+    "wilm_h2_02_dust0.fits": "222cb384c9ffc1a052b225933d42a5d1f384b104bd69ef53249551158efaa1fc",
+    "wilm_h2_0_dust0.fits": "3ffabc699eb16dc1dad78f35f89b89f0f4676ef1b3f64cff620f186a72cb02a8",
+    "pure_h.fits": "cef81cab8e938870f40a5cfaab257e1beb87463e60b1916dafb3efd950445564",
+    "pure_h2.fits": "cc3d6194a7b1a8af2a974b3e1b31547fa7f8bee173c4f6580a1abdb533cd69f1",
+    "h_he.fits": "786577f5aaba8f6b820ad8fee65b05026df1b49c6f9121db1a5e32afecc8bea8",
+    "angular_h.fits": "89569dcf4168aca653844cd07f91d9827d3adeb6d2355c85dfe019f7ddc1db5b"
+  },
+  "evidence_sha256": {
+    "angular_h.log": "9be5dacacaac05a3685c58f5b09617509caaf16f68ea951cb0bc1278dfb37172",
+    "angular_h.par": "42fa9b821c1950174fe452001cbb2fd8bf9e7fc73d32be305328c4ee83465e84",
+    "h_he.log": "212c2188e806e4be8caab310e50f22095847a361479ae41c97338190160e79c3",
+    "h_he.par": "1bf1d2cac19c6b9a801db296e523297a4de31753930ccd0d59398a9dec2327ad",
+    "pure_h.log": "7c54ab816c91826c9b11d7b87516e81624c96a73b60c4c69a61a352eb8c59677",
+    "pure_h.par": "550d1063a6a445572ab92faab1b54a871e97d7ca7fd3721d3bc810741fac5543",
+    "pure_h2.log": "b26b85c581faa766a25929a66e233d83abc63ab20be62a6fb44ec75f11326230",
+    "pure_h2.par": "d2602d9405247c727ee1bbdde475289551bc751a692246f717978b79f10b5674",
+    "reflex_angular_h.npz": "32867bbfb1ccf10ee203c5a31c56e560d9df3dc667ee25de78a31a9b7dbf20ea",
+    "reflex_opacity_controls.csv": "f7a30db096e47321dbf46b43a9876563cc9f1c3179b2206d596badebe6780f8b",
+    "wilm_h2_02_dust0.log": "c1488dc430eb06f203306446ae76c9f764152535ce225c993be80534a5e7b1c2",
+    "wilm_h2_02_dust0.par": "1aacc1f46ed0198d87202dae30cb58b5e22296779b31bef852b3bec599c82c59",
+    "wilm_h2_02_dust0691.log": "d835f72a2032bb99d5f1853f0a0be4b55230892ecbda115b1cc885001ac1cf2a",
+    "wilm_h2_02_dust0691.par": "a3b9dea4cf071b96d18baecb516232ec710dc4d678f6d00c0c24aa6b17698309",
+    "wilm_h2_0_dust0.log": "15904c51fc55ef86f10d10c6c122854de9d890494c16bafa618a9d13c545da7e",
+    "wilm_h2_0_dust0.par": "5961ffc4a36b2621a78031d4894d37bda4ea3af915a7af00c7e59fe1ea65704f"
+  },
+  "evidence_text_hash_convention": "CRLF normalized to LF for .par/.log/.csv; binary files unchanged"
+}
