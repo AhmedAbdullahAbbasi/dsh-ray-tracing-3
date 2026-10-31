@@ -99,7 +99,7 @@ def main(argv=None):
     with (destination / "reflex_opacity_controls.csv").open(
         "w", newline="", encoding="utf-8"
     ) as stream:
-        writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(stream, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     manifest["capture_date"] = datetime.now(timezone.utc).isoformat()
