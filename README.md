@@ -24,6 +24,10 @@ The output is physical observer fluence, not telescope counts. Effective
 area, PSF, exposure maps, detector redistribution, background, and counting
 noise are intentionally deferred to Version 2.
 
+The optional [Compton extension, stage 1](docs/COMPTON_STAGE1.md) provides
+validated physics and material interfaces. Production simulations at this
+checkpoint still use elastic dust scattering plus photoabsorption.
+
 ## Package layout
 
 ```text
