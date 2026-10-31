@@ -1,7 +1,9 @@
 # Compton extension: stage 1
 
-Branch: `feature/compton-scattering`  
-Base: `refactor/simulation-config` at `39e1790e991cc83c392962587e806210f044a267`  
+Branch: `feature/compton-scattering`
+
+Base: `refactor/simulation-config` at `39e1790e991cc83c392962587e806210f044a267`
+
 Date: 31 October 2026
 
 ## Implemented scope
