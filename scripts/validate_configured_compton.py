@@ -36,6 +36,9 @@ FOCUSED = (
     "tests.test_configured_compton",
     "tests.test_compton_response_workflow",
 )
+FROZEN_TEST_VARIANTS = {
+    "tests.test_material_model_comparison": "tests.test_material_model_comparison_portable"
+}
 
 
 def main(argv=None):
@@ -84,6 +87,7 @@ def main(argv=None):
         from scripts.validate_cleanup_stage6 import frozen_evidence
 
         report["frozen_evidence"] = frozen_evidence(repo)
+        report["active_frozen_test_variants"] = FROZEN_TEST_VARIANTS
         commands = [
             ("compton-float32", "0", ["-m", "unittest", *FOCUSED, "-v"]),
             ("compton-float64", "1", ["-m", "unittest", *FOCUSED, "-v"]),
@@ -103,7 +107,10 @@ def main(argv=None):
             "tests." + path.stem
             for path in sorted((repo / "tests").glob("test_*.py"))
             if "tests." + path.stem not in FOCUSED
+            and "tests." + path.stem not in FROZEN_TEST_VARIANTS
         ]
+        if not set(FROZEN_TEST_VARIANTS.values()).issubset(remaining):
+            raise ValueError("active portable regression module is missing")
         # Isolate groups to bound compiler caches and reset test environments.
         commands += [
             (
