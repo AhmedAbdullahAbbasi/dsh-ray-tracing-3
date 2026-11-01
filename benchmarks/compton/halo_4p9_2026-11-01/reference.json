@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "description": "Supplied 4.9-keV Compton-on camera images with accepted frozen Compton-off images. No spectra or per-history on/off covariance provided.",
+  "on_archive_sha256": "4fbef5b11180b792e6aadb70231c7f68fa4a6a42560fcb701540ffefc3d95de3",
+  "source_history_count": 100000000,
+  "reflex_seed": 2026,
+  "threads": 16,
+  "opacity_compton_4p9_cm2_per_h": 5.892513286198664e-25,
+  "scope": "RefleX cold wilm, H2=.2, dust Fe fraction=.691; monochromatic4.9keV, NH1e22",
+  "files_sha256": {
+    "benchmarks/compton/halo_4p9_2026-11-01/on_dust.fits": "e2365caec21e3f18e1be1f6ba1606123130fcd71b34a849b9a7112e5c53a8d8c",
+    "benchmarks/compton/halo_4p9_2026-11-01/on_all.fits": "83c83642f5a792e057bec15221cbbedbb306ade90ebaf320c488caab03cb23ed",
+    "benchmarks/compton/halo_4p9_2026-11-01/on.par": "890a09bb2e1e879487e9b7121e6a3b58a5f2148789b5cbb3f52547d046886736",
+    "benchmarks/compton/halo_4p9_2026-11-01/on_runtime.log": "04d5532cc746fd4971a6be4ec5f7bfdd86ff96b7901b8ab7a423487882c41853",
+    "benchmarks/compton/halo_4p9_2026-11-01/on_output.log": "52edd11501c888bcd4824e88ecb4cf402f3fed3c2b891f711456536ea77a8f9e",
+    "reflex_adapter/evidence/reference_dust_e4p9.fits": "da7ac211e3780cab82d78eac55277e186027c3a37205456494579404922a2c16",
+    "reflex_adapter/evidence/reference_allphotons_e4p9.fits": "d91a13cea095ed2857b36a97a27213b14ea51703d7cbb94617620a572e5024ab",
+    "reflex_adapter/evidence/reflex_reference_params.par": "d4e932ab76e7c84db4f7959df201eb898cb04df74391881629c4556e1054426e"
+  },
+  "expected_counts": {
+    "off_dust": 5976,
+    "on_dust": 5981,
+    "off_all": 319667,
+    "on_all": 317891
+  },
+  "off_dust_file": "reflex_adapter/evidence/reference_dust_e4p9.fits",
+  "off_all_file": "reflex_adapter/evidence/reference_allphotons_e4p9.fits",
+  "off_params_file": "reflex_adapter/evidence/reflex_reference_params.par",
+  "on_dust_file": "benchmarks/compton/halo_4p9_2026-11-01/on_dust.fits",
+  "on_all_file": "benchmarks/compton/halo_4p9_2026-11-01/on_all.fits",
+  "on_params_file": "benchmarks/compton/halo_4p9_2026-11-01/on.par"
+}
